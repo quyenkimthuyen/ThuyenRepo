@@ -329,7 +329,8 @@ def is_process_running() -> bool:
 
 
 def is_thread_running() -> bool:
-  return _thread is not None and _thread.is_alive() and not _stop.is_set()
+  # Alive thread counts as running even while stop is in progress (R-05).
+  return _thread is not None and _thread.is_alive()
 
 
 def is_running() -> bool:
@@ -387,6 +388,41 @@ def _fill_fp(fill: dict | None) -> str | None:
   )
 
 
+def _load_seen_fills(last_fill_fp: str | None) -> list[str]:
+  """Restore fill fingerprints preserving insertion order (not lex sort)."""
+  if isinstance(last_fill_fp, str) and last_fill_fp.startswith("["):
+    try:
+      raw = json.loads(last_fill_fp)
+      if isinstance(raw, list):
+        out: list[str] = []
+        seen: set[str] = set()
+        for item in raw:
+          fp = str(item or "")
+          if fp and fp not in seen:
+            seen.add(fp)
+            out.append(fp)
+        return out
+    except Exception:
+      return [last_fill_fp] if last_fill_fp else []
+  if last_fill_fp:
+    return [str(last_fill_fp)]
+  return []
+
+
+def _remember_fill(seen_fills: list[str], fp_fill: str, *, limit: int = 80) -> list[str]:
+  """Append fingerprint and keep the most recent ``limit`` (FIFO window)."""
+  if not fp_fill or fp_fill in seen_fills:
+    return seen_fills
+  seen_fills = [*seen_fills, fp_fill]
+  if len(seen_fills) > limit:
+    seen_fills = seen_fills[-limit:]
+  return seen_fills
+
+
+def _dump_seen_fills(seen_fills: list[str], *, limit: int = 80) -> str:
+  return json.dumps(seen_fills[-limit:], ensure_ascii=False)
+
+
 def _cycle(
   engines: dict[str, BridgeEngine] | BridgeEngine,
   bridge_dir: Path,
@@ -403,14 +439,7 @@ def _cycle(
   primary_id = primary.model_id if primary else None
   is_sim = Path(bridge_dir).resolve() == BRIDGE_SIM_DIR.resolve()
   roster = read_models_roster(bridge_dir)
-  seen_fills: set[str] = set()
-  if isinstance(last_fill_fp, str) and last_fill_fp.startswith("["):
-    try:
-      seen_fills = set(json.loads(last_fill_fp))
-    except Exception:
-      seen_fills = {last_fill_fp} if last_fill_fp else set()
-  elif last_fill_fp:
-    seen_fills = {last_fill_fp}
+  seen_fills = _load_seen_fills(last_fill_fp)
 
   def _resolve_engine_for_fill(fill: dict) -> BridgeEngine | None:
     mid = str(fill.get("model_id") or "") or None
@@ -456,7 +485,7 @@ def _cycle(
       decision=last_decision if isinstance(last_decision, dict) else None,
       model_id=(eng.model_id if eng else None) or fill.get("model_id"),
     )
-    seen_fills.add(fp_fill)
+    seen_fills = _remember_fill(seen_fills, fp_fill)
     if not is_sim:
       save_config(last_run_at=_now_iso())
 
@@ -470,7 +499,7 @@ def _cycle(
   if isinstance(fill, dict):
     _ingest_fill(fill)
 
-  last_fill_fp = json.dumps(sorted(seen_fills)[-80:], ensure_ascii=False)
+  last_fill_fp = _dump_seen_fills(seen_fills)
 
   bar = read_json(bar_path(bridge_dir))
   if not is_sim:
@@ -601,7 +630,7 @@ def _worker():
     _engines = build_engines(
       ids,
       risk_pct=float(cfg["risk_pct"]),
-      bridge_dir=BRIDGE_DIR,
+      bridge_dir=bridge_dir,
       base_magic=DEFAULT_MAGIC,
     )
     _engine = next(iter(_engines.values()), None)
@@ -647,7 +676,7 @@ def _worker():
         _engines = build_engines(
           desired_ids,
           risk_pct=desired_risk,
-          bridge_dir=BRIDGE_DIR,
+          bridge_dir=bridge_dir,
           base_magic=DEFAULT_MAGIC,
           existing_engines=_engines,
         )
@@ -685,8 +714,16 @@ def _worker():
 def start_thread_worker() -> bool:
   global _thread
   with _lock:
-    if is_process_running() or is_thread_running():
+    if is_process_running():
       return True
+    if _thread is not None and _thread.is_alive():
+      if not _stop.is_set():
+        return True
+      # Stop in progress — wait for old worker before spawning another.
+      _thread.join(timeout=5)
+      if _thread.is_alive():
+        return False
+      _thread = None
     try:
       from mt5_bridge.trade_journal import clear_sticky_fill_files
       clear_sticky_fill_files(BRIDGE_DIR)
@@ -769,6 +806,7 @@ def start_worker(*, detached: bool = True) -> bool:
 
 
 def stop_worker() -> None:
+  global _thread
   with _lock:
     save_config(enabled=False)
     _stop.set()
@@ -789,6 +827,12 @@ def stop_worker() -> None:
           pass
       append_event("system", "service_stop", summary=f"killed process pid={pid}")
     _clear_pid()
+    t = _thread
+    if t and t.is_alive():
+      t.join(timeout=5)
+    if t is None or not t.is_alive():
+      if _thread is t:
+        _thread = None
     write_status(BRIDGE_DIR, state="stopped", error=None)
 
 
@@ -1178,8 +1222,11 @@ def stop_sim_worker() -> None:
   for t in (_sim_thread, _sim_bridge_thread):
     if t and t.is_alive():
       t.join(timeout=5.0)
-  _sim_thread = None
-  _sim_bridge_thread = None
+  # Keep references if workers are still alive (same race class as BUG-06 / R-03).
+  if _sim_thread is not None and not _sim_thread.is_alive():
+    _sim_thread = None
+  if _sim_bridge_thread is not None and not _sim_bridge_thread.is_alive():
+    _sim_bridge_thread = None
   write_sim_state({"status": "stopped", "service_pid": None})
 
 

@@ -103,10 +103,20 @@ def _paper_snapshot(*, max_bars: int = 672, date_from=None, date_to=None) -> dic
     live_history = {}
   last = rows[-1] if rows else {}
   last_close = last.get("close")
+  try:
+    from config import DEFAULT_TF
+    period = str(DEFAULT_TF or "M15")
+  except Exception:
+    period = "M15"
+  try:
+    from mt5_bridge.paper_fill import _desk_symbol
+    desk_sym = _desk_symbol()
+  except Exception:
+    desk_sym = "EURUSD"
   history = live_history or {
-    "symbol": "EURUSD",
+    "symbol": desk_sym,
     "updated_at": state.get("updated_at"),
-    "period": "M15",
+    "period": period,
     "bars": rows,
   }
   if live_history.get("bars") and not (date_from or date_to):

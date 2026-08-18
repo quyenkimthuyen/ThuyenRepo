@@ -101,10 +101,14 @@ def ensure_model_kb_pin(model: dict) -> dict:
     model.pop("kb_fingerprint", None)
     model.pop("kb_pin_bytes", None)
     return model
-  # Reuse existing pin if file still present and fingerprint matches request.
+  # Reuse existing pin only when file is present AND fingerprint still matches.
   existing = resolve_pin_absolute(model.get("kb_pin_path"))
-  if existing is not None and model.get("kb_fingerprint"):
-    return model
+  expected_fp = str(model.get("kb_fingerprint") or "")
+  if existing is not None and expected_fp:
+    actual_fp = _file_sha256(existing)[:16]
+    if actual_fp == expected_fp:
+      return model
+    # Corrupt / replaced pin → fall through and re-pin from catalog.
   mid = model.get("id")
   if not mid:
     return model

@@ -41,6 +41,17 @@ _COMPARE_PALETTE = (
 )
 
 
+def _desk_chart_label() -> tuple[str, str]:
+  """(symbol, timeframe) for monitor chart titles — desk-aware."""
+  try:
+    from config import DEFAULT_PAIR, DEFAULT_TF
+    sym = str(DEFAULT_PAIR or "").upper().replace("/", "") or "EURUSD"
+    tf = str(DEFAULT_TF or "M5")
+    return sym, tf
+  except Exception:
+    return "EURUSD", "M5"
+
+
 def _plotly_js_path() -> Path:
   import plotly
   return Path(plotly.__file__).resolve().parent / "package_data" / "plotly.min.js"
@@ -434,8 +445,9 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
   paper_mode = mode == "paper"
   sim_mode = mode == "sim"
   compare_mode = mode == "compare"
+  sym, tf = _desk_chart_label()
   if compare_mode:
-    chart_title = "EURUSD M5 · Compare Trade"
+    chart_title = f"{sym} {tf} · Compare Trade"
     labels = (
       "COMPARE", "QUOTE", "WINDOW", "BARS", "MODELS", "FILLS", "RUN",
     )
@@ -454,7 +466,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     snap_url = "/snapshot?mode=compare"
     note0 = "Compare Trade — chart iframe mượt (Plotly.react), giống Simulate."
   elif sim_mode:
-    chart_title = "EURUSD M5 · Simulate History Feed"
+    chart_title = f"{sym} {tf} · Simulate History Feed"
     labels = (
       "FEED", "QUOTE", "SPREAD", "PROGRESS", "FEED STATUS", "DECISION", "LAST BAR",
     )
@@ -473,7 +485,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     snap_url = "/snapshot?mode=sim"
     note0 = "Simulate History Feed — status + chart cập nhật mượt (Plotly.react)."
   elif paper_mode:
-    chart_title = "EURUSD M5 · Paper Trade"
+    chart_title = f"{sym} {tf} · Paper Trade"
     labels = ("PAPER ENGINE", "LAST PRICE", "DAY TRADES", "SLOTS LEFT", "SESSION")
     grid_cols = 5
     status_cells = f"""
@@ -488,7 +500,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     snap_url = "/snapshot"
     note0 = "Đang kết nối ForgeBridge EA…"
   else:
-    chart_title = "EURUSD M5 · XM MT5 live"
+    chart_title = f"{sym} {tf} · XM MT5 live"
     labels = (
       "EA", "BID / ASK", "SPREAD", "OPEN", "ALGO", "DECISION", "SLOTS",
     )

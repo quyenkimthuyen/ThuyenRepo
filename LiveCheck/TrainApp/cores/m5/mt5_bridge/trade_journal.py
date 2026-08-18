@@ -33,6 +33,20 @@ _MANUAL_CLOSE_REASONS = {
 _MANUAL_OPEN_MARKERS = ("manual_test", "manual_bridge", "manual_close")
 
 
+def _row_symbol(*sources: dict | None) -> str:
+  """Symbol for journal rows — lazy import avoids paper_fill ↔ journal cycle."""
+  try:
+    from mt5_bridge.paper_fill import journal_symbol
+    return journal_symbol(*sources)
+  except Exception:
+    for src in sources:
+      if isinstance(src, dict):
+        sym = str(src.get("symbol") or "").strip()
+        if sym:
+          return sym
+    return "EURUSD"
+
+
 def trades_path(bridge_dir: Path | None = None) -> Path:
   return ensure_bridge_dir(bridge_dir) / TRADES_NAME
 
@@ -148,12 +162,20 @@ def _find_open(
   mag = str(magic) if magic is not None and str(magic) != "" else None
 
   def _side_ok(t: dict) -> bool:
-    if mid and str(t.get("model_id") or "") not in ("", mid):
-      # Allow empty model_id on legacy rows only when magic matches.
-      if mag is None or str(t.get("magic") or "") != mag:
+    t_mid = str(t.get("model_id") or "")
+    t_mag = str(t.get("magic") or "")
+    if mid:
+      if t_mid == mid:
+        pass
+      elif t_mid == "":
+        # Legacy empty model_id: allow only when magic matches.
+        if mag is None or t_mag != mag:
+          return False
+      else:
+        # Non-empty wrong model_id must never match (even if magic aligns).
         return False
-    if mag is not None and str(t.get("magic") or "") not in ("", mag):
-      if mid is None or str(t.get("model_id") or "") != mid:
+    if mag is not None and t_mag not in ("", mag):
+      if mid is None or t_mid != mid:
         return False
     return True
 
@@ -166,14 +188,16 @@ def _find_open(
       return t
     if signal_id and t.get("signal_id") == signal_id:
       return t
-  for t in reversed(trades):
-    if t.get("status") != "OPEN":
-      continue
-    if not _side_ok(t):
-      continue
-    return t
+  # Fallback to any scoped OPEN only when caller did not name ticket/signal.
+  if ticket is None and not signal_id:
+    for t in reversed(trades):
+      if t.get("status") != "OPEN":
+        continue
+      if not _side_ok(t):
+        continue
+      return t
   # Legacy fallback: only when no model/magic scope requested
-  if mid is None and mag is None:
+  if mid is None and mag is None and ticket is None and not signal_id:
     for t in reversed(trades):
       if t.get("status") == "OPEN":
         return t
@@ -376,7 +400,7 @@ def process_fill(
       "id": f"bt_{sid or fill.get('ticket') or _now()}",
       "signal_id": sid,
       "ticket": ticket,
-      "symbol": fill.get("symbol") or "EURUSD",
+      "symbol": _row_symbol(fill, decision),
       "direction": action,
       "status": "OPEN",
       "mode": MODE_MANUAL if is_manual else MODE_AUTO,
@@ -473,7 +497,7 @@ def process_fill(
         "id": f"bt_close_{ticket or _now()}",
         "signal_id": sid,
         "ticket": ticket,
-        "symbol": fill.get("symbol") or "EURUSD",
+        "symbol": _row_symbol(fill, decision),
         "direction": str(fill.get("action") or "").upper() or "?",
         "status": "CLOSED",
         "mode": MODE_MANUAL if is_manual else MODE_AUTO,

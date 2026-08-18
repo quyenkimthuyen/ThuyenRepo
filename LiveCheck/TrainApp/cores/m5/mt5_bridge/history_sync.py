@@ -27,10 +27,13 @@ from app_paths import get_root
 ROOT = get_root()
 DATA_DIR = ROOT / "data"
 
-def _cache_names():
-  import os
-  sym = "EURUSD"
-  tf = "M5"
+def _desk_instrument(
+  default_sym: str = "EURUSD",
+  default_tf: str = "M5",
+) -> tuple[str, str]:
+  """Resolve (symbol, timeframe) from TRAINAPP_DESK when set."""
+  sym = default_sym
+  tf = default_tf
   if os.environ.get("TRAINAPP_DESK"):
     try:
       import sys
@@ -44,12 +47,58 @@ def _cache_names():
       tf = str(cfg.get("tf") or tf)
     except Exception:
       pass
+  return sym, tf
+
+
+def _cache_names():
+  sym, tf = _desk_instrument()
   key = f"mt5_{sym.lower()}_{tf.lower()}"
   return key + ".parquet", key + "_meta.json"
 
+
+class _DeskPath:
+  """Path that re-resolves cache/meta from TRAINAPP_DESK on each access.
+
+  Import-time binding used to freeze EURUSD paths even after desk env changed
+  (BUG-15). Tests may still ``monkeypatch.setattr(..., Path(...))`` over these.
+  """
+
+  __slots__ = ("_which",)
+
+  def __init__(self, which: str):
+    object.__setattr__(self, "_which", which)
+
+  def _path(self) -> Path:
+    cache_file, meta_file = _cache_names()
+    name = cache_file if object.__getattribute__(self, "_which") == "cache" else meta_file
+    return DATA_DIR / name
+
+  def __fspath__(self) -> str:
+    return os.fspath(self._path())
+
+  def __str__(self) -> str:
+    return str(self._path())
+
+  def __repr__(self) -> str:
+    return f"_DeskPath({self._path()!r})"
+
+  def __eq__(self, other: object) -> bool:
+    try:
+      other_path = other if isinstance(other, Path) else Path(os.fspath(other))  # type: ignore[arg-type]
+      return self._path() == other_path
+    except Exception:
+      return NotImplemented
+
+  def __hash__(self) -> int:
+    return hash(self._path())
+
+  def __getattr__(self, name: str):
+    return getattr(self._path(), name)
+
+
 _CACHE_FILE, _META_FILE = _cache_names()
-MT5_CACHE_PATH = DATA_DIR / _CACHE_FILE
-MT5_META_PATH = DATA_DIR / _META_FILE
+MT5_CACHE_PATH = _DeskPath("cache")
+MT5_META_PATH = _DeskPath("meta")
 DATA_START_CONFIG_PATH = DATA_DIR / "data_start.json"
 BROKER_TIMEZONE = os.environ.get("EDGEMINER_BROKER_TIMEZONE", "Europe/Helsinki")
 # Inclusive lower bound for MT5 M15 cache / history export (broker wall-clock).
@@ -218,12 +267,13 @@ def _write_cache(frame: pd.DataFrame, source: dict) -> None:
   ).hexdigest()
   previous = read_json(MT5_META_PATH) or {}
   source = {**previous, **{k: v for k, v in source.items() if v is not None}}
+  desk_sym, desk_tf = _desk_instrument()
   atomic_write_json(MT5_META_PATH, {
     "source": "mt5_ea",
     "broker": source.get("server") or source.get("broker"),
     "account": source.get("account"),
-    "pair": source.get("symbol") or source.get("pair") or "EURUSD",
-    "timeframe": "M5",
+    "pair": source.get("symbol") or source.get("pair") or desk_sym,
+    "timeframe": desk_tf,
     "broker_timezone": BROKER_TIMEZONE,
     "bars": len(frame),
     "start": str(frame.index[0]) if len(frame) else None,
@@ -256,11 +306,12 @@ def merge_history_bars(bars: list[dict], source: dict | None = None) -> pd.DataF
 
 
 def _new_request(offset: int, bridge_dir: Path, chunk_size: int) -> dict:
+  sym, tf = _desk_instrument()
   request = {
     "request_id": uuid.uuid4().hex,
-    "action": "export_m5_history",
-    "symbol": "EURUSD",
-    "period": "M5",
+    "action": f"export_{tf.lower()}_history",
+    "symbol": sym,
+    "period": tf,
     "from_time": data_start_mt5_wall(),
     "offset": int(offset),
     "chunk_size": int(chunk_size),

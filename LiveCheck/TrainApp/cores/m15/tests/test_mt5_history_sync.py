@@ -1,10 +1,29 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+
 import pandas as pd
 
 from mt5_bridge import history_sync
 from mt5_bridge.engine import _fmt_bar
 from mt5_bridge.protocol import atomic_write_json, history_chunk_path, read_json
+
+_TRAINAPP_ROOT = Path(__file__).resolve().parents[3]
+
+
+def _use_desk(monkeypatch, desk_id: str) -> None:
+  """Point history_sync at a TrainApp desk yaml (clears desk_context cache)."""
+  monkeypatch.setenv("TRAINAPP_DESK", desk_id)
+  monkeypatch.setenv("TRAINAPP_ROOT", str(_TRAINAPP_ROOT))
+  import sys
+
+  root = str(_TRAINAPP_ROOT)
+  if root not in sys.path:
+    sys.path.insert(0, root)
+  import desk_context
+
+  desk_context._CACHE.clear()
 
 
 def _bar(time: str, close: float = 1.1) -> dict:
@@ -109,3 +128,59 @@ def test_env_overrides_data_start_file(tmp_path, monkeypatch):
   monkeypatch.setenv("EDGEMINER_DATA_START", "2022-06-01 00:00")
   assert history_sync.get_data_start_broker() == "2022-06-01 00:00"
   assert history_sync.data_start_source() == "env"
+
+
+def test_history_request_uses_desk_symbol_and_period(tmp_path, monkeypatch):
+  """BUG-01: GBP desk must request GBPUSD/M15, not hardcoded EURUSD."""
+  _temp_store(tmp_path, monkeypatch)
+  _use_desk(monkeypatch, "g23")
+  bridge = tmp_path / "bridge"
+  history_sync.start_history_sync(bridge, chunk_size=2)
+  request = read_json(history_sync.history_request_path(bridge))
+  assert request["symbol"] == "GBPUSD"
+  assert request["period"] == "M15"
+  assert request["action"] == "export_m15_history"
+
+
+def test_history_request_defaults_to_eurusd_without_desk(tmp_path, monkeypatch):
+  _temp_store(tmp_path, monkeypatch)
+  monkeypatch.delenv("TRAINAPP_DESK", raising=False)
+  bridge = tmp_path / "bridge"
+  history_sync.start_history_sync(bridge, chunk_size=2)
+  request = read_json(history_sync.history_request_path(bridge))
+  assert request["symbol"] == "EURUSD"
+  assert request["period"] == "M15"
+
+
+def test_write_cache_meta_falls_back_to_desk_instrument(tmp_path, monkeypatch):
+  """BUG-01/10: meta pair/tf must follow desk when chunk omits symbol."""
+  _temp_store(tmp_path, monkeypatch)
+  _use_desk(monkeypatch, "g23")
+  history_sync.merge_history_bars([_bar("2026.07.15 10:00", 1.25)], source={})
+  meta = read_json(history_sync.MT5_META_PATH)
+  assert meta["pair"] == "GBPUSD"
+  assert meta["timeframe"] == "M15"
+
+
+def test_cache_path_tracks_desk_after_import(monkeypatch):
+  """BUG-15: changing TRAINAPP_DESK after import must retarget cache path."""
+  import os
+  import sys
+
+  import desk_context
+
+  monkeypatch.delenv("TRAINAPP_DESK", raising=False)
+  eur_name = Path(os.fspath(history_sync.MT5_CACHE_PATH)).name
+  assert "eurusd" in eur_name
+
+  monkeypatch.setenv("TRAINAPP_DESK", "g23")
+  monkeypatch.setenv("TRAINAPP_ROOT", str(_TRAINAPP_ROOT))
+  root = str(_TRAINAPP_ROOT)
+  if root not in sys.path:
+    sys.path.insert(0, root)
+  desk_context._CACHE.clear()
+
+  gbp_name = Path(os.fspath(history_sync.MT5_CACHE_PATH)).name
+  assert "gbpusd" in gbp_name
+  assert gbp_name != eur_name
+

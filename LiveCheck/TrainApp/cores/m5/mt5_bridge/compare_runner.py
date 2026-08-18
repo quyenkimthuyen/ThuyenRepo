@@ -166,6 +166,15 @@ def model_dir(run_id: str, model_id: str) -> Path:
   return ensure_bridge_dir(COMPARE_ROOT / run_id / "models" / model_id)
 
 
+def _replay_symbol() -> str:
+  """Desk chart symbol for Compare Trade bar metadata."""
+  try:
+    from mt5_bridge.paper_fill import _desk_symbol
+    return _desk_symbol()
+  except Exception:
+    return "EURUSD"
+
+
 def _bar_dict(ts: pd.Timestamp, row: pd.Series) -> dict:
   broker = utc_to_broker_time(ts)
   return {
@@ -175,7 +184,7 @@ def _bar_dict(ts: pd.Timestamp, row: pd.Series) -> dict:
     "low": float(row["Low"]),
     "close": float(row["Close"]),
     "volume": float(row["Volume"] if "Volume" in row.index else 0.0),
-    "symbol": "EURUSD",
+    "symbol": _replay_symbol(),
   }
 
 

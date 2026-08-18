@@ -349,8 +349,8 @@ def build_ea_chart(
   title: str | None = None,
   price_line_label: str = "LIVE",
 ) -> go.Figure | None:
+  from gui.desk_ui import symbol_label, tf_label
   if title is None:
-    from gui.desk_ui import symbol_label, tf_label
     title = f"{symbol_label()} {tf_label()} · XM MT5 live"
   if frame.empty:
     return None
@@ -370,7 +370,7 @@ def build_ea_chart(
     low=frame["Low"], close=frame["Close"],
     increasing_line_color=TV_UP, decreasing_line_color=TV_DOWN,
     increasing_fillcolor=TV_UP, decreasing_fillcolor=TV_DOWN,
-    name="EURUSD", showlegend=False,
+    name=symbol_label(), showlegend=False,
   ), row=1, col=1)
 
   if has_volume:

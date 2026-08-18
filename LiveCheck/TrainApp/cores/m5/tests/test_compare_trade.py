@@ -95,6 +95,39 @@ def test_journal_open_scoped_by_model_id(tmp_path: Path):
   assert day_b == 1
 
 
+def test_journal_open_ignores_empty_model_id_when_scoped(tmp_path: Path):
+  """BUG-04: orphan/legacy rows without model_id must not match every model."""
+  clear_trades(tmp_path)
+  save_trades([
+    {
+      "id": "orphan", "signal_id": "o1", "status": "OPEN", "mode": "auto",
+      "model_id": "", "entry_time": "2026-01-05 09:00", "direction": "BUY",
+    },
+    {
+      "id": "a1", "signal_id": "a1", "status": "CLOSED", "mode": "auto",
+      "model_id": "tm_a", "entry_time": "2026-01-05 11:00", "direction": "BUY",
+    },
+  ], tmp_path)
+  day = pd.Timestamp("2026-01-05").date()
+  open_a, day_a = _journal_open_and_day_count(tmp_path, day, model_id="tm_a")
+  open_b, day_b = _journal_open_and_day_count(tmp_path, day, model_id="tm_b")
+  assert open_a is False
+  assert day_a == 1
+  assert open_b is False
+  assert day_b == 0
+
+
+def test_compare_bar_dict_uses_desk_symbol(monkeypatch):
+  """BUG-03: replay bars must not hardcode EURUSD on GBP desks."""
+  from mt5_bridge import compare_runner
+
+  monkeypatch.setattr(compare_runner, "_replay_symbol", lambda: "GBPUSD")
+  ts = pd.Timestamp("2026-07-15 10:00:00")
+  row = pd.Series({"Open": 1.25, "High": 1.26, "Low": 1.24, "Close": 1.255, "Volume": 10})
+  bar = compare_runner._bar_dict(ts, row)
+  assert bar["symbol"] == "GBPUSD"
+
+
 def test_filter_trades_requires_model_id(tmp_path: Path):
   save_trades([
     {"id": "1", "status": "CLOSED", "mode": "auto", "model_id": "tm_a", "entry_time": "2026-01-01"},

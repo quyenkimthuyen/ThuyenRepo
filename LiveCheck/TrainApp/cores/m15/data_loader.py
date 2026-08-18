@@ -20,20 +20,29 @@ DEFAULT_START = "2025-01-01"
 def require_canonical_mt5_data() -> dict:
   """Fail closed unless the active cache has complete MT5 provenance."""
   meta = read_json(META_PATH)
+  src = str((meta or {}).get("source") or "")
   try:
-    from config import DEFAULT_TF
+    from config import DEFAULT_PAIR, DEFAULT_TF
     expect_tf = str(DEFAULT_TF or "M15")
+    expect_pair = str(DEFAULT_PAIR or "").upper().replace("/", "") or None
   except Exception:
     expect_tf = "M15"
+    expect_pair = None
   if (
     not isinstance(meta, dict)
-    or meta.get("source") != "mt5_ea"
+    or src != "mt5_ea"
     or str(meta.get("timeframe") or "") != expect_tf
   ):
     raise RuntimeError("Dữ liệu chưa được xác nhận từ ForgeBridge/XM MT5.")
   missing = [key for key in ("broker", "fingerprint", "bars", "start", "end") if not meta.get(key)]
   if missing:
     raise RuntimeError(f"Metadata MT5 thiếu: {', '.join(missing)}")
+  if expect_pair:
+    got_pair = str(meta.get("pair") or "").upper().replace("/", "")
+    if got_pair != expect_pair:
+      raise RuntimeError(
+        f"Metadata pair lệch desk: got {got_pair or '(empty)'} expected {expect_pair}."
+      )
   return meta
 
 

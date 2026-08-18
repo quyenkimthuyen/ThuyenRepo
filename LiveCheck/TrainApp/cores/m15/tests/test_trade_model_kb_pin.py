@@ -93,3 +93,24 @@ def test_kb_off_skips_pin(pin_env):
   ensure_model_kb_pin(m)
   assert "kb_pin_path" not in m
   assert not model_kb_pin_path("tm_off").exists()
+
+
+def test_ensure_repins_when_fingerprint_mismatches(pin_env):
+  """BUG-07: corrupt pin file must not be treated as valid."""
+  meta = pin_kb_for_model("tm_corrupt", "era_x", 1)
+  assert meta is not None
+  pin_path = model_kb_pin_path("tm_corrupt")
+  pin_path.write_text('{"epoch_count": 0, "corrupted": true}', encoding="utf-8")
+
+  m = {
+    "id": "tm_corrupt",
+    "use_kb": True,
+    "kb_profile": "era_x",
+    "kb_snapshot": 1,
+    "kb_pin_path": meta["kb_pin_path"],
+    "kb_fingerprint": meta["kb_fingerprint"],
+  }
+  ensure_model_kb_pin(m)
+  assert pin_path.read_bytes() == pin_env["kb_src"].read_bytes()
+  assert m["kb_fingerprint"] == meta["kb_fingerprint"]
+

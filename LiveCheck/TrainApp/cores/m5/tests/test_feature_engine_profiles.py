@@ -60,15 +60,19 @@ def test_session_features_use_broker_hour_mapping(monkeypatch):
 
 
 def test_current_and_m15_native_profiles_construct_with_stable_names():
+  from config import DEFAULT_FEATURE_PROFILE
+
   frame = _frame()
-  current = FeatureMatrix(frame)
+  default_fm = FeatureMatrix(frame)
   explicit_current = FeatureMatrix(frame, profile="current")
   legacy = FeatureMatrix(frame, profile="legacy")
   slower = FeatureMatrix(frame, profile="m15_native")
 
-  assert current.profile == FEATURE_PROFILES["current"]
-  assert current.profile == explicit_current.profile
-  assert current.warmup == 120
+  # BUG-14: M5 runtime default is m5_parity (desk), not "current".
+  assert default_fm.profile_name == DEFAULT_FEATURE_PROFILE
+  assert default_fm.profile == FEATURE_PROFILES[DEFAULT_FEATURE_PROFILE]
+  assert explicit_current.profile == FEATURE_PROFILES["current"]
+  assert explicit_current.warmup == 120
   assert slower.warmup >= 400
   assert slower.profile.atr_period == 28
   assert slower.profile.rsi_period == 28
@@ -87,7 +91,7 @@ def test_current_and_m15_native_profiles_construct_with_stable_names():
   assert legacy.profile.causal_h4 is False
   assert legacy.profile.broker_sessions is False
   np.testing.assert_array_equal(legacy.hours, legacy.utc_hours)
-  assert current.feature_names == slower.feature_names
+  assert explicit_current.feature_names == slower.feature_names
   assert "ema_slope_8" in slower.feature_names
   assert "price_vs_ema21" in slower.feature_names
   assert "zscore_20" in slower.feature_names

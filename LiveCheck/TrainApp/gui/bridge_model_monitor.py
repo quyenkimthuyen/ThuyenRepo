@@ -901,13 +901,18 @@ def build_multi_model_price_figure(
     return None
 
   fig = go.Figure()
+  try:
+    from gui.desk_ui import symbol_label
+    candle_name = symbol_label()
+  except Exception:
+    candle_name = "OHLC"
   fig.add_trace(go.Candlestick(
     x=ohlc.index,
     open=ohlc["Open"], high=ohlc["High"],
     low=ohlc["Low"], close=ohlc["Close"],
     increasing_line_color="#26a69a", decreasing_line_color="#ef5350",
     increasing_fillcolor="#26a69a", decreasing_fillcolor="#ef5350",
-    name="EURUSD",
+    name=candle_name,
     showlegend=False,
   ))
 

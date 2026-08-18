@@ -236,11 +236,16 @@ def build_flat_halt_decision(
   model_id: str | None = None,
 ) -> dict:
   bar = bar or {}
+  try:
+    from mt5_bridge.paper_fill import journal_symbol
+    symbol = journal_symbol(bar)
+  except Exception:
+    symbol = str(bar.get("symbol") or "EURUSD")
   now = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
   return {
     "action": "FLAT",
     "ok": True,
-    "symbol": bar.get("symbol") or "EURUSD",
+    "symbol": symbol,
     "bar_time": bar.get("time") or bar.get("bar_time"),
     "reason": reason,
     "halt": True,

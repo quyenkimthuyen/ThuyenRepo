@@ -946,6 +946,8 @@ def start_job(
     raise RuntimeError("Đang có task chạy nền — đợi hoặc hủy trước.")
 
   cancel_task(wait=True)
+  if _thread is not None and _thread.is_alive():
+    raise RuntimeError("Task worker chưa dừng — thử hủy lại sau vài giây.")
 
   ts = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d_%H%M%S")
   jid = job_id or f"job_{job_type}_{ts}"
@@ -973,13 +975,16 @@ def start_job(
 
 
 def cancel_task(*, wait: bool = True):
-  """Hủy task đang chạy."""
+  """Hủy task đang chạy. Giữ reference nếu worker chưa chết (tránh race start lại)."""
   global _thread
   _cancel.set()
-  if _thread and _thread.is_alive():
+  t = _thread
+  if t and t.is_alive():
     if wait:
-      _thread.join(timeout=8)
-  _thread = None
+      t.join(timeout=8)
+  if t is None or not t.is_alive():
+    if _thread is t:
+      _thread = None
 
 
 def ensure_task_worker_running():

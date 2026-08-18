@@ -45,10 +45,16 @@ function Resolve-DeskIds([string[]]$Requested) {
         continue
       }
       $map = @{
-        e21 = "e21"; eur = "e21"; eurusd = "e21"; m15e21 = "e21"
-        g23 = "g23"; gbp = "g23"; gbpusd = "g23"; m15g23 = "g23"
-        e31 = "e31"; m5e31 = "e31"
-        g33 = "g33"; m5g33 = "g33"
+        e21 = "e21"; eur15 = "e21"; eurm15 = "e21"; m15e21 = "e21"
+        g23 = "g23"; gbp15 = "g23"; gbpm15 = "g23"; m15g23 = "g23"
+        e31 = "e31"; eur5 = "e31"; eurm5 = "e31"; m5e31 = "e31"
+        g33 = "g33"; gbp5 = "g33"; gbpm5 = "g33"; m5g33 = "g33"
+      }
+      if ($token -eq "gbp" -or $token -eq "gbpusd") {
+        throw "Alias '$part' is ambiguous (G23=M15 vs G33=M5). Use g23 or g33 (or gbp15 / gbp5)."
+      }
+      if ($token -eq "eur" -or $token -eq "eurusd") {
+        throw "Alias '$part' is ambiguous (E21=M15 vs E31=M5). Use e21 or e31 (or eur15 / eur5)."
       }
       if ($Catalog.Contains($token)) { $id = $token }
       elseif ($map.ContainsKey($token)) { $id = $map[$token] }

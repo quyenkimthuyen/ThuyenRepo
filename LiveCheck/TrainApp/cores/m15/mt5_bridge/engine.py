@@ -60,7 +60,7 @@ def _journal_open_and_day_count(
   for trade in load_trades(bridge_dir):
     if trade_mode(trade) != "auto":
       continue
-    if mid and str(trade.get("model_id") or mid) != mid:
+    if mid and str(trade.get("model_id") or "") != mid:
       continue
     status = str(trade.get("status") or "").upper()
     if status == "OPEN":

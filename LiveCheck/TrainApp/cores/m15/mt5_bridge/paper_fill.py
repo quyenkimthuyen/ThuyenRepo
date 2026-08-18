@@ -20,14 +20,33 @@ _PIP = 1e-4
 
 
 def _desk_symbol() -> str:
+  """Fallback chart/journal symbol (EUR vs GBP desks). Keep parity with GUI helper."""
+  try:
+    from config import DEFAULT_PAIR
+    pair = str(DEFAULT_PAIR or "").upper().replace("/", "")
+    if pair:
+      return pair
+  except Exception:
+    pass
   try:
     from mt5_bridge.protocol import INSTANCE_ID, ROOT
     name = ROOT.name.upper()
-    if "GBP" in name or str(INSTANCE_ID).upper().startswith("M15G"):
+    if "GBP" in name or str(INSTANCE_ID).upper().startswith(("M15G", "M5G", "G")):
       return "GBPUSD"
   except Exception:
     pass
   return "EURUSD"
+
+
+def journal_symbol(*sources: dict | None) -> str:
+  """Prefer explicit symbol on fill/decision/bar; else desk default."""
+  for src in sources:
+    if not isinstance(src, dict):
+      continue
+    sym = str(src.get("symbol") or "").strip()
+    if sym:
+      return sym
+  return _desk_symbol()
 
 def _exit_mode_code(raw: Any) -> int:
   s = str(raw or "").strip().lower()

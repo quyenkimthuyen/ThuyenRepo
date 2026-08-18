@@ -235,6 +235,8 @@ def start_grid_search(
     )
 
   stop_grid_search(wait=True)
+  if _thread is not None and _thread.is_alive():
+    raise RuntimeError("Grid search worker chưa dừng — thử hủy lại sau vài giây.")
 
   ts = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d_%H%M%S")
   rid = run_id or f"gs_{ts}"
@@ -269,13 +271,16 @@ def start_grid_search(
 
 
 def stop_grid_search(*, wait: bool = True):
-  """Hủy grid search đang chạy."""
+  """Hủy grid search đang chạy. Giữ reference nếu worker chưa chết (tránh race start lại)."""
   global _thread
   _cancel.set()
-  if _thread and _thread.is_alive():
+  t = _thread
+  if t and t.is_alive():
     if wait:
-      _thread.join(timeout=5)
-  _thread = None
+      t.join(timeout=5)
+  if t is None or not t.is_alive():
+    if _thread is t:
+      _thread = None
 
 
 def clear_grid_results(*, delete_archives: bool = True) -> dict:
