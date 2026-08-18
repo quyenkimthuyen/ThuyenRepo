@@ -57,18 +57,32 @@ def write_flatten_command(
     dirs = [Path(bridge_dir)]
   else:
     dirs = [BRIDGE_DIR]
+    # BUG-05: never rely on a single try — always union roster + workers + disk.
     try:
       from books import bridge_dir as bdir_fn, group_models_by_book
-      enabled = [r for r in (load_roster().get("models") or []) if r.get("enabled")]
-      for (sym, tf), _ in group_models_by_book(enabled).items():
+      roster = load_roster() if callable(load_roster) else {"models": []}
+      models = list((roster or {}).get("models") or [])
+      # Include disabled-with-magic books so orphan tickets still get command.json
+      for (sym, tf), _ in group_models_by_book(models).items():
         p = bdir_fn(sym, tf, sim=False)
         if p not in dirs:
           dirs.append(p)
+    except Exception:
+      pass
+    try:
       workers = _read(RESULTS_DIR / "live_workers.json") or {}
       for w in workers.get("workers") or []:
         p = Path(w.get("bridge_dir") or "")
         if p and p not in dirs:
           dirs.append(p)
+    except Exception:
+      pass
+    try:
+      from live_config import MT5_ROOT
+      if MT5_ROOT.is_dir():
+        for p in MT5_ROOT.iterdir():
+          if p.is_dir() and p.name.startswith("bridge_live_") and p not in dirs:
+            dirs.append(p)
     except Exception:
       pass
 
@@ -85,16 +99,23 @@ def write_flatten_command(
     "halt": False,
     "updated_at": _now(),
   }
+  roster_rows: list[dict] = []
+  try:
+    roster_rows = list((load_roster() or {}).get("models") or [])
+  except Exception:
+    roster_rows = []
   for bdir in dirs:
     bdir.mkdir(parents=True, exist_ok=True)
     _write(bdir / "command.json", payload)
     _write(bdir / "decision.json", flat)
     dec_dir = bdir / "decisions"
     dec_dir.mkdir(exist_ok=True)
-    roster = load_roster()
-    for row in roster.get("models") or []:
+    for row in roster_rows:
       mid = row.get("model_id")
-      if mid and row.get("enabled"):
+      if not mid:
+        continue
+      # BUG-02: also FLAT disabled models that still own a magic (orphan tickets).
+      if row.get("enabled") or row.get("magic") is not None:
         _write(dec_dir / f"{mid}.json", {**flat, "model_id": mid})
   return payload
 

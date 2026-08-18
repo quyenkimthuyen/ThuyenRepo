@@ -411,6 +411,45 @@ def bootstrap_host(symbol: str, timeframe: str, *, force: bool = False) -> Path:
 
   _patch_schedule_and_engine(sched, engine)
 
+  # BUG-04: Train host loss_guard is streak-only — add DD/loss R trips.
+  try:
+    import mt5_bridge.loss_guard as loss_guard  # noqa: WPS433
+    from loss_guard_ext import patch_host_loss_guard
+    patch_host_loss_guard(loss_guard)
+  except Exception as exc:
+    print(f"[bootstrap] loss_guard DD patch skip: {exc}", flush=True)
+
+  # BUG-01: host build_engines stamps one risk_pct for all models — restore per-model.
+  if not getattr(background.build_engines, "_live_per_model_risk", False):
+    try:
+      from model_risk import build_engines_with_per_model_risk
+
+      _orig_build = background.build_engines
+
+      def _build_engines_per_model(  # noqa: ANN001
+        model_ids,
+        *,
+        risk_pct,
+        bridge_dir,
+        base_magic,
+        existing_engines=None,
+      ):
+        return build_engines_with_per_model_risk(
+          _orig_build,
+          model_ids,
+          risk_pct=float(risk_pct),
+          bridge_dir=bridge_dir,
+          base_magic=int(base_magic),
+          existing_engines=existing_engines,
+          symbol=symbol,
+          timeframe=timeframe,
+        )
+
+      _build_engines_per_model._live_per_model_risk = True  # type: ignore[attr-defined]
+      background.build_engines = _build_engines_per_model
+    except Exception as exc:
+      print(f"[bootstrap] per-model risk patch skip: {exc}", flush=True)
+
   _BOOTSTRAPPED.clear()
   _BOOTSTRAPPED.update({"key": key, "desk": str(desk), "symbol": symbol, "timeframe": timeframe})
   return desk

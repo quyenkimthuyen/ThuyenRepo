@@ -99,8 +99,10 @@ uint     g_last_comment_ms = 0;
 // Multi-model roster (App writes models.json)
 string   g_model_ids[MAX_MODELS];
 ulong    g_model_magics[MAX_MODELS];
+double   g_model_risk_pct[MAX_MODELS];  // per-model; 0 → fallback
 int      g_model_n = 0;
-double   g_roster_risk_pct = 0;   // 0 = use InpRiskPct
+double   g_roster_risk_pct = 0;   // 0 = use InpRiskPct (legacy top-level fallback)
+ulong    g_roster_base_magic = 0; // models.json base_magic — orphan sweep
 datetime g_models_mtime = 0;
 
 // Per-slot HistoryFeed pending / paper state
@@ -206,6 +208,7 @@ void EnsureModelsDefaults()
    g_model_n = 1;
    g_model_ids[0] = "";
    g_model_magics[0] = InpMagic;
+   g_model_risk_pct[0] = 0;
    g_slot_pending[0] = "";
    g_slot_paper_open[0] = false;
 }
@@ -243,8 +246,13 @@ bool LoadModelsRoster(const bool force = false)
    double rp = JsonGetDouble(json, "risk_pct", 0);
    if(rp > 0)
       g_roster_risk_pct = rp;
+   double bm = JsonGetDouble(json, "base_magic", 0);
+   if(bm > 0)
+      g_roster_base_magic = (ulong)bm;
+   else
+      g_roster_base_magic = (ulong)InpMagic;
 
-   // Parse models array entries: look for "id" / "magic" pairs in order
+   // Parse models array entries: look for "id" / "magic" / optional "risk_pct"
    int maxn = MathMin(InpMaxModels, MAX_MODELS);
    int n = 0;
    int pos = 0;
@@ -270,8 +278,16 @@ bool LoadModelsRoster(const bool force = false)
          continue;
       }
       ulong magic = (ulong)JsonGetDouble(StringSubstr(json, magp, 80), "magic", (double)(InpMagic + n));
+      // Per-model risk: scan this object until the next "id" (or end)
+      int next_id = StringFind(json, "\"id\"", q2 + 1);
+      int chunk_end = (next_id > idp ? next_id : StringLen(json));
+      string chunk = StringSubstr(json, idp, chunk_end - idp);
+      double model_rp = JsonGetDouble(chunk, "risk_pct", 0);
+      if(model_rp <= 0)
+         model_rp = g_roster_risk_pct;
       g_model_ids[n] = mid;
       g_model_magics[n] = magic;
+      g_model_risk_pct[n] = model_rp;
       n++;
       pos = magp + 5;
    }
@@ -316,6 +332,10 @@ void SetActiveSlot(const int slot)
 
 double EffectiveRiskPct()
 {
+   // Prefer active model slot risk (BUG-01); then roster top-level; then input.
+   int slot = FindModelSlotByMagic(g_active_magic);
+   if(slot >= 0 && g_model_risk_pct[slot] > 0)
+      return g_model_risk_pct[slot];
    if(g_roster_risk_pct > 0)
       return g_roster_risk_pct;
    return InpRiskPct;
@@ -1091,45 +1111,43 @@ bool CloseAllByMagic(const string reason)
 {
    LoadModelsRoster();
    bool any = false;
-   // Close every roster magic (and base InpMagic)
-   ulong magics[MAX_MODELS + 1];
-   int nm = 0;
-   magics[nm++] = InpMagic;
-   for(int s = 0; s < g_model_n; s++)
+   // BUG-02: close roster magics + full Live magic span on this symbol so
+   // disabled/orphan tickets (magic reserved but dropped from models.json) flatten.
+   ulong base = (g_roster_base_magic > 0 ? g_roster_base_magic : (ulong)InpMagic);
+   const int LIVE_MAGIC_SPAN = 15; // match shared.constants.LIVE_MAX_MODELS
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
    {
-      bool seen = false;
-      for(int j = 0; j < nm; j++)
-         if(magics[j] == g_model_magics[s]) { seen = true; break; }
-      if(!seen && nm < MAX_MODELS + 1)
-         magics[nm++] = g_model_magics[s];
-   }
-   for(int m = 0; m < nm; m++)
-   {
-      ulong want = magics[m];
-      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      ulong ticket = PositionGetTicket(i);
+      if(!PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+      ulong want = (ulong)PositionGetInteger(POSITION_MAGIC);
+      bool ours = (want == (ulong)InpMagic);
+      if(!ours && want >= base && want < base + (ulong)LIVE_MAGIC_SPAN)
+         ours = true;
+      if(!ours)
       {
-         ulong ticket = PositionGetTicket(i);
-         if(!PositionSelectByTicket(ticket)) continue;
-         if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
-         if((ulong)PositionGetInteger(POSITION_MAGIC) != want) continue;
-         SetActiveSlot(FindModelSlotByMagic(want));
-         string action = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "BUY" : "SELL";
-         double lots = PositionGetDouble(POSITION_VOLUME);
-         double entry = PositionGetDouble(POSITION_PRICE_OPEN);
-         double sl = PositionGetDouble(POSITION_SL);
-         double tp = PositionGetDouble(POSITION_TP);
-         bool ok = trade.PositionClose(ticket);
-         double exit_px = (action == "BUY")
-            ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
-            : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-         if(ok)
-         {
-            any = true;
-            WriteFillJsonEx("close",
-               g_open_signal_id != "" ? g_open_signal_id : ("manual_close_" + IntegerToString((int)ticket)),
-               action, true, reason, ticket, exit_px, sl, tp, lots, 0, reason,
-               true, "manual_test");
-         }
+         for(int s = 0; s < g_model_n; s++)
+            if(g_model_magics[s] == want) { ours = true; break; }
+      }
+      if(!ours) continue;
+      SetActiveSlot(FindModelSlotByMagic(want));
+      string action = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "BUY" : "SELL";
+      double lots = PositionGetDouble(POSITION_VOLUME);
+      double entry = PositionGetDouble(POSITION_PRICE_OPEN);
+      double sl = PositionGetDouble(POSITION_SL);
+      double tp = PositionGetDouble(POSITION_TP);
+      bool ok = trade.PositionClose(ticket);
+      double exit_px = (action == "BUY")
+         ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
+         : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      if(ok)
+      {
+         any = true;
+         WriteFillJsonEx("close",
+            g_open_signal_id != "" ? g_open_signal_id : ("manual_close_" + IntegerToString((int)ticket)),
+            action, true, reason, ticket, exit_px, sl, tp, lots, 0, reason,
+            true, "manual_test");
       }
    }
    if(any)

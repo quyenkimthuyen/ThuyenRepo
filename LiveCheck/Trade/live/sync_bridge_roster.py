@@ -26,6 +26,12 @@ def write_models_json(bridge_dir: Path, rows: list[dict], *, base_magic: int) ->
   for r in rows:
     if not r.get("enabled") or not r.get("magic"):
       continue
+    try:
+      rp = float(r.get("risk_pct") or 1.0)
+    except (TypeError, ValueError):
+      rp = 1.0
+    if rp <= 0:
+      rp = 1.0
     models.append({
       "id": r.get("model_id"),
       "magic": int(r["magic"]),
@@ -33,11 +39,13 @@ def write_models_json(bridge_dir: Path, rows: list[dict], *, base_magic: int) ->
       "install_id": r.get("install_id"),
       "symbol": r.get("symbol"),
       "timeframe": r.get("timeframe"),
-      "risk_pct": float(r.get("risk_pct") or 1.0),
+      "risk_pct": rp,
     })
+  # Top-level risk_pct is legacy EA fallback only; per-model risk_pct is authoritative.
+  top_risk = float(models[0]["risk_pct"]) if models else 1.0
   payload = {
     "updated_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
-    "risk_pct": 1.0,
+    "risk_pct": top_risk,
     "base_magic": int(base_magic),
     "models": models,
   }

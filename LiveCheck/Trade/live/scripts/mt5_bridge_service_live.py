@@ -433,9 +433,23 @@ def main() -> int:
         desired_risk = float(runtime_cfg.get("risk_pct", args.risk_pct))
         args.poll = float(runtime_cfg.get("poll_sec", args.poll))
         cur_ids = list(engines.keys())
-        risk_changed = any(
-          abs(e.risk_pct - desired_risk) > 1e-9 for e in engines.values()
-        )
+        # BUG-01: compare each engine to Live roster risk — not a single book %.
+        try:
+          from model_risk import risk_by_id_from_live_roster
+          risk_map = risk_by_id_from_live_roster(
+            symbol=args.symbol, timeframe=args.timeframe,
+          )
+        except Exception:
+          risk_map = {}
+        if risk_map:
+          risk_changed = any(
+            abs(float(e.risk_pct) - float(risk_map.get(mid, e.risk_pct))) > 1e-9
+            for mid, e in engines.items()
+          )
+        else:
+          risk_changed = any(
+            abs(e.risk_pct - desired_risk) > 1e-9 for e in engines.values()
+          )
         if cur_ids != desired_ids or risk_changed:
           engines = build_engines(
             desired_ids,
@@ -450,7 +464,7 @@ def main() -> int:
           last_fp = None
           append_event(
             "system", "engine_reload", bridge_dir=bridge_dir,
-            summary=f"models={desired_ids} risk={desired_risk}",
+            summary=f"models={desired_ids} risk_map={risk_map or desired_risk}",
           )
 
       if (not args.sim) and (not _feed_active()):

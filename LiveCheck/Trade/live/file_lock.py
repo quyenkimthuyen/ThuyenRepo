@@ -45,8 +45,8 @@ def interprocess_lock(
         break
       except OSError:
         if time.monotonic() >= deadline:
-          # Proceed unlocked rather than deadlock the worker forever.
-          break
+          # BUG-06: fail closed for risk_cap — never proceed unlocked.
+          raise TimeoutError(f"interprocess_lock timeout: {lock_path}")
         time.sleep(poll_sec)
     yield
   finally:

@@ -192,13 +192,9 @@ def _materialize_rows(rows: list[dict]) -> tuple[list[dict], dict[str, str], dic
     except Exception as exc:
       raise ValueError(f"{install_id}: schedule.json unreadable: {exc}") from exc
     _safe_copy2(sched_src, models_dir / f"{mid}_schedule.json")
-    # Drop remine overrides so Live/Sim prefer frozen OOS genomes
-    live_weeks = models_dir / f"{mid}_live_weeks.json"
-    if live_weeks.exists():
-      try:
-        live_weeks.unlink()
-      except OSError:
-        pass
+    # Keep *_live_weeks.json (weekend pre-remine / live remine freezes).
+    # lookup_week_strategy prefers package schedule first, then live_weeks —
+    # deleting here undoes Friday pre-remine and forces Monday remine (BUG-03).
 
     # Ensure bridge engine accepts this TF (desk checks data_timeframe)
     m["data_source"] = "mt5_ea"
