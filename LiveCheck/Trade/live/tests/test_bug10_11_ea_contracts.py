@@ -42,6 +42,15 @@ def test_open_from_decision_saves_per_slot_exit_params():
 def test_manage_open_restores_per_slot_params():
   src = LIVE_EA.read_text(encoding="utf-8", errors="replace")
   i = src.find("void ManageOpen()")
-  chunk = src[i : i + 3500]
-  assert "g_slot_max_hold[s]" in chunk
-  assert "g_slot_exit_mode[s]" in chunk or "g_exit_mode = g_slot_exit_mode" in chunk
+  chunk = src[i : i + 4000]
+  assert "g_exit_mode = g_slot_exit_mode[s]" in chunk
+  assert "Always restore this model's exit params" in chunk
+
+
+def test_exit_mode_defaults_to_full_not_trail():
+  for path in (LIVE_EA, SIM_EA):
+    src = path.read_text(encoding="utf-8", errors="replace")
+    assert "int ParseExitMode(" in src, path.name
+    assert 'return 0;' in src[src.find("int ParseExitMode(") : src.find("int ParseExitMode(") + 900]
+    assert "else g_exit_mode = 2" not in src, path.name
+    assert 'string pat = "\\"" + key + "\\":"' in src, path.name

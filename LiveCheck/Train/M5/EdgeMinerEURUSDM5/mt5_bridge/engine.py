@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from config import DEFAULT_RISK_PCT_PER_TRADE, MIN_TRAIN_BARS, TRAIN_WEEKS, DEFAULT_FEATURE_PROFILE
+from config import BAR_MINUTES, DEFAULT_RISK_PCT_PER_TRADE, MIN_TRAIN_BARS, TRAIN_WEEKS, DEFAULT_FEATURE_PROFILE
 from data_loader import get_train_window_indices, get_week_indices
 from feature_engine import FeatureMatrix
 from mt5_bridge.history_sync import (
@@ -25,7 +25,7 @@ from mt5_bridge.models import (
   strategy_conditions,
 )
 from mt5_bridge.protocol import DEFAULT_MAGIC, DEFAULT_MODEL_ID, utc_now_iso
-from mt5_bridge.trade_journal import load_trades, trade_mode
+from mt5_bridge.trade_journal import load_trades
 from optimizer import get_knowledge_base, optimize_on_window, set_kb_profile
 from paper_monitor import _project_signal_levels, _week_bounds_for_ts
 from strategy_miner import (
@@ -53,12 +53,15 @@ def _journal_open_and_day_count(
 
   When ``model_id`` is set, only that model's journal rows count (Compare Trade
   isolation; single-model dirs already scope by path).
+
+  Strategy fills still count after ``user_sl_tp`` / trail retag them as
+  ``mode=manual`` — otherwise max_trades_per_day is skipped.
   """
   has_open = False
   day_n = 0
   mid = str(model_id) if model_id else None
   for trade in load_trades(bridge_dir):
-    if trade_mode(trade) != "auto":
+    if not _is_strategy_journal_fill(trade):
       continue
     if mid and str(trade.get("model_id") or mid) != mid:
       continue
@@ -82,6 +85,104 @@ def _journal_open_and_day_count(
     except Exception:
       continue
   return has_open, day_n
+
+
+_MANUAL_FILL_ORIGINS = frozenset({
+  "manual_test", "manual", "user", "manual_bridge", "manual_close",
+})
+_MANUAL_SIGNAL_PREFIXES = ("manual_test", "manual_close", "manual_bridge")
+
+
+def _is_strategy_journal_fill(trade: dict) -> bool:
+  """True for strategy opens even if later tagged manual (user_sl_tp)."""
+  sid = str(trade.get("signal_id") or "")
+  if any(sid.startswith(p) for p in _MANUAL_SIGNAL_PREFIXES):
+    return False
+  origin = str(trade.get("origin") or "strategy").lower()
+  return origin not in _MANUAL_FILL_ORIGINS
+
+
+def _journal_fill_bar_utc(trade: dict) -> pd.Timestamp | None:
+  """Signal/entry bar as UTC-naive (same clock as fm.index). Prefer bar_time."""
+  raw = trade.get("bar_time") or trade.get("entry_time")
+  if not raw:
+    return None
+  try:
+    text = str(raw).strip()
+    if "T" in text:
+      ts = pd.Timestamp(text)
+      if ts.tzinfo is not None:
+        return ts.tz_convert("UTC").tz_localize(None)
+      return parse_broker_time(ts)
+    if len(text) >= 16 and text[4] == ".":
+      text = text.replace(".", "-", 2)
+    return parse_broker_time(text[:16] if len(text) >= 16 else text)
+  except Exception:
+    return None
+
+
+def _bar_gap(fm, bar_idx: int, bar_ts: pd.Timestamp, prior_utc: pd.Timestamp) -> int:
+  """Integer bar gap: FM index when possible, else wall-clock / BAR_MINUTES."""
+  index = getattr(fm, "index", None) if fm is not None else None
+  if index is not None:
+    try:
+      loc = index.get_loc(prior_utc)
+      if isinstance(loc, slice):
+        loc = loc.start
+      return abs(int(bar_idx) - int(loc))
+    except (KeyError, TypeError, ValueError):
+      try:
+        indexer = index.get_indexer([prior_utc], method="nearest")
+        loc = int(indexer[0]) if len(indexer) else -1
+        if loc >= 0:
+          nearest = index[loc]
+          if abs((nearest - prior_utc).total_seconds()) <= float(BAR_MINUTES) * 60:
+            return abs(int(bar_idx) - loc)
+      except Exception:
+        pass
+    except Exception:
+      pass
+  minutes = abs((pd.Timestamp(bar_ts) - pd.Timestamp(prior_utc)).total_seconds()) / 60.0
+  return int(round(minutes / float(BAR_MINUTES)))
+
+
+def journal_violates_min_bars_between(
+  bridge_dir: Path,
+  broker_day,
+  *,
+  model_id: str | None,
+  fm,
+  bar_idx: int,
+  bar_ts: pd.Timestamp,
+  min_bars: int,
+) -> bool:
+  """True if a same-day strategy fill is closer than min_bars to the current bar.
+
+  Miner spacing is per broker day, between signal bars. Live must use the journal
+  because generate_signals_mined only sees the current resim set, not filled trades.
+  """
+  if int(min_bars) <= 0:
+    return False
+  mid = str(model_id) if model_id else None
+  for trade in load_trades(bridge_dir):
+    if not _is_strategy_journal_fill(trade):
+      continue
+    if mid and str(trade.get("model_id") or "") != mid:
+      continue
+    status = str(trade.get("status") or "").upper()
+    if status not in ("OPEN", "CLOSED"):
+      continue
+    prior = _journal_fill_bar_utc(trade)
+    if prior is None:
+      continue
+    try:
+      if utc_to_broker_time(prior).date() != broker_day:
+        continue
+    except Exception:
+      continue
+    if _bar_gap(fm, bar_idx, bar_ts, prior) < int(min_bars):
+      return True
+  return False
 
 
 class BridgeEngine:
@@ -516,6 +617,18 @@ class BridgeEngine:
         week_start=week_start, strat=strat, slots_remaining=slots_left,
       )
       return self._remember(bar_key, decision)
+
+    min_gap = int(getattr(strat, "min_bars_between", 0) or 0)
+    if self.bridge_dir is not None and min_gap > 0:
+      if journal_violates_min_bars_between(
+        self.bridge_dir, broker_day,
+        model_id=model_id, fm=fm, bar_idx=bar_idx, bar_ts=bar_ts, min_bars=min_gap,
+      ):
+        decision = self._flat(
+          bar_ts, model_id, reason="min_bars_between",
+          week_start=week_start, strat=strat, slots_remaining=slots_left,
+        )
+        return self._remember(bar_key, decision)
 
     proj = _project_signal_levels(fm, strat, bar_idx, direction, spread, slip)
     if not proj:

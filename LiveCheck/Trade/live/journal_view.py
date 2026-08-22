@@ -271,6 +271,18 @@ def _r_from_profit(t: dict, profit: float | None = None) -> float | None:
   return round(p / risk_money, 3)
 
 
+def _profit_looks_like_r(t: dict, profit: float | None, stored: float | None) -> bool:
+  """HistoryFeed paper fills write R-multiple into ``profit`` (e.g. -1.0), not USD."""
+  if profit is None:
+    return False
+  if stored is not None and abs(profit - stored) <= 0.051:
+    return True
+  lots = _num(t.get("lots"))
+  if lots is not None and lots > 0.02 and abs(profit) < 2.5:
+    return True
+  return False
+
+
 def _trade_r(t: dict) -> float | None:
   stored: float | None = None
   try:
@@ -279,6 +291,13 @@ def _trade_r(t: dict) -> float | None:
   except (TypeError, ValueError):
     stored = None
   profit = _num(t.get("profit"))
+  if _profit_looks_like_r(t, profit, stored):
+    if stored is not None:
+      return stored
+    price_r = _r_from_prices(t)
+    if price_r is not None:
+      return price_r
+    return round(profit, 3) if profit is not None else None
   price_r = _r_from_prices(t)
   rp = _r_from_profit(t, profit)
   if _signs_disagree(stored, profit) or _signs_disagree(price_r, profit):

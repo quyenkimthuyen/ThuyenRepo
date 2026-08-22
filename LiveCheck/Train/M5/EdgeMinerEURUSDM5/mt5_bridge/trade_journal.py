@@ -232,6 +232,17 @@ def _mark_manual(row: dict, reason: str) -> None:
   row["interventions"] = flags
 
 
+def _price_changed(before, after, *, eps: float = 1e-8) -> bool:
+  if after is None:
+    return False
+  if before is None:
+    return True
+  try:
+    return abs(float(before) - float(after)) > eps
+  except (TypeError, ValueError):
+    return True
+
+
 def trade_mode(trade: dict) -> str:
   """Normalize mode for filtering (legacy rows → auto unless markers present)."""
   m = str(trade.get("mode") or "").lower()
@@ -376,18 +387,28 @@ def process_fill(
       return None
     _append_fill_log({**fill, "event": event}, bridge_dir)
     detail_l = detail or str(fill.get("reason") or "").lower()
-    if fill.get("sl") is not None:
-      row["sl"] = float(fill["sl"])
-    if fill.get("tp") is not None:
-      row["tp"] = float(fill["tp"])
+    old_sl = row.get("sl")
+    old_tp = row.get("tp")
+    new_sl = float(fill["sl"]) if fill.get("sl") is not None else None
+    new_tp = float(fill["tp"]) if fill.get("tp") is not None else None
+    sl_changed = _price_changed(old_sl, new_sl)
+    tp_changed = _price_changed(old_tp, new_tp)
+    if new_sl is not None:
+      row["sl"] = new_sl
+    if new_tp is not None:
+      row["tp"] = new_tp
     if fill.get("lots") is not None:
       try:
         row["lots"] = float(fill["lots"])
       except (TypeError, ValueError):
         pass
-    # EA trail sync keeps auto mode; user edit → manual
-    if detail_l in ("user_sl_tp",) or fill.get("manual") is True or str(fill.get("source") or "") == "user_edit":
-      _mark_manual(row, "user_sl_tp")
+    # EA reconnect echoes user_sl_tp with manual=true even when SL/TP did not move.
+    explicit_user = fill.get("manual") is True or str(fill.get("source") or "") == "user_edit"
+    if detail_l == "user_sl_tp":
+      if sl_changed or tp_changed:
+        _mark_manual(row, "user_sl_tp")
+    elif explicit_user:
+      _mark_manual(row, "user_edit")
     elif detail_l == "ea_trail":
       flags = list(row.get("interventions") or [])
       if "ea_trail" not in flags:

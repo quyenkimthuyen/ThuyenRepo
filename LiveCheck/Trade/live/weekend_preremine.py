@@ -531,6 +531,13 @@ def maybe_preremine_engines(
     "week_start": None,
     "models": [],
   }
+  try:
+    from strategy_mode import frozen_enabled
+    if frozen_enabled():
+      out.update(skipped=True, reason="frozen_mode")
+      return out
+  except Exception:
+    pass
   if target is None and not force:
     return out
   if target is None:

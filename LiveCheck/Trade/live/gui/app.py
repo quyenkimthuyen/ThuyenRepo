@@ -6,6 +6,7 @@ import importlib
 import inspect
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -43,10 +44,16 @@ def _reload_stale_live_modules() -> None:
     touched = True
   import live_health as lh
   bound = getattr(lh, "bridge_status", None)
+  try:
+    lh_src = inspect.getsource(lh)
+  except Exception:
+    lh_src = ""
   need_lh = (
     touched
     or not hasattr(lh, "live_quote")
     or (bound is not None and _missing_sim(bound))
+    or "strategy_mode" not in lh_src
+    or "FROZEN_MISSING" not in lh_src
   )
   if need_lh:
     importlib.reload(lh)
@@ -56,8 +63,57 @@ def _reload_stale_live_modules() -> None:
   if (
     touched
     or (bound is not None and _missing_sim(bound))
+    or not hasattr(ds, "now_watch_rows")
+    or "buy_lines" not in inspect.getsource(ds.now_watch_rows)
+    or "short" not in inspect.getsource(ds.now_watch_rows)
+    or "day_slots" not in inspect.getsource(ds.now_watch_rows)
+    or "day_full" not in inspect.getsource(ds.now_watch_rows)
+    or "wait_code" not in inspect.getsource(ds.now_watch_rows)
+    or "day_hits" not in inspect.getsource(ds.now_watch_rows)
+    or "score_buy" not in inspect.getsource(ds.now_watch_rows)
+    or "score_ok" not in inspect.getsource(ds.now_watch_rows)
+    or "pa_ok" not in inspect.getsource(ds.now_watch_rows)
+    or not hasattr(ds, "inspect_model_label")
+    or "period_n" not in inspect.getsource(ds.inspect_model_label)
+    or "selected D/W/M/ALL count" not in inspect.getsource(ds.inspect_model_label)
   ):
     importlib.reload(ds)
+  import watch_expect as we
+  try:
+    we_src = inspect.getsource(we)
+  except Exception:
+    we_src = ""
+  if (
+    not hasattr(we, "watch_chart_figures")
+    or not hasattr(we, "build_watch_figure")
+    or not hasattr(we, "explain_watch")
+    or not hasattr(we, "model_watch_figure")
+    or "watch_chart_figures" not in we_src
+    or "model_watch_figure" not in we_src
+    or "n_rules" not in we_src
+    or "_CHART_BARS" not in we_src
+    or "wait_code" not in we_src
+    or "_session_pack" not in we_src
+    or "hit_times" not in we_src
+    or "_add_hit_vlines" not in we_src
+    or "exit_time" not in we_src
+    or 'type="rect"' not in we_src
+    or "win_fill" not in we_src
+    or "broker_wall_to_display" not in we_src
+    or "DISPLAY_TZ_LABEL" not in we_src
+    or "chart_feature_pack" not in we_src
+    or "slice_pack_to_period" not in we_src
+    or "extra_gate_lines" not in we_src
+    or "the BUY/SELL rules ticked" not in we_src
+    or "_fire_side" not in we_src
+    or "_gap_pack" not in we_src
+    or "pa_ok" not in we_src
+    or "frozen_missing" not in we_src
+    or "_rsi_chase_caps" not in we_src
+    or "carry_forward_week_strategy" not in we_src
+    or "_schedule.json" not in we_src
+  ):
+    importlib.reload(we)
   import replay_control as rc
   need_rc = False
   try:
@@ -90,14 +146,31 @@ def _reload_stale_live_modules() -> None:
         need_rc = True
     except Exception:
       need_rc = True
+  if getattr(rc, "HISTORY_FEED_EA_VERSION", (0,)) < (1, 25):
+    need_rc = True
+  try:
+    if '["LIVE_REPLAY_FORCE_REMINE"] = "1" if force else "0"' in inspect.getsource(rc.start_oos_replay):
+      need_rc = True
+  except Exception:
+    need_rc = True
   if need_rc:
     importlib.reload(rc)
   import package_store as ps
   if not hasattr(ps, "rebuild_roster_preserving_sticky"):
     importlib.reload(ps)
   import weekend_preremine as wpr
-  if not hasattr(wpr, "build_quality_status_table") or not hasattr(wpr, "quality_status_week"):
+  if (
+    not hasattr(wpr, "build_quality_status_table")
+    or not hasattr(wpr, "quality_status_week")
+    or "frozen_mode" not in inspect.getsource(wpr.maybe_preremine_engines)
+  ):
     importlib.reload(wpr)
+  import strategy_mode as sm_mod
+  if (
+    not hasattr(sm_mod, "frozen_enabled")
+    or not hasattr(sm_mod, "carry_forward_week_strategy")
+  ):
+    importlib.reload(sm_mod)
   import risk_prefs as rp
   need_rp = not hasattr(rp, "journal_risk_metrics")
   if not need_rp:
@@ -112,15 +185,37 @@ def _reload_stale_live_modules() -> None:
   if lg_mod is not None and not hasattr(lg_mod, "desk_closed_trades"):
     importlib.reload(lg_mod)
   import theme as th
-  if not hasattr(th, "progress_bar_html") or "import-flash" not in getattr(th, "_SHARED", ""):
+  if (
+    not hasattr(th, "progress_bar_html")
+    or "import-flash" not in getattr(th, "_SHARED", "")
+    or "now-watch" not in getattr(th, "_SHARED", "")
+    or "now-rule" not in getattr(th, "_SHARED", "")
+    or "now-inspect" not in getattr(th, "_SHARED", "")
+    or "now-levels" not in getattr(th, "_SHARED", "")
+    or "no-rerun-fade" not in getattr(th, "_SHARED", "")
+    or "white-space: normal" not in getattr(th, "_SHARED", "")
+    or "now-chip" not in getattr(th, "_SHARED", "")
+    or "st-key-now_xf_" not in getattr(th, "_SHARED", "")
+    or "0.72rem !important" not in getattr(th, "_SHARED", "")
+    or not hasattr(th, "save_now_chart_checks")
+    or not hasattr(th, "now_chart_check_id")
+    or not hasattr(th, "restore_widget_choice")
+  ):
     importlib.reload(th)
+  import journal_view as jv
+  try:
+    jv_src = inspect.getsource(jv)
+  except Exception:
+    jv_src = ""
+  if "_profit_looks_like_r" not in jv_src:
+    importlib.reload(jv)
 
 
 _reload_stale_live_modules()
 
 from bridge_control import is_running as bridge_is_running  # noqa: E402
 from bridge_control import start_bridge, status, stop_bridge  # noqa: E402
-from desk_snapshot import desk_snapshot  # noqa: E402
+from desk_snapshot import desk_snapshot, inspect_model_label  # noqa: E402
 from live_config import BRIDGE_DIR, INBOX_DIR  # noqa: E402
 from journal_view import (  # noqa: E402
   load_recent_fills,
@@ -149,12 +244,7 @@ from replay_control import (  # noqa: E402
   start_oos_replay,
   stop_replay,
 )
-from safety import (  # noqa: E402
-  arm_kill_switch,
-  disarm_kill_switch,
-  is_kill_switch_armed,
-  write_flatten_command,
-)
+from safety import disarm_kill_switch  # noqa: E402
 from reset_data import reset_live_data  # noqa: E402
 from equity_view import render_equity_section  # noqa: E402
 from risk_prefs import (  # noqa: E402
@@ -169,7 +259,6 @@ from theme import (  # noqa: E402
   pill,
   progress_bar_html,
   r_class,
-  signal_badge,
 )
 
 st.set_page_config(
@@ -184,6 +273,12 @@ if "desk_mode" not in st.session_state:
 
 # Top-level nav — defined early so sidebar / auto-refresh cannot race ahead of it.
 _TOP_NAV = ("Live", "Replay", "Models", "Setup")
+LIVE_SECTIONS = ("now", "pipeline", "session")
+LIVE_SECTION_LABELS = {
+  "now": "Now",
+  "pipeline": "Health",
+  "session": "Trades",
+}
 
 
 def _wl_text(wins, losses, be=0) -> str:
@@ -250,18 +345,44 @@ def _on_live_stats_period_change() -> None:
 
 
 def _seed_live_stats_period() -> None:
-  """Load D/W/M/ALL from disk once per browser session — never fight the widget."""
-  if st.session_state.get("_live_stats_period_seeded"):
-    return
-  from gui.theme import load_ui_prefs
+  """Restore D/W/M/ALL before the radio mounts.
 
-  prefs = load_ui_prefs()
-  period = str(prefs.get("live_stats_period") or "today")
-  if period not in PERIODS:
-    period = "today"
-  if "live_stats_period" not in st.session_state or st.session_state.live_stats_period not in PERIODS:
-    st.session_state.live_stats_period = period
-  st.session_state["_live_stats_period_seeded"] = True
+  Do not skip after the first visit: Streamlit drops ``live_stats_period``
+  whenever the radio is off-page (Replay / Models / Setup, or Health).
+  Prefs on disk already survive F5; this re-applies them after tab hops.
+  """
+  from gui.theme import load_ui_prefs, restore_widget_choice
+
+  st.session_state.live_stats_period = restore_widget_choice(
+    st.session_state.get("live_stats_period"),
+    load_ui_prefs().get("live_stats_period"),
+    PERIODS,
+    "today",
+  )
+
+
+def _on_live_desk_section_change() -> None:
+  from gui.theme import save_ui_prefs
+
+  section = st.session_state.get("live_desk_section")
+  if section in LIVE_SECTIONS:
+    save_ui_prefs({"live_desk_section": section})
+  _mark_ui_interact()
+
+
+def _seed_live_desk_section() -> None:
+  """Restore Now/Health/Trades the same way as D/W/M/ALL after tab hops."""
+  from gui.theme import load_ui_prefs, restore_widget_choice
+
+  saved = str(load_ui_prefs().get("live_desk_section") or "now")
+  if saved == "control":
+    saved = "now"
+  st.session_state.live_desk_section = restore_widget_choice(
+    st.session_state.get("live_desk_section"),
+    saved,
+    LIVE_SECTIONS,
+    "now",
+  )
 
 
 def _model_label_map(models: list[dict]) -> dict[str, str]:
@@ -299,8 +420,8 @@ def _render_replay_live_panels(snap: dict | None = None) -> dict:
   if stuck:
     st.error(
       "Feed đang kẹt: Python đã ghi sim_control.json nhưng EA trên chart chưa đọc "
-      "(ForgeBridgeLive 1.20 + InpMode=Live bỏ qua HistoryFeed). "
-      "Bấm **Restart feed** — app sẽ compile/gắn ForgeBridgeLive 1.21."
+      "(ForgeBridgeLive < 1.25 chưa chờ quyết định song song như Live). "
+      "Bấm **Restart feed** — app sẽ compile/gắn ForgeBridgeLive 1.25."
     )
   if running or any(int(b.get("bars_done") or 0) for b in books) or books:
     for b in books:
@@ -330,7 +451,8 @@ def _render_replay_live_panels(snap: dict | None = None) -> dict:
   st.caption(
     "Replay chỉ bơm nến OOS vào **ForgeBridgeLive** (cùng bridge/worker với Live). "
     "Tab Live nhận tín hiệu và xử lý như thật — không có mode sim riêng. "
-    "Khác duy nhất: giá quá khứ (paper fill vì broker không khớp giá OOS)."
+    "Khác duy nhất: giá quá khứ + paper fill Bid/Ask (spread từng nến, như Live). "
+    "Lệnh còn mở cuối tuần giữ OPEN (không đóng end_range)."
   )
   return snap
 
@@ -399,12 +521,6 @@ def render_replay_desk() -> dict:
   if "oos_to_date" not in st.session_state:
     st.session_state.oos_to_date = d_to
 
-  force_remine = st.checkbox(
-    "Force remine (ignore schedule — stress path tuần mới)",
-    value=bool(prefs.get("force_remine")),
-    key="replay_force_remine",
-    help="Bỏ qua schedule.json, ép optimize_on_window như Live khi gặp tuần chưa freeze.",
-  )
   delay_ms = int(prefs.get("delay_ms") or 100)
   if "replay_ea_delay" not in st.session_state:
     st.session_state.replay_ea_delay = delay_ms
@@ -422,61 +538,6 @@ def render_replay_desk() -> dict:
     oos_from = st.date_input("OOS from", key="oos_from_date")
   with oc2:
     oos_to = st.date_input("OOS to", key="oos_to_date")
-
-  try:
-    from books import group_models_by_book
-    from live_config import RESULTS_DIR
-    import json as _json
-
-    def _cache_span(sym: str, tf: str) -> tuple[str | None, str | None]:
-      meta_p = RESULTS_DIR / "data" / f"mt5_{sym.lower()}_{tf.lower()}_meta.json"
-      if meta_p.exists():
-        try:
-          meta = _json.loads(meta_p.read_text(encoding="utf-8"))
-          start = str(meta.get("start") or "")[:10] or None
-          end = str(meta.get("end") or "")[:10] or None
-          if start and end:
-            return start, end
-        except Exception:
-          pass
-      pq = RESULTS_DIR / "data" / f"mt5_{sym.lower()}_{tf.lower()}.parquet"
-      if pq.exists():
-        try:
-          import pandas as pd
-          df = pd.read_parquet(pq)
-          if len(df):
-            return str(df.index[0])[:10], str(df.index[-1])[:10]
-        except Exception:
-          return None, None
-      return None, None
-
-    warn_bits: list[str] = []
-    sel_from = str(oos_from)
-    sel_to = str(oos_to)
-    for (sym, tf), _rows in group_models_by_book(models).items():
-      c0, c1 = _cache_span(str(sym), str(tf))
-      label = f"{sym} {tf}"
-      if not c0 or not c1:
-        warn_bits.append(f"{label}: chưa có OHLC cache — không replay được")
-        continue
-      eff_from = max(sel_from, c0)
-      eff_to = min(sel_to, c1)
-      if sel_from < c0:
-        warn_bits.append(
-          f"{label}: OOS from {sel_from} sớm hơn data ({c0}) — replay bắt đầu {eff_from}"
-        )
-      if sel_to > c1:
-        warn_bits.append(
-          f"{label}: OOS to {sel_to} muộn hơn data ({c1}) — replay kết thúc {eff_to}"
-        )
-      if eff_from > eff_to:
-        warn_bits.append(
-          f"{label}: khoảng OOS không giao data ({c0}→{c1}) — không có bar để chạy"
-        )
-    for w in warn_bits:
-      st.warning(w)
-  except Exception:
-    pass
 
   ea_ready = True
   ea_online = False
@@ -518,14 +579,12 @@ def render_replay_desk() -> dict:
     cur_from != str(prefs.get("from") or "")
     or cur_to != str(prefs.get("to") or "")
     or mode != prefs.get("mode")
-    or bool(force_remine) != bool(prefs.get("force_remine"))
     or int(delay_ms) != int(prefs.get("delay_ms") or 100)
   ):
     save_oos_prefs(
       date_from=cur_from,
       date_to=cur_to,
       mode=mode,
-      force_remine=bool(force_remine),
       delay_ms=delay_ms,
     )
   if not models:
@@ -559,7 +618,6 @@ def render_replay_desk() -> dict:
             date_from=str(st.session_state.get("oos_from_date") or load_oos_prefs()["from"]),
             date_to=str(st.session_state.get("oos_to_date") or load_oos_prefs()["to"]),
             mode=mode,
-            force_remine=bool(force_remine),
             delay_ms=delay_ms,
             restart=True,
           )
@@ -587,12 +645,16 @@ def render_replay_desk() -> dict:
       st.rerun()
   with a3:
     hint = "OOS → ForgeBridgeLive → worker Live · kết quả trên tab Live"
-    if force_remine:
-      hint += " · FORCE REMINE"
     st.caption(f"Window **{oos_from} → {oos_to}** · {hint}")
+  try:
+    from strategy_mode import strategy_mode as _sm
+    sm_now = _sm()
+  except Exception:
+    sm_now = "weekly"
   st.caption(
     "Replay bơm nến OOS vào đúng EA/worker/journal Live. "
-    "Tab Live không phân biệt replay — paper fill chỉ vì giá quá khứ."
+    "Tab Live không phân biệt replay — paper fill chỉ vì giá quá khứ. "
+    f"Remine theo **Setup → Quality** (đang **{sm_now}**), giống Live."
   )
 
   _run_replay_progress_tick()
@@ -620,6 +682,12 @@ def _render_remine_status_table() -> None:
       f"Tuần đang trade · **{week}**  ·  "
       f"pre-remine tuần tới {data.get('next_week')} (T6 ≥18h / T7 / CN)"
     )
+  try:
+    from strategy_mode import frozen_enabled
+    if frozen_enabled():
+      st.caption("Strategy mode **frozen** — không remine / không weekend pre-remine.")
+  except Exception:
+    pass
   if not rows:
     st.caption("Chưa có model On — bật ở Models.")
     return
@@ -761,8 +829,11 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
     "TIMEOUT/LAG = decision chưa khớp nến EA · EA_STALE = connection.json không ghi (EA/chart tắt) · "
     "MARKET_QUIET/TICK_STALE = EA online nhưng broker không có tick mới (cuối tuần) · "
     "WORKER_STALE = App không cập nhật status · GATE_FAIL = remine bị chặn · "
-    "RISK_CAP = vượt trần risk đồng thời · REMINE = remine khi gate đang bật."
+    "RISK_CAP = vượt trần risk đồng thời · REMINE = remine khi gate đang bật · "
+    "FROZEN = Setup giữ genome, không remine tuần · FROZEN_MISS = chưa có freeze."
   )
+  if health.get("strategy_mode") == "frozen":
+    st.caption("Strategy mode: **frozen** — không remine theo tuần (Setup → Quality).")
   rg = health.get("remine_gate_last") or {}
   if rg:
     ok = rg.get("ok")
@@ -786,15 +857,352 @@ def _period_label(key: str) -> str:
   return PERIOD_LABELS.get(key, key)
 
 
-def _render_live_live_panels(*, period: str) -> dict:
-  """Now / Pipeline / Session — ticked by fragment; radio stays outside."""
-  from desk_snapshot import _bridge_dirs_for_enabled, book_models
-  from journal_view import filter_trades_by_period
+def _now_chip_cls(ok) -> str:
+  return "now-hit" if ok else "now-miss"
+
+
+def _now_watch_badge(rows: list[dict]) -> str:
+  n_fire = sum(1 for r in rows if str(r.get("action") or "").upper() in ("BUY", "SELL", "LONG", "SHORT"))
+  n_hold = sum(1 for r in rows if str(r.get("action") or "").upper() == "HOLD")
+  if n_fire:
+    return f"{n_fire} LIVE"
+  if n_hold:
+    return f"{n_hold} HOLD"
+  if rows:
+    return "ALL FLAT"
+  return "WAIT"
+
+
+def _now_rules_cell(lines: list, gate: str, ready: bool) -> str:
+  gate_cls = "now-hit" if ready else "now-miss"
+  parts = [f'<div class="now-gate {gate_cls}">{html.escape(str(gate or "—"))}</div>']
+  if not lines:
+    parts.append('<span class="now-rule now-miss">—</span>')
+    return "".join(parts)
+  for line in lines:
+    cls = "now-hit" if line.get("hit") else "now-miss"
+    parts.append(
+      f'<span class="now-rule {cls}">{html.escape(str(line.get("text") or "—"))}</span>'
+    )
+  return "".join(parts)
+
+
+def _render_now_side_rules(
+  lines: list,
+  *,
+  side: str,
+  gate: str,
+  ready: bool,
+  key_prefix: str,
+  saved: dict[str, bool] | None = None,
+) -> tuple[list[tuple], dict[str, bool]]:
+  """BUY/SELL rule list with checkboxes; ticked rules go on the chart."""
+  from gui.theme import now_chart_check_id
+
+  saved = saved or {}
+  gate_cls = "now-hit" if ready else "now-miss"
+  title = "BUY" if side == "B" else "SELL"
+  st.markdown(
+    f'<div class="now-inspect-k">{title}</div>'
+    f'<div class="now-gate {gate_cls}">{html.escape(str(gate or "—"))}</div>',
+    unsafe_allow_html=True,
+  )
+  picked: list[tuple] = []
+  checks: dict[str, bool] = {}
+  if not lines:
+    st.markdown('<span class="now-rule now-miss">—</span>', unsafe_allow_html=True)
+    return picked, checks
+  for i, line in enumerate(lines):
+    feat = str(line.get("feat_key") or "")
+    try:
+      thr = float(line.get("thr")) if line.get("thr") is not None else 0.0
+    except (TypeError, ValueError):
+      thr = 0.0
+    ckey = f"{key_prefix}_{side}_{i}_{feat}"
+    cid = now_chart_check_id(side, feat, thr)
+    if ckey not in st.session_state:
+      st.session_state[ckey] = bool(saved[cid]) if cid in saved else (i == 0)
+    text = str(line.get("text") or "—")
+    mark = "hit" if line.get("hit") else "miss"
+    on = bool(st.checkbox(f"{mark}  {text}", key=ckey))
+    checks[cid] = on
+    if on and feat:
+      picked.append((feat, side, thr))
+  return picked, checks
+
+
+def _watch_book_groups(rows: list[dict]) -> list[tuple[str, list[dict]]]:
+  groups: dict[str, list[dict]] = {}
+  order: list[str] = []
+  live = {"BUY", "SELL", "LONG", "SHORT", "HOLD"}
+  for r in rows:
+    key = f"{r.get('symbol') or '—'} {r.get('timeframe') or ''}".strip()
+    if key not in groups:
+      groups[key] = []
+      order.append(key)
+    groups[key].append(r)
+  order.sort(key=lambda k: (
+    0 if any(str(x.get("action") or "").upper() in live for x in groups[k]) else 1,
+    k,
+  ))
+  return [(k, groups[k]) for k in order]
+
+
+def _watch_model_label(row: dict) -> str:
+  return str(row.get("model") or row.get("short") or row.get("model_id") or "—")
+
+
+def _watch_radio_label(row: dict, *, period: str | None = None) -> str:
+  name = inspect_model_label(row, period=period)
+  act = str(row.get("action") or "").upper()
+  if act in ("BUY", "SELL", "HOLD"):
+    return f"{name} · {act}"
+  return name
+
+
+def _render_now_watch(rows: list[dict]) -> None:
+  badge = _now_watch_badge(rows)
+  live_n = sum(1 for r in rows if str(r.get("action") or "").upper() in ("BUY", "SELL", "LONG", "SHORT"))
+  tone = "long" if live_n else ("flat" if rows else "unknown")
+  if any(str(r.get("action") or "").upper() in ("SELL", "SHORT") for r in rows) and live_n:
+    if not any(str(r.get("action") or "").upper() in ("BUY", "LONG") for r in rows):
+      tone = "short"
+  body = []
+  for r in rows:
+    act = html.escape(str(r.get("action") or "—"))
+    model = html.escape(_watch_model_label(r))
+    row_tone = html.escape(str(r.get("tone") or "unknown"))
+    buy_cls = "now-hit" if r.get("buy_ready") else "now-miss"
+    sell_cls = "now-hit" if r.get("sell_ready") else "now-miss"
+    buy = html.escape(str(r.get("buy_gate") or "—"))
+    sell = html.escape(str(r.get("sell_gate") or "—"))
+    wait_cls = "now-hit" if r.get("wait_ok") else "now-miss"
+    wait = html.escape(str(r.get("wait") or "—"))
+    slots_cls = "now-miss" if r.get("day_full") else "now-hit"
+    slots = html.escape(str(r.get("day_slots") or "—"))
+    body.append(
+      f'<tr class="now-row now-row-{row_tone}">'
+      f'<td class="now-act">{act}</td>'
+      f'<td class="now-model">{model}</td>'
+      f'<td class="now-gate-cell"><span class="{buy_cls}">{buy}</span></td>'
+      f'<td class="now-gate-cell"><span class="{sell_cls}">{sell}</span></td>'
+      f'<td class="now-wait-cell"><span class="{wait_cls}">{wait}</span></td>'
+      f'<td class="now-gate-cell"><span class="{slots_cls}">{slots}</span></td>'
+      f"</tr>"
+    )
+  table = (
+    '<table class="now-watch now-watch-compact"><thead><tr>'
+    "<th>Act</th><th>Model</th><th>BUY</th><th>SELL</th><th>Wait</th><th>Day</th>"
+    "</tr></thead><tbody>"
+    + ("".join(body) or '<tr><td colspan="6" class="now-expect">Waiting for first decision…</td></tr>')
+    + "</tbody></table>"
+  )
+  st.markdown(
+    f"""
+    <div class="panel signal-panel now-watch-panel signal-{tone}">
+      <div class="signal-head">
+        <div class="panel-label">Watch</div>
+        <span class="signal-badge">{html.escape(badge)}</span>
+      </div>
+      {table}
+    </div>
+    """,
+    unsafe_allow_html=True,
+  )
+
+
+def _render_now_inspect(rows: list[dict], health_detail: dict, *, period: str = "today") -> None:
+  groups = _watch_book_groups(rows)
+  if not groups:
+    return
+  book_map = {}
+  for book in (health_detail or {}).get("books") or []:
+    key = f"{book.get('symbol') or ''} {book.get('timeframe') or ''}".strip()
+    if key:
+      book_map[key] = book
+  st.markdown(
+    '<div class="panel-label" style="margin-top:0.2rem">Model</div>',
+    unsafe_allow_html=True,
+  )
+  tabs = st.tabs([g[0] for g in groups])
+  live = {"BUY", "SELL", "LONG", "SHORT", "HOLD"}
+  for tab, (book_key, book_rows) in zip(tabs, groups):
+    with tab:
+      ids = [str(r.get("model_id") or "") for r in book_rows if r.get("model_id")]
+      by_id = {str(r.get("model_id") or ""): r for r in book_rows}
+      if not ids:
+        st.caption("No models.")
+        continue
+      book = book_map.get(book_key)
+      trades: list[dict] = []
+      bdir = Path(str((book or {}).get("bridge_dir") or "")) if (book or {}).get("bridge_dir") else None
+      if bdir is not None:
+        try:
+          from journal_view import load_trades
+          trades = list(load_trades(bdir))
+        except Exception:
+          trades = []
+      from watch_expect import period_fill_marks
+      labeled: dict[str, dict] = {}
+      labels: dict[str, str] = {}
+      for mid in ids:
+        counts: dict[str, int] = {}
+        hits_by: dict[str, list] = {}
+        for p in ("today", "week", "month", "all"):
+          hits_p = period_fill_marks(trades, model_id=mid, period=p)
+          hits_by[p] = hits_p
+          counts[p] = len(hits_p)
+        labeled[mid] = {
+          **(by_id.get(mid) or {}),
+          "period": period,
+          "period_n": counts.get(str(period).lower(), 0),
+          "period_counts": counts,
+          "period_hits": hits_by.get(str(period).lower(), []),
+        }
+        labels[mid] = _watch_radio_label(labeled[mid], period=period)
+      default = ids[0]
+      for mid in ids:
+        if str((by_id[mid] or {}).get("action") or "").upper() in live:
+          default = mid
+          break
+      slug = re.sub(r"[^A-Za-z0-9_]+", "_", book_key)
+      wkey = f"now_model_{slug}"
+      from gui.theme import (
+        load_now_chart_checks,
+        load_now_picked_model,
+        save_now_chart_checks,
+        save_now_picked_model,
+      )
+      saved_mid = load_now_picked_model(book_key)
+      if st.session_state.get(wkey) not in ids:
+        st.session_state[wkey] = saved_mid if saved_mid in ids else default
+      picked = st.radio(
+        "Model",
+        ids,
+        format_func=lambda i, _l=labels: _l.get(i, i),
+        horizontal=True,
+        key=wkey,
+        label_visibility="collapsed",
+      )
+      if str(picked) != saved_mid:
+        save_now_picked_model(book_key, picked)
+      row = labeled.get(str(picked)) or by_id.get(str(picked)) or book_rows[0]
+      why = html.escape(str(row.get("why") or row.get("reason") or "—"))
+      act = html.escape(str(row.get("action") or "—"))
+      name = html.escape(inspect_model_label(row, period=period))
+      sess_cls = "now-hit" if row.get("session_ok") else "now-miss"
+      sess = html.escape(str(row.get("session_gate") or "—"))
+      chase_on = bool(row.get("chase_on"))
+      chase_cls = "now-miss" if row.get("chase_block") else "now-hit"
+      chase_lab = "Chase" if row.get("chase_block") else "Chase ok"
+      score_cls = _now_chip_cls(bool(row.get("score_ok")))
+      ml_cls = _now_chip_cls(bool(row.get("ml_ok")))
+      gap_cls = _now_chip_cls(bool(row.get("gap_ok")) if row.get("gap_on") else True)
+      rsi_cls = _now_chip_cls(bool(row.get("rsi_ok")))
+      htf_cls = _now_chip_cls(bool(row.get("htf_ok")))
+      pa_cls = _now_chip_cls(bool(row.get("pa_ok")))
+      chase_chip = f'<span class="now-chip {chase_cls}">{chase_lab}</span>' if chase_on else ""
+      score_chip = (
+        f'<span class="now-chip {score_cls}">Score {html.escape(str(row.get("score_buy") or "—"))}'
+        f' · {html.escape(str(row.get("score_sell") or "—"))}</span>'
+      )
+      ml_chip = (
+        f'<span class="now-chip {ml_cls}">ML {html.escape(str(row.get("ml_buy") or "—"))}'
+        f' · {html.escape(str(row.get("ml_sell") or "—"))}</span>'
+      )
+      gap_chip = (
+        f'<span class="now-chip {gap_cls}">Gap {html.escape(str(row.get("gap") or "—"))}</span>'
+        if row.get("gap_on") else ""
+      )
+      rsi_chip = f'<span class="now-chip {rsi_cls}">{html.escape(str(row.get("rsi_text") or "RSI —"))}</span>'
+      htf_chip = f'<span class="now-chip {htf_cls}">{html.escape(str(row.get("htf_text") or "HTF —"))}</span>'
+      pa_chip = (
+        f'<span class="now-chip {pa_cls}">{html.escape(str(row.get("pa_buy") or "PA↑ —"))}'
+        f' · {html.escape(str(row.get("pa_sell") or "PA↓ —"))}</span>'
+      )
+      st.markdown(
+        f"""
+        <div class="now-inspect">
+          <div class="now-inspect-head">
+            <span class="now-act now-row-{html.escape(str(row.get('tone') or 'flat'))}">{act}</span>
+            <span class="now-model">{name}</span>
+            <span class="now-inspect-why">{why}</span>
+          </div>
+          <div class="now-extra">
+            <span class="now-chip {sess_cls}">Sess {sess}</span>
+            {chase_chip}
+            {rsi_chip}
+            {score_chip}
+            {ml_chip}
+            {gap_chip}
+            {htf_chip}
+            {pa_chip}
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+      )
+      rule_prefix = f"now_xf_{slug}_{picked}"
+      saved_checks = load_now_chart_checks(str(picked))
+      buy_col, sell_col = st.columns(2)
+      with buy_col:
+        buy_sel, buy_map = _render_now_side_rules(
+          list(row.get("buy_lines") or []),
+          side="B",
+          gate=str(row.get("buy_gate") or "—"),
+          ready=bool(row.get("buy_ready")),
+          key_prefix=rule_prefix,
+          saved=saved_checks,
+        )
+      with sell_col:
+        sell_sel, sell_map = _render_now_side_rules(
+          list(row.get("sell_lines") or []),
+          side="S",
+          gate=str(row.get("sell_gate") or "—"),
+          ready=bool(row.get("sell_ready")),
+          key_prefix=rule_prefix,
+          saved=saved_checks,
+        )
+      chart_selected = list(buy_sel) + list(sell_sel)
+      merged_checks = {**buy_map, **sell_map}
+      if merged_checks != saved_checks:
+        save_now_chart_checks(str(picked), merged_checks)
+      chart_err = ""
+      try:
+        from watch_expect import model_watch_figure
+        fig = model_watch_figure(
+          model_id=str(row.get("model_id") or ""),
+          book=book_map.get(book_key),
+          title="",
+          period=period,
+          hit_times=list(row.get("period_hits") or []),
+          selected=chart_selected,
+        )
+      except Exception as exc:
+        fig = None
+        chart_err = str(exc)
+      if fig is not None:
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.caption(
+          f"Chấm = mở · nét đứt = đóng · xanh = thắng · đỏ = thua. "
+          f"Giờ VN (UTC+7) · {PERIOD_LABELS.get(period, period)}. Session 7–20 theo broker."
+        )
+      else:
+        st.caption(
+          chart_err
+          or "Chưa vẽ được chỉ số — cần genome (schedule / live_weeks) và bars.json từ worker."
+        )
+
+
+def _render_live_live_panels(*, period: str, section: str = "now") -> dict:
+  """Selected Live tab — ticked by fragment; radio stays outside."""
+  from desk_snapshot import _bridge_dirs_for_enabled, book_models, now_watch_rows
 
   if period not in PERIODS:
     period = "today"
+  if section not in LIVE_SECTIONS:
+    section = "now"
   snap = desk_snapshot(sim=False)
-  dec = snap["decision"]
   health_detail = snap.get("health_detail") or {}
   models = snap.get("models") or []
   bdirs = _bridge_dirs_for_enabled(book_models(), sim=False)
@@ -802,43 +1210,20 @@ def _render_live_live_panels(*, period: str) -> dict:
     bdirs = [Path(p) for p in (snap.get("bridge_dirs") or [])] or [BRIDGE_DIR]
 
   st.caption(f"Updated {snap.get('updated_at')}")
+  if section == "pipeline":
+    _render_health_panel(health_detail, sim=False)
+    return snap
   session = journal_summary_many(bdirs, period=period)
-  left, right = st.columns([1.35, 1])
+  if section == "session":
+    _render_live_session_body(
+      snap, period=period, bdirs=bdirs, session=session,
+    )
+    return snap
+
+  watch_rows = now_watch_rows(snap)
+  left, right = st.columns([2.2, 1])
   with left:
-    act = dec.get("action") or "—"
-    sig_tone = dec.get("tone") or "unknown"
-    act_cls = f"decision-{sig_tone}"
-    panel_cls = f"signal-{sig_tone}"
-    reason = dec.get("reason") or "—"
-    meta_bits = []
-    if dec.get("bar_time"):
-      meta_bits.append(f"bar {dec['bar_time']}")
-    if snap["bar"].get("close") is not None:
-      meta_bits.append(f"last {snap['bar'].get('close')}")
-    meta = " · ".join(meta_bits) if meta_bits else "Waiting for first decision…"
-    labels = _model_label_map(models)
-    mid = dec.get("model_id")
-    model_line = labels.get(str(mid), mid) if mid else (
-      models[0].get("label") if models else "—"
-    )
-    badge = signal_badge(sig_tone)
-    st.markdown(
-      f"""
-      <div class="panel signal-panel {panel_cls}">
-        <div class="signal-head">
-          <div class="panel-label">Signal</div>
-          <span class="signal-badge">{badge}</span>
-        </div>
-        <div class="decision-action {act_cls}">{act}</div>
-        <div class="decision-meta">
-          <div class="decision-model">{model_line}</div>
-          <div class="decision-reason">{reason}</div>
-          <div class="decision-wait">{meta}</div>
-        </div>
-      </div>
-      """,
-      unsafe_allow_html=True,
-    )
+    _render_now_watch(watch_rows)
   with right:
     period_r = float(session.get("total_r") or 0.0)
     wr = session.get("win_rate_pct")
@@ -877,6 +1262,8 @@ def _render_live_live_panels(*, period: str) -> dict:
     if n_open:
       st.caption(f"Đang mở {n_open} vị thế.")
 
+  _render_now_inspect(watch_rows, health_detail, period=period)
+
   if snap.get("open_trades"):
     st.markdown('<div class="panel-label">Open positions</div>', unsafe_allow_html=True)
     labels = _model_label_map(models)
@@ -890,10 +1277,12 @@ def _render_live_live_panels(*, period: str) -> dict:
         unsafe_allow_html=True,
       )
 
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">3 · Pipeline</div>', unsafe_allow_html=True)
-  _render_health_panel(health_detail, sim=False)
+  return snap
 
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">4 · Session</div>', unsafe_allow_html=True)
+
+def _render_live_session_body(snap: dict, *, period: str, bdirs: list, session: dict) -> None:
+  from journal_view import filter_trades_by_period
+
   rows = [
     r for r in stats_by_model_many(bdirs, period=period)
     if (r.get("n_closed") or 0) or (r.get("n_open") or 0)
@@ -973,12 +1362,12 @@ def _render_live_live_panels(*, period: str) -> dict:
     if fills:
       st.caption("Raw fills")
       st.dataframe(fills, use_container_width=True, hide_index=True)
-  return snap
 
 
 def _live_now_tick_body() -> None:
   period = st.session_state.get("live_stats_period") or "today"
-  _render_live_live_panels(period=str(period))
+  section = st.session_state.get("live_desk_section") or "now"
+  _render_live_live_panels(period=str(period), section=str(section))
 
 
 def _run_live_now_tick() -> None:
@@ -993,9 +1382,10 @@ def _run_live_now_tick() -> None:
 
 
 def render_live_desk() -> dict:
-  """Live desk — Control → Now → Pipeline → Session (History gộp vào)."""
+  """Live desk — tabs: Now · Health · Trades."""
   st.session_state.desk_mode = "Live"
   _seed_live_stats_period()
+  _seed_live_desk_section()
 
   snap = desk_snapshot(sim=False)
   tone = snap["health_tone"]
@@ -1043,19 +1433,44 @@ def render_live_desk() -> dict:
   for w in (snap.get("chart_warnings") or [])[:2]:
     st.warning(w)
 
-  # ── 1. Control ──────────────────────────────────────────────────────
-  st.markdown('<div class="panel-label">1 · Control</div>', unsafe_allow_html=True)
+  if st.session_state.get("live_desk_section") not in LIVE_SECTIONS:
+    st.session_state.live_desk_section = "now"
+  st.radio(
+    "Live section",
+    options=list(LIVE_SECTIONS),
+    format_func=lambda s: LIVE_SECTION_LABELS.get(s, s),
+    horizontal=True,
+    key="live_desk_section",
+    label_visibility="collapsed",
+    on_change=_on_live_desk_section_change,
+  )
+  section = st.session_state.get("live_desk_section") or "now"
+  if section not in LIVE_SECTIONS:
+    section = "now"
+
+  if section == "now":
+    _render_live_control(snap)
+  if section in ("now", "session"):
+    st.radio(
+      "Session period",
+      options=list(PERIODS),
+      format_func=_period_label,
+      horizontal=True,
+      key="live_stats_period",
+      label_visibility="collapsed",
+      on_change=_on_live_stats_period_change,
+    )
+  _run_live_now_tick()
+  return snap
+
+
+def _render_live_control(snap: dict) -> None:
+  models = snap.get("models") or []
+  running = bool(snap.get("bridge_running"))
   if not models:
     st.info("Chưa bật model — mở **Models**, bật On, Save.")
-  else:
-    chips = " · ".join(
-      f"{m.get('label') or m.get('model_id')} ({m.get('symbol')} {m.get('timeframe')})"
-      for m in models[:8]
-    )
-    extra = f" · +{len(models) - 8} more" if len(models) > 8 else ""
-    st.caption(f"On: {chips}{extra}")
 
-  a1, a2, a3, a4 = st.columns([1.3, 1, 1, 1.2])
+  a1, a2 = st.columns([1.3, 1])
   with a1:
     mt5_up = True
     ea_fresh = True
@@ -1070,12 +1485,10 @@ def render_live_desk() -> dict:
     need_ea_deploy = bool(os.name == "nt" and not ea_fresh)
     # Allow Start when MT5 is down, or Deploy EA when workers are up but heartbeat is stale.
     start_disabled = bool(
-      snap["kill_switch"] or not models or (running and mt5_up and not need_ea_deploy)
+      not models or (running and mt5_up and not need_ea_deploy)
     )
     start_why = ""
-    if snap["kill_switch"]:
-      start_why = "Kill đang armed — bấm Disarm kill trước."
-    elif running and not mt5_up:
+    if running and not mt5_up:
       start_why = "MT5 đã tắt — bấm Start để mở lại terminal (+ deploy nếu cần)."
     elif running and need_ea_deploy:
       start_why = "Worker đang chạy nhưng EA không heartbeat — bấm để attach lại ForgeBridgeLive."
@@ -1126,6 +1539,10 @@ def render_live_desk() -> dict:
             if mt5.get("started"):
               st.toast("XM MT5 đã mở lại")
           else:
+            try:
+              disarm_kill_switch()
+            except Exception:
+              pass
             out = start_bridge(require_chart=False)
             dep = out.get("deploy") or {}
             mt5 = (dep.get("mt5") or {}) if isinstance(dep, dict) else {}
@@ -1147,42 +1564,11 @@ def render_live_desk() -> dict:
       stop_bridge(flatten=False)
       st.toast("Stopped")
       st.rerun()
-  with a3:
-    if st.button("Flatten", use_container_width=True, key="desk_flat"):
-      write_flatten_command(reason="desk_flatten")
-      st.toast("Flatten sent")
-      st.rerun()
-  with a4:
-    kill_label = "Disarm kill" if snap["kill_switch"] else "Emergency kill"
-    if st.button(kill_label, use_container_width=True, key="desk_kill_toggle"):
-      if snap["kill_switch"]:
-        disarm_kill_switch()
-        st.toast("Kill disarmed")
-      else:
-        arm_kill_switch(reason="desk_emergency", flatten=True)
-        st.toast("Kill armed · flattened")
-      st.rerun()
-
-  # ── 2. Now ──────────────────────────────────────────────────────────
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Now</div>', unsafe_allow_html=True)
-  st.radio(
-    "Session period",
-    options=list(PERIODS),
-    format_func=_period_label,
-    horizontal=True,
-    key="live_stats_period",
-    label_visibility="collapsed",
-    on_change=_on_live_stats_period_change,
-  )
-  _run_live_now_tick()
-  return snap
-
-
-
+  st.caption("Đóng lệnh: dùng MT5. Stop chỉ tắt worker, không flatten.")
 
 
 def render_setup_page() -> None:
-  """Setup tabs: Risk · Quality · Control · System."""
+  """Setup tabs: Risk · Quality · System."""
   st.markdown(
     f"""
     <div class="desk-top">
@@ -1194,10 +1580,10 @@ def render_setup_page() -> None:
     """,
     unsafe_allow_html=True,
   )
-  st.caption("Risk = mất tiền · Quality = remine · Control = kill/workers · System = EA & wipe")
+  st.caption("Risk = mất tiền · Quality = strategy/remine · System = EA & wipe")
 
-  tab_risk, tab_quality, tab_control, tab_system = st.tabs(
-    ["Risk", "Quality", "Control", "System"]
+  tab_risk, tab_quality, tab_system = st.tabs(
+    ["Risk", "Quality", "System"]
   )
 
   # ── Risk: loss guard + concurrent cap ───────────────────────────────
@@ -1336,13 +1722,58 @@ def render_setup_page() -> None:
     except Exception as exc:
       st.caption(f"Risk cap UI unavailable: {exc}")
 
-  # ── Quality: remine gate ────────────────────────────────────────────
+  # ── Quality: strategy mode + remine gate ────────────────────────────
   with tab_quality:
-    st.markdown('<div class="panel-label">1 · Remine quality gate</div>', unsafe_allow_html=True)
+    st.markdown('<div class="panel-label">1 · Strategy mode</div>', unsafe_allow_html=True)
+    st.caption(
+      "**Weekly remine** = mỗi tuần mới mine genome (mặc định). "
+      "**Frozen genome** = giữ strategy đã có trong schedule.json / *_live_weeks.json, "
+      "không remine thứ Hai và không weekend pre-remine. "
+      "Tuần chưa có freeze → FLAT. **Live và Replay dùng chung.** "
+      "Đổi option tự lưu; F5 không mất. Đang trade: áp dụng từ **nến kế**, không cần restart."
+    )
+    try:
+      from gui.theme import restore_widget_choice
+      from strategy_mode import load_prefs as load_sm_prefs, save_prefs as save_sm_prefs
+      sm = load_sm_prefs()
+      saved_mode = str(sm.get("mode") or "weekly")
+      if saved_mode not in ("weekly", "frozen"):
+        saved_mode = "weekly"
+      st.session_state.strategy_mode_radio = restore_widget_choice(
+        st.session_state.get("strategy_mode_radio"),
+        saved_mode,
+        ("weekly", "frozen"),
+        saved_mode,
+      )
+      sm_mode = st.radio(
+        "Trade model strategy",
+        options=("weekly", "frozen"),
+        format_func=lambda m: (
+          "Weekly remine (mặc định)" if m == "weekly"
+          else "Frozen genome (không remine theo tuần)"
+        ),
+        horizontal=True,
+        key="strategy_mode_radio",
+        label_visibility="collapsed",
+      )
+      if sm_mode != saved_mode:
+        sm = save_sm_prefs({"mode": sm_mode})
+        st.toast(
+          "Frozen — next bar" if sm_mode == "frozen" else "Weekly remine — next bar"
+        )
+      st.caption(
+        f"Đã lưu: **{'frozen' if sm_mode == 'frozen' else 'weekly remine'}**"
+        + (f" · {sm.get('updated_at')}" if sm.get("updated_at") else "")
+      )
+    except Exception as exc:
+      st.caption(f"Strategy mode UI unavailable: {exc}")
+
+    st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Remine quality gate</div>', unsafe_allow_html=True)
     st.caption(
       "Gate chỉ kiểm tra chất lượng sau khi remine (FAIL → FLAT / schedule fallback). "
       "Tắt gate ≠ tắt remine: tuần ngoài schedule vẫn remine bình thường; Live chỉ thôi cảnh báo REMINE_OK. "
-      "Cuối tuần (T6 ≥18h / T7 / CN) worker pre-remine tuần tới; Thứ 2 chỉ fallback nếu chưa freeze."
+      "Cuối tuần (T6 ≥18h / T7 / CN) worker pre-remine tuần tới; Thứ 2 chỉ fallback nếu chưa freeze. "
+      "Frozen mode bỏ qua bước này."
     )
     _render_remine_status_table()
     try:
@@ -1382,63 +1813,6 @@ def render_setup_page() -> None:
     except Exception as exc:
       st.caption(f"Remine gate UI unavailable: {exc}")
 
-  # ── Control: kill + workers ─────────────────────────────────────────
-  with tab_control:
-    st.markdown('<div class="panel-label">1 · Kill-switch</div>', unsafe_allow_html=True)
-    st.caption("Emergency kill dừng mọi model, khóa latch, và Flatten. Dùng khi cần dừng tay.")
-    kill_on = is_kill_switch_armed()
-    st.markdown(
-      f'<div class="pill-row">{pill("KILL ARMED" if kill_on else "Kill off", "danger" if kill_on else "muted")}</div>',
-      unsafe_allow_html=True,
-    )
-    k1, k2 = st.columns(2)
-    with k1:
-      if st.button("Arm kill-switch", type="primary", key="setup_arm_kill"):
-        arm_kill_switch(reason="setup_kill", flatten=True)
-        st.rerun()
-    with k2:
-      if st.button("Disarm kill-switch", key="setup_disarm_kill"):
-        disarm_kill_switch()
-        st.rerun()
-
-    st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Workers</div>', unsafe_allow_html=True)
-    st.caption("Hàng ngày Start/Stop trên desk Live; đây là trạng thái kỹ thuật.")
-    try:
-      from debug_log import support_bundle_hint
-      st.caption(f"Debug logs (hỗ trợ): `{support_bundle_hint()}`")
-    except Exception:
-      pass
-    st_stat = status()
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Workers", st_stat.get("n_workers") or (1 if st_stat["running"] else 0))
-    m2.metric("PID", st_stat["pid"] or "—")
-    m3.metric("Kill-switch", "ARMED" if kill_on else "off")
-    if st_stat.get("workers"):
-      for w in st_stat["workers"]:
-        mark = "●" if w.get("alive") else "○"
-        mids = ", ".join(w.get("model_ids") or []) or "—"
-        st.caption(
-          f"{mark} models [{mids}] · {w.get('symbol')} {w.get('timeframe')} · pid {w.get('pid')}"
-        )
-    rt1, rt2 = st.columns(2)
-    with rt1:
-      if st.button("Start (require EA online)", key="setup_start_bridge"):
-        try:
-          with st.spinner("Auto-deploy EA (nếu thiếu) rồi Start…"):
-            out = start_bridge(require_chart=True)
-          dep = out.get("deploy") or {}
-          st.success(
-            f"workers={out.get('n_workers')} pid={out.get('pid')}"
-            + (f" · deployed={dep.get('deployed')}" if dep else "")
-          )
-          st.rerun()
-        except Exception as exc:
-          st.error(str(exc))
-    with rt2:
-      if st.button("Stop + flatten", key="setup_stop_bridge"):
-        stop_bridge(flatten=True)
-        st.rerun()
-
   # ── System: Windows/EA + danger ─────────────────────────────────────
   with tab_system:
     st.markdown('<div class="panel-label">1 · Windows / EA</div>', unsafe_allow_html=True)
@@ -1453,7 +1827,7 @@ def render_setup_page() -> None:
       st.markdown(
         "**Theo Start / Stop trading:**\n"
         "- **Start** → gắn Scheduled Task (reboot: MT5 + Live app + bridge)\n"
-        "- **Stop / Emergency kill** → gỡ task\n"
+        "- **Stop** → gỡ task\n"
       )
       if not _is_win_as():
         st.caption("Task thật chỉ đăng ký trên PC Windows chạy MT5.")
@@ -1505,11 +1879,19 @@ def render_setup_page() -> None:
     with st.expander("Reset all Live data", expanded=False):
       st.caption(
         "Xóa journal · sim/parity · bridge state · OHLC cache · "
-        "(tuỳ chọn) packages + roster. Dừng workers/replay trước khi wipe."
+        "(tuỳ chọn) packages + roster. Mặc định **giữ** `*_live_weeks.json` "
+        "(remine tuần Live đã freeze — Replay dùng lại cho khớp). "
+        "Dừng workers/replay trước khi wipe."
+      )
+      keep_live_weeks = st.checkbox(
+        "Keep frozen live_weeks (đừng remine lại tuần Live)",
+        value=True,
+        key="reset_keep_live_weeks",
+        help="File results/trade_models/*_live_weeks.json. Tắt chỉ khi muốn xóa genome tuần hiện tại.",
       )
       wipe_packages = st.checkbox(
         "Also remove installed packages & clear roster",
-        value=True,
+        value=False,
         key="reset_wipe_packages",
       )
       reseed = st.checkbox(
@@ -1537,6 +1919,7 @@ def render_setup_page() -> None:
               ohlc_cache=True,
               include_packages=bool(wipe_packages),
               reseed_ohlc=bool(reseed) and not wipe_packages,
+              keep_live_weeks=bool(keep_live_weeks),
               disarm_kill=True,
             )
           st.session_state["last_reset"] = out
@@ -1858,7 +2241,7 @@ nav = st.radio(
   horizontal=True,
   key="top_nav",
   label_visibility="collapsed",
-  help="Live = trading · Replay = OOS desk · Models = import/roster · Setup = Risk/Quality/Control/System",
+  help="Live = trading · Replay = OOS desk · Models = import/roster · Setup = Risk/Quality/System",
   on_change=_on_top_nav_change,
 )
 # Fill ?nav= only when missing (F5 with bare URL). User clicks sync via on_change.

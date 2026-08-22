@@ -19,6 +19,19 @@ def _prefs_path() -> Path:
     return Path(__file__).resolve().parents[1] / "results" / _PREF_NAME
 
 
+def restore_widget_choice(current, saved, valid: tuple[str, ...], default: str) -> str:
+  """Pick session value if still mounted; otherwise the saved pref.
+
+  Streamlit deletes a widget's session_state key when that control is not
+  rendered (other top-nav tabs, or a Live sub-tab that hides the radio).
+  F5 rebuilds session_state from disk; tab hops must do the same restore.
+  """
+  if current in valid:
+    return str(current)
+  saved_s = str(saved or default).strip().lower()
+  return saved_s if saved_s in valid else default
+
+
 def load_ui_prefs() -> dict:
   """Sidebar / desk prefs that must survive browser refresh."""
   path = _prefs_path()
@@ -27,6 +40,9 @@ def load_ui_prefs() -> dict:
     "auto_refresh": False,
     "auto_refresh_every": 5,
     "live_stats_period": "today",
+    "live_desk_section": "now",
+    "now_chart_checks": {},
+    "now_picked_models": {},
   }
   try:
     if path.exists():
@@ -48,6 +64,16 @@ def load_ui_prefs() -> dict:
   if period not in ("today", "week", "month", "all"):
     period = "today"
   out["live_stats_period"] = period
+  section = str(out.get("live_desk_section") or "now").strip().lower()
+  if section == "control":
+    section = "now"
+  if section not in ("now", "pipeline", "session"):
+    section = "now"
+  out["live_desk_section"] = section
+  checks = out.get("now_chart_checks")
+  out["now_chart_checks"] = checks if isinstance(checks, dict) else {}
+  picked = out.get("now_picked_models")
+  out["now_picked_models"] = picked if isinstance(picked, dict) else {}
   return out
 
 
@@ -60,6 +86,48 @@ def save_ui_prefs(updates: dict | None = None) -> dict:
   payload["theme"] = "light"
   path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
   return payload
+
+
+def now_chart_check_id(side: str, feat: str, thr) -> str:
+  try:
+    t = f"{float(thr):.4f}"
+  except (TypeError, ValueError):
+    t = "0"
+  return f"{side}|{feat}|{t}"
+
+
+def load_now_chart_checks(model_id: str | None) -> dict[str, bool]:
+  mid = str(model_id or "").strip()
+  if not mid:
+    return {}
+  raw = (load_ui_prefs().get("now_chart_checks") or {}).get(mid)
+  if not isinstance(raw, dict):
+    return {}
+  return {str(k): bool(v) for k, v in raw.items()}
+
+
+def save_now_chart_checks(model_id: str | None, checks: dict[str, bool]) -> dict:
+  mid = str(model_id or "").strip()
+  blob = dict(load_ui_prefs().get("now_chart_checks") or {})
+  if mid:
+    blob[mid] = {str(k): bool(v) for k, v in (checks or {}).items()}
+  return save_ui_prefs({"now_chart_checks": blob})
+
+
+def load_now_picked_model(book_key: str | None) -> str:
+  key = str(book_key or "").strip()
+  if not key:
+    return ""
+  raw = (load_ui_prefs().get("now_picked_models") or {}).get(key)
+  return str(raw or "").strip()
+
+
+def save_now_picked_model(book_key: str | None, model_id: str | None) -> dict:
+  key = str(book_key or "").strip()
+  blob = dict(load_ui_prefs().get("now_picked_models") or {})
+  if key:
+    blob[key] = str(model_id or "").strip()
+  return save_ui_prefs({"now_picked_models": blob})
 
 
 def load_theme_pref() -> ThemeMode:
@@ -174,6 +242,27 @@ html, body, .stApp {
     radial-gradient(1100px 480px at 8% -12%, var(--desk-bg-glow-a), transparent 55%),
     radial-gradient(900px 420px at 100% 0%, var(--desk-bg-glow-b), transparent 50%),
     var(--desk-bg) !important;
+}
+
+/* no-rerun-fade: Streamlit marks widgets stale (opacity 0.33, 1s ease) while
+   auto-refresh / fragment ticks. Keep the last paint fully visible. */
+.stApp .stale,
+.stApp [class~="stale"],
+.stApp .element-container,
+.stApp [data-testid="stElementContainer"],
+.stApp [data-testid="stVerticalBlock"],
+.stApp [data-testid="stVerticalBlockBorderWrapper"],
+.stApp [data-testid="stMarkdownContainer"],
+.stApp [data-testid="stPlotlyChart"] {
+  opacity: 1 !important;
+  filter: none !important;
+  transition: none !important;
+}
+.stApp [data-testid="stSkeleton"],
+.stApp .stSkeleton {
+  display: none !important;
+  height: 0 !important;
+  min-height: 0 !important;
 }
 
 [data-testid="stAppViewContainer"],
@@ -437,6 +526,11 @@ div[data-testid="stHorizontalBlock"] { align-items: flex-start; }
 div[role="radiogroup"] {
   gap: 0.35rem 0.75rem;
   margin: 0.35rem 0 0.85rem 0;
+  flex-wrap: wrap;
+}
+div[role="radiogroup"] label p {
+  white-space: normal;
+  line-height: 1.25;
 }
 
 /* ── Custom desk components ───────────────────────────────────────── */
@@ -619,6 +713,190 @@ div[role="radiogroup"] {
   font-size: 0.86rem;
   color: var(--desk-muted) !important;
 }
+
+.now-watch-panel { min-height: 0; }
+.now-hint {
+  margin-top: 0.4rem;
+  font-size: 0.72rem;
+  color: var(--desk-muted) !important;
+  line-height: 1.35;
+}
+.now-watch {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.45rem;
+  font-size: 0.8rem;
+}
+.now-watch-compact { font-size: 0.76rem; }
+.now-watch th {
+  text-align: left;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--desk-muted) !important;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem 0.28rem 0;
+  border-bottom: 1px solid var(--desk-border);
+}
+.now-watch td {
+  padding: 0.22rem 0.4rem 0.22rem 0;
+  border-top: 1px solid var(--desk-divider);
+  vertical-align: middle;
+  color: var(--desk-text) !important;
+}
+.now-watch tr:first-child td { border-top: none; }
+.now-act {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  width: 3.6rem;
+}
+.now-model {
+  font-weight: 650;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  white-space: normal;
+}
+.now-gate-cell {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 700;
+  white-space: nowrap;
+  width: 2.8rem;
+}
+.now-wait-cell {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 700;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+.now-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem 0.4rem;
+  margin: 0 0 0.32rem 0;
+}
+.now-chip {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 650;
+  padding: 0.06rem 0.38rem;
+  border-radius: 999px;
+  border: 1px solid var(--desk-border);
+}
+.now-levels {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--desk-muted) !important;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+.now-reason {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--desk-reason) !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  max-width: 22rem;
+}
+.now-expect, .now-current {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+.now-gate {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.08rem;
+}
+.now-rule { display: block; font-size: 0.72rem; line-height: 1.35; padding-top: 0; }
+.now-expect { color: var(--desk-muted) !important; }
+.now-current { color: var(--desk-text) !important; }
+.now-hit { color: var(--desk-long) !important; font-weight: 650; }
+.now-miss { color: var(--desk-reason) !important; }
+.now-bar {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  color: var(--desk-muted) !important;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+.now-row-long { background: color-mix(in srgb, var(--desk-long) 10%, transparent); }
+.now-row-short { background: color-mix(in srgb, var(--desk-short) 10%, transparent); }
+.now-row-hold { background: color-mix(in srgb, var(--pill-warn-fg) 8%, transparent); }
+.now-row-long .now-act { color: var(--desk-long) !important; }
+.now-row-short .now-act { color: var(--desk-short) !important; }
+.now-inspect {
+  margin: 0.15rem 0 0.35rem 0;
+}
+.now-inspect-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.55rem;
+  margin-bottom: 0.28rem;
+}
+.now-inspect-head .now-act { font-size: 0.86rem; }
+.now-inspect-head .now-row-long { background: none; color: var(--desk-long) !important; }
+.now-inspect-head .now-row-short { background: none; color: var(--desk-short) !important; }
+.now-inspect-head .now-row-flat,
+.now-inspect-head .now-row-hold { background: none; }
+.now-inspect-why {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  color: var(--desk-reason) !important;
+  line-height: 1.35;
+}
+.now-inspect-k {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--desk-muted) !important;
+  margin-bottom: 0.08rem;
+}
+.now-inspect-side {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.now-gate {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.08rem;
+}
+.now-rule { display: block; font-size: 0.72rem; line-height: 1.35; padding-top: 0; }
+.now-inspect-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.8rem;
+}
+.now-row-flat .now-act { color: var(--desk-flat) !important; }
+.now-row-hold .now-act { color: var(--pill-warn-fg) !important; }
+.now-row-unknown .now-act { color: var(--sig-unknown) !important; }
+
+/* Compact BUY/SELL rule ticks (keys now_xf_*) */
+div[class*="st-key-now_xf_"] {
+  min-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-bottom: -0.12rem !important;
+}
+div[class*="st-key-now_xf_"] label {
+  min-height: 1.35rem !important;
+  gap: 0.32rem !important;
+}
+div[class*="st-key-now_xf_"] p {
+  font-size: 0.72rem !important;
+  font-family: "IBM Plex Mono", ui-monospace, monospace !important;
+  line-height: 1.35 !important;
+  font-weight: 550 !important;
+}
+.now-row-hold .now-act { color: var(--pill-warn-fg) !important; }
+.now-row-unknown .now-act { color: var(--sig-unknown) !important; }
 
 .session-panel { min-height: 10.5rem; }
 .stat-grid {

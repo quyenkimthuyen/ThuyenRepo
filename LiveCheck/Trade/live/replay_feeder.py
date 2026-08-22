@@ -163,6 +163,22 @@ def _write_connection(bridge_dir: Path, *, symbol: str, period: str, magic: int)
   })
 
 
+def _bar_spread_points(row: pd.Series) -> int:
+  for key in ("spread_points", "spread"):
+    if key not in getattr(row, "index", []):
+      continue
+    val = row.get(key)
+    if val is None or (isinstance(val, float) and pd.isna(val)):
+      continue
+    try:
+      pts = int(val)
+    except (TypeError, ValueError):
+      continue
+    if pts > 0:
+      return pts
+  return 10
+
+
 def _write_bar(
   bridge_dir: Path,
   *,
@@ -188,7 +204,7 @@ def _write_bar(
     "close": float(row["close"]),
     "volume": float(row.get("volume") or 0),
     "tick_volume": float(row.get("volume") or 0),
-    "spread_points": 10,
+    "spread_points": _bar_spread_points(row),
     "digits": 5,
     "point": 0.00001,
     "account": 0,
@@ -345,6 +361,7 @@ def run_replay(
         low=float(row["low"]),
         close=float(row["close"]),
         bar_time=mt5_bar_time(ts),
+        spread_points=_bar_spread_points(row),
       ):
         _emit_fill(bridge_dir, fill)
         n_fills += 1

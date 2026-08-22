@@ -151,7 +151,12 @@ def check_app_ast() -> str:
   assert "st_autorefresh" not in src
   assert "desk_refresh_now" in src
   assert "_run_live_now_tick" in src
+  assert "LIVE_SECTIONS" in src
+  assert "_render_live_control" in src
   assert "format_func=_period_label" in src
+  assert "_live_stats_period_seeded" not in src
+  assert "_live_desk_section_seeded" not in src
+  assert "restore_widget_choice" in src
   return "app.py parse + Live desk markup"
 
 
@@ -274,7 +279,10 @@ def check_replay_modes() -> str:
     import shutil
     shutil.rmtree(idle_dir, ignore_errors=True)
   mq5 = (SPLIT / "mt5" / "Experts" / "ForgeBridgeLive.mq5").read_text(encoding="utf-8")
-  assert '#property version   "1.21"' in mq5
+  assert '#property version   "1.25"' in mq5
+  assert "WaitHistoryDecisionsForBar" in mq5
+  assert "g_sim_delay_ms + 6000" not in mq5
+  assert "left open like Live" in mq5
   assert "ReadSimControlFile() && g_sim_enabled" in mq5
   from replay_control import live_ea_needs_history_feed_binary
   assert callable(live_ea_needs_history_feed_binary)
@@ -504,8 +512,11 @@ def check_bridge_once() -> str:
 
 def check_gui_nav_labels() -> str:
   src = (LIVE / "gui" / "app.py").read_text(encoding="utf-8")
-  for label in ("Live", "Models", "Setup", "Start trading", "Flatten"):
+  for label in ("Live", "Models", "Setup", "Start trading", "Stop"):
     assert label in src, label
+  assert "Flatten" not in src
+  assert "Emergency kill" not in src
+  assert "tab_control" not in src
   return "nav/actions present"
 
 

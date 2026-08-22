@@ -12,6 +12,7 @@ if str(LIVE) not in sys.path:
 from position_sync import (  # noqa: E402
   _apply_close_from_fill,
   _matching_close_fill,
+  is_history_paper_ticket,
   reconcile_bridge_positions,
 )
 
@@ -236,3 +237,42 @@ def test_reconcile_repairs_when_deal_profit_differs(tmp_path: Path):
   assert t["profit"] == -10.32
   assert t["exit_px"] == 1.35598
   assert t["result"] == "LOSS"
+
+
+def test_history_paper_ticket_range():
+  assert is_history_paper_ticket(700000)
+  assert is_history_paper_ticket(700015)
+  assert not is_history_paper_ticket(956252722)
+  assert not is_history_paper_ticket(0)
+
+
+def test_reconcile_leaves_history_paper_open(tmp_path: Path):
+  """After Replay completes, MT5 is flat — do not ghost-close paper tickets."""
+  (tmp_path / "models.json").write_text(
+    json.dumps({"models": [{"magic": 20263010}]}), encoding="utf-8",
+  )
+  (tmp_path / "positions.json").write_text(
+    json.dumps({"positions": []}), encoding="utf-8",
+  )
+  (tmp_path / "deals.json").write_text(json.dumps({"deals": []}), encoding="utf-8")
+  (tmp_path / "trades.json").write_text(
+    json.dumps({
+      "trades": [{
+        "status": "OPEN",
+        "ticket": 700015,
+        "magic": 20263010,
+        "direction": "SELL",
+        "entry_px": 1.36476,
+        "sl": 1.36542,
+        "sl_initial": 1.36542,
+        "tp": 1.36212,
+        "lots": 0.1,
+        "signal_id": "paper-sid",
+      }],
+    }),
+    encoding="utf-8",
+  )
+  out = reconcile_bridge_positions(tmp_path, reason="ea_reconnect_reconcile")
+  assert out["closed"] == 0
+  t = json.loads((tmp_path / "trades.json").read_text(encoding="utf-8"))["trades"][0]
+  assert t["status"] == "OPEN"

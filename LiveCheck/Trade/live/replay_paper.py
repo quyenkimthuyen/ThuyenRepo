@@ -13,6 +13,23 @@ _POINT = 1e-5
 _PIP = 1e-4
 
 
+def _spread_price(spread_points: Any = 0, spread_pips: Any = 0) -> float:
+  """Price units for Bid→Ask. Prefer bar points (like live tick), else model pips."""
+  try:
+    pts = int(spread_points or 0)
+  except (TypeError, ValueError):
+    pts = 0
+  if pts > 0:
+    return pts * _POINT
+  try:
+    pips = float(spread_pips or 0.0)
+  except (TypeError, ValueError):
+    pips = 0.0
+  if pips > 0:
+    return pips * _PIP
+  return 10 * _POINT  # 1.0 pip on 5-digit
+
+
 def _exit_mode_code(raw: Any) -> int:
   s = str(raw or "").strip().lower()
   if s in ("full", "0"):
@@ -23,7 +40,7 @@ def _exit_mode_code(raw: Any) -> int:
     return 2
   if s in ("partial", "3"):
     return 3
-  return 2
+  return 0
 
 
 @dataclass
@@ -46,7 +63,7 @@ class ReplayPaperBook:
   tp: float = 0.0
   lots: float = 0.01
   risk: float = 0.0
-  exit_mode: int = 2
+  exit_mode: int = 0
   trail_act: float = 1.0
   trail_dist: float = 0.5
   max_hold: int = 96
@@ -54,6 +71,7 @@ class ReplayPaperBook:
   n_fills: int = 0
   spread_pips: float = 1.0
   slippage_pips: float = 0.3
+  _spread_px: float = 0.0001
   _fills: list[dict] = field(default_factory=list, repr=False)
 
   def queue_decision(self, decision: dict | None) -> None:
@@ -75,16 +93,23 @@ class ReplayPaperBook:
     low: float,
     close: float,
     bar_time: str,
+    spread_points: int | float = 0,
   ) -> list[dict]:
     emitted: list[dict] = []
     if self.pending and not self.open:
-      fill = self._open_from_decision(self.pending, float(open_), bar_time)
+      fill = self._open_from_decision(
+        self.pending, float(open_), bar_time, spread_points=spread_points,
+      )
       self.pending = None
       if fill:
         emitted.append(fill)
     if self.open:
       close_fill = self._manage(
-        high=float(high), low=float(low), close=float(close), bar_time=bar_time
+        high=float(high),
+        low=float(low),
+        close=float(close),
+        bar_time=bar_time,
+        spread_points=spread_points,
       )
       if close_fill:
         emitted.append(close_fill)
@@ -103,7 +128,14 @@ class ReplayPaperBook:
       "lots": self.lots,
     }
 
-  def _open_from_decision(self, decision: dict, entry_price: float, bar_time: str) -> dict | None:
+  def _open_from_decision(
+    self,
+    decision: dict,
+    entry_price: float,
+    bar_time: str,
+    *,
+    spread_points: int | float = 0,
+  ) -> dict | None:
     action = str(decision.get("action") or "").upper()
     if action not in ("BUY", "SELL"):
       return None
@@ -111,20 +143,12 @@ class ReplayPaperBook:
     if sid and sid == self.last_signal_id:
       return None
 
-    # Match lab execution: apply spread/slippage on fill open (decision.entry already
-    # includes costs; prefer decision entry when present, else adjust raw open).
     spread = float(decision.get("spread_pips") or 1.0)
     slip = float(decision.get("slippage_pips") or 0.3)
-    direction = 1 if action == "BUY" else -1
+    spr = _spread_price(spread_points, spread)
+    # Same as live OrderSend / HistoryFeed EA: BUY at Ask, SELL at Bid.
+    fill_entry = float(entry_price) + spr if action == "BUY" else float(entry_price)
     planned = float(decision.get("entry") or 0.0)
-    if planned > 0:
-      fill_entry = planned
-    else:
-      try:
-        from execution import adjust_entry_price
-        fill_entry = adjust_entry_price(float(entry_price), direction, spread, slip)
-      except Exception:
-        fill_entry = float(entry_price)
 
     sl = float(decision.get("sl") or 0.0)
     tp = float(decision.get("tp") or 0.0)
@@ -137,6 +161,7 @@ class ReplayPaperBook:
     self.max_hold = int(decision.get("max_hold_bars") or 96)
     self.spread_pips = spread
     self.slippage_pips = slip
+    self._spread_px = spr
 
     planned_risk = abs(planned - sl) if planned > 0 else abs(fill_entry - sl)
     rr = float(decision.get("rr") or 0.0)
@@ -202,6 +227,7 @@ class ReplayPaperBook:
     low: float,
     close: float,
     bar_time: str,
+    spread_points: int | float = 0,
   ) -> dict | None:
     if not self.open:
       return None
@@ -209,15 +235,20 @@ class ReplayPaperBook:
     if self.held <= 1:
       return None
 
+    spr = _spread_price(spread_points, self.spread_pips)
+    self._spread_px = spr
+    bid_h, bid_l, bid_c = float(high), float(low), float(close)
+    ask_h, ask_l, ask_c = bid_h + spr, bid_l + spr, bid_c + spr
+
     if self.exit_mode in (1, 2):
       if self.action == "BUY":
-        if high >= self.entry + self.risk * self.trail_act:
-          nsl = high - self.risk * self.trail_dist
+        if bid_h >= self.entry + self.risk * self.trail_act:
+          nsl = bid_h - self.risk * self.trail_dist
           if nsl > self.sl:
             self.sl = nsl
       else:
-        if low <= self.entry - self.risk * self.trail_act:
-          nsl = low + self.risk * self.trail_dist
+        if ask_l <= self.entry - self.risk * self.trail_act:
+          nsl = ask_l + self.risk * self.trail_dist
           if self.sl == 0 or nsl < self.sl:
             self.sl = nsl
 
@@ -227,29 +258,21 @@ class ReplayPaperBook:
     )
 
     if self.action == "BUY":
-      if self.sl > 0 and low <= self.sl:
+      if self.sl > 0 and bid_l <= self.sl:
         return self._close("trail" if trail_moved else "sl", self.sl, bar_time)
-      if self.tp > 0 and high >= self.tp:
+      if self.tp > 0 and bid_h >= self.tp:
         return self._close("tp", self.tp, bar_time)
     else:
-      if self.sl > 0 and high >= self.sl:
+      if self.sl > 0 and ask_h >= self.sl:
         return self._close("trail" if trail_moved else "sl", self.sl, bar_time)
-      if self.tp > 0 and low <= self.tp:
+      if self.tp > 0 and ask_l <= self.tp:
         return self._close("tp", self.tp, bar_time)
 
-    if self.held - 1 >= self.max_hold:
-      return self._close("max_hold", close, bar_time)
+    if self.held - 1 >= self.max_hold and self.max_hold > 0:
+      return self._close("max_hold", bid_c if self.action == "BUY" else ask_c, bar_time)
     return None
 
   def _close(self, reason: str, exit_px: float, bar_time: str) -> dict:
-    direction = 1 if self.action == "BUY" else -1
-    try:
-      from execution import adjust_exit_price
-      exit_px = adjust_exit_price(
-        float(exit_px), direction, float(self.spread_pips), float(self.slippage_pips),
-      )
-    except Exception:
-      exit_px = float(exit_px)
     profit = 0.0
     if self.risk > 0:
       if self.action == "BUY":

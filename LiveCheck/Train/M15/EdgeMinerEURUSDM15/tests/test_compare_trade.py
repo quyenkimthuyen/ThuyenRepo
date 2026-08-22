@@ -95,6 +95,36 @@ def test_journal_open_scoped_by_model_id(tmp_path: Path):
   assert day_b == 1
 
 
+def test_journal_day_count_includes_strategy_fills_tagged_user_sl_tp(tmp_path: Path):
+  """user_sl_tp flips mode=manual; day slots must still count the strategy fill."""
+  clear_trades(tmp_path)
+  save_trades([
+    {
+      "id": "s1", "signal_id": "f61781c53327a39f", "status": "CLOSED",
+      "mode": "manual", "intervened": True,
+      "interventions": ["user_sl_tp", "ea_trail"],
+      "origin": "strategy", "model_id": "tm_a",
+      "entry_time": "2026.08.20 07:30", "direction": "SELL",
+    },
+    {
+      "id": "s2", "signal_id": "9c5362f87d48362e", "status": "CLOSED",
+      "mode": "manual", "intervened": True,
+      "interventions": ["user_sl_tp"],
+      "origin": "strategy", "model_id": "tm_a",
+      "entry_time": "2026.08.20 09:15", "direction": "SELL",
+    },
+    {
+      "id": "m1", "signal_id": "manual_test_1", "status": "CLOSED",
+      "mode": "manual", "origin": "manual_test", "model_id": "tm_a",
+      "entry_time": "2026.08.20 12:00", "direction": "BUY",
+    },
+  ], tmp_path)
+  day = pd.Timestamp("2026-08-20").date()
+  has_open, day_n = _journal_open_and_day_count(tmp_path, day, model_id="tm_a")
+  assert has_open is False
+  assert day_n == 2
+
+
 def test_filter_trades_requires_model_id(tmp_path: Path):
   save_trades([
     {"id": "1", "status": "CLOSED", "mode": "auto", "model_id": "tm_a", "entry_time": "2026-01-01"},

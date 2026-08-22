@@ -89,3 +89,51 @@ def test_dedupe_collapses_same_ticket() -> None:
   ]
   out = dedupe_trades(rows)
   assert len(out) == 1
+
+
+def test_unchanged_user_sl_tp_keeps_auto_mode(tmp_path: Path) -> None:
+  process_fill(
+    {
+      "ok": True,
+      "event": "open",
+      "action": "SELL",
+      "ticket": 956252722,
+      "signal_id": "sig_keep_auto",
+      "price": 1.36489,
+      "sl": 1.36561,
+      "tp": 1.36254,
+      "lots": 0.09,
+      "bar_time": "2026.08.21 15:15",
+    },
+    bridge_dir=tmp_path,
+  )
+  process_fill(
+    {
+      "ok": True,
+      "event": "modify",
+      "detail": "user_sl_tp",
+      "ticket": 956252722,
+      "signal_id": "sig_keep_auto",
+      "sl": 1.36561,
+      "tp": 1.36254,
+    },
+    bridge_dir=tmp_path,
+  )
+  row = load_trades(tmp_path)[0]
+  assert row["mode"] == "auto"
+  assert not row.get("intervened")
+  process_fill(
+    {
+      "ok": True,
+      "event": "modify",
+      "detail": "user_sl_tp",
+      "ticket": 956252722,
+      "signal_id": "sig_keep_auto",
+      "sl": 1.36520,
+      "tp": 1.36254,
+    },
+    bridge_dir=tmp_path,
+  )
+  row = load_trades(tmp_path)[0]
+  assert row["mode"] == "manual"
+  assert "user_sl_tp" in (row.get("interventions") or [])

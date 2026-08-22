@@ -15,6 +15,44 @@ from shared.constants import LIVE_INSTANCE_ID, LIVE_MAGIC_BASE, LIVE_SIM_MAGIC_B
 _BOOTSTRAPPED: dict[str, Any] = {}
 _ENGINE_PATCHED = False
 STATS_PATH = RESULTS_DIR / "replay_strategy_stats.json"
+_LAST_FEAT_BAR: dict[str, str] = {}
+
+
+def _dump_last_bar_features(engine, decision: dict | None) -> None:
+  """Snapshot last-bar FM values for Live Now expect/current."""
+  fm = getattr(engine, "_fm", None)
+  bdir = getattr(engine, "bridge_dir", None)
+  if fm is None or bdir is None or not getattr(fm, "features", None):
+    return
+  bar_time = str((decision or {}).get("bar_time") or "")
+  key = str(bdir)
+  if bar_time and _LAST_FEAT_BAR.get(key) == bar_time:
+    return
+  last = int(getattr(fm, "n", 0) or 0) - 1
+  if last < 0:
+    return
+  feats: dict[str, float] = {}
+  for name, arr in fm.features.items():
+    try:
+      val = float(arr[last])
+    except (TypeError, ValueError, IndexError):
+      continue
+    if val == val:  # not NaN
+      feats[str(name)] = round(val, 6)
+  if not feats:
+    return
+  from datetime import datetime, timezone
+  from mt5_bridge.protocol import atomic_write_json
+
+  payload = {
+    "bar_time": bar_time or None,
+    "updated_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
+    "n_features": len(feats),
+    "features": feats,
+  }
+  atomic_write_json(Path(bdir) / "features.json", payload)
+  if bar_time:
+    _LAST_FEAT_BAR[key] = bar_time
 
 
 def _purge_host_modules() -> None:
@@ -44,12 +82,6 @@ def _purge_host_modules() -> None:
     if name in drop_prefixes or any(name.startswith(p + ".") for p in drop_prefixes):
       del sys.modules[name]
   _ENGINE_PATCHED = False
-
-
-def _force_remine_enabled() -> bool:
-  return os.environ.get("LIVE_REPLAY_FORCE_REMINE", "").strip().lower() in (
-    "1", "true", "yes", "on",
-  )
 
 
 def _bump_strategy_stat(model_id: str, source: str, week_start: Any) -> None:
@@ -134,7 +166,7 @@ def _prior_schedule_strategy(model_id: str, week_start) -> Any | None:
 
 
 def _patch_schedule_and_engine(sched: Any, engine: Any) -> None:
-  """Force-remine env + remine quality gate + strategy_source on decisions."""
+  """Setup strategy_mode + remine quality gate + strategy_source on decisions."""
   global _ENGINE_PATCHED
   if _ENGINE_PATCHED:
     return
@@ -142,9 +174,16 @@ def _patch_schedule_and_engine(sched: Any, engine: Any) -> None:
   orig_lookup = sched.lookup_week_strategy
 
   def lookup_week_strategy(model_id, week_start):  # noqa: ANN001
-    if _force_remine_enabled():
+    hit = orig_lookup(model_id, week_start)
+    if hit:
+      return hit
+    try:
+      from strategy_mode import carry_forward_week_strategy, frozen_enabled
+    except Exception:
       return None
-    return orig_lookup(model_id, week_start)
+    if not frozen_enabled():
+      return None
+    return carry_forward_week_strategy(model_id, week_start)
 
   sched.lookup_week_strategy = lookup_week_strategy
 
@@ -159,21 +198,61 @@ def _patch_schedule_and_engine(sched: Any, engine: Any) -> None:
     cache_key = kwargs.get("cache_key")
     train_weeks = int(kwargs.get("train_weeks") or 6)
     feature_profile = str(kwargs.get("feature_profile") or "current")
+    try:
+      from strategy_mode import strategy_mode as _strategy_mode
+      mode_now = _strategy_mode()
+    except Exception:
+      mode_now = "weekly"
+    if mode_now not in ("weekly", "frozen"):
+      mode_now = "weekly"
+    prev_mode = getattr(self, "_live_strategy_mode", None)
+    if prev_mode is not None and prev_mode != mode_now:
+      cache = getattr(self, "_strat_cache", None)
+      if isinstance(cache, dict) and cache:
+        cache.clear()
+      print(
+        f"[bridge] strategy_mode {prev_mode} -> {mode_now}; week cache cleared",
+        flush=True,
+      )
+    self._live_strategy_mode = mode_now
+
     already_cached = bool(cache_key) and cache_key in getattr(self, "_strat_cache", {})
-    force = _force_remine_enabled()
+    frozen_mode = False
+    try:
+      from strategy_mode import carry_forward_week_strategy, frozen_enabled
+      frozen_mode = bool(frozen_enabled())
+    except Exception:
+      carry_forward_week_strategy = None  # type: ignore
     had_frozen = False
-    if not force and week_start is not None:
+    carried = False
+    if week_start is not None:
       try:
         entry = orig_lookup(self.model_id, week_start)
         had_frozen = bool(entry and isinstance(entry.get("strategy"), dict))
+        if not had_frozen and frozen_mode and carry_forward_week_strategy is not None:
+          entry = carry_forward_week_strategy(self.model_id, week_start)
+          if entry and isinstance(entry.get("strategy"), dict):
+            had_frozen = True
+            carried = True
       except Exception:
         had_frozen = False
+
+    if frozen_mode and not had_frozen:
+      self._last_strategy_source = "frozen_missing"
+      self._last_flat_reason = "frozen_missing"
+      _bump_strategy_stat(self.model_id, "none", week_start)
+      print(
+        f"[bridge] frozen mode: no schedule/live_weeks genome for "
+        f"{self.model_id} week={week_start} — FLAT (no remine)",
+        flush=True,
+      )
+      return None
 
     strat = orig_remine(self, *args, **kwargs)
 
     if already_cached:
       src = getattr(self, "_last_strategy_source", None) or (
-        "schedule" if had_frozen and not force else "remine"
+        "schedule" if had_frozen else "remine"
       )
       self._last_strategy_source = src
       return strat
@@ -183,9 +262,9 @@ def _patch_schedule_and_engine(sched: Any, engine: Any) -> None:
       _bump_strategy_stat(self.model_id, "none", week_start)
       return None
 
-    # Frozen genome (package schedule or prior live_weeks) — no gate
-    if had_frozen and not force:
-      self._last_strategy_source = "schedule"
+    # Frozen genome (package schedule, live_weeks, or carry-forward) — no gate
+    if had_frozen:
+      self._last_strategy_source = "frozen" if carried else "schedule"
       _bump_strategy_stat(self.model_id, "schedule", week_start)
       return strat
 
@@ -285,11 +364,15 @@ def _patch_schedule_and_engine(sched: Any, engine: Any) -> None:
           decision["remine_gate_metrics"] = gate.get("metrics")
       flat_reason = getattr(self, "_last_flat_reason", None)
       if (
-        src in ("remine_gate_fail",)
+        src in ("remine_gate_fail", "frozen_missing")
         and str(decision.get("action") or "").upper() == "FLAT"
         and flat_reason
       ):
         decision["reason"] = flat_reason
+      try:
+        _dump_last_bar_features(self, decision)
+      except Exception:
+        pass
       # Concurrent portfolio risk cap (all books)
       try:
         from risk_cap import apply_risk_cap_to_decision

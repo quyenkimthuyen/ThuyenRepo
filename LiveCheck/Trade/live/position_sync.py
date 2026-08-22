@@ -17,6 +17,21 @@ def _now() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
+# HistoryFeed paper tickets start at 700000. Live MT5 tickets are 9–10 digits.
+# After Replay completes, positions.json is empty — treating paper opens as
+# ghosts closed them at weekend Bid and invented R (often ~-2R).
+_PAPER_TICKET_LO = 700000
+_PAPER_TICKET_HI = 900000
+
+
+def is_history_paper_ticket(ticket: int | None) -> bool:
+  try:
+    t = int(ticket or 0)
+  except (TypeError, ValueError):
+    return False
+  return _PAPER_TICKET_LO <= t < _PAPER_TICKET_HI
+
+
 def _read(path: Path) -> Any:
   if not path.exists():
     return None
@@ -462,6 +477,8 @@ def reconcile_bridge_positions(
       continue
 
     if st != "OPEN":
+      continue
+    if is_history_paper_ticket(ticket):
       continue
 
     ghost = False

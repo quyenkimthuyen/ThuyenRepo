@@ -232,6 +232,49 @@ def _mark_manual(row: dict, reason: str) -> None:
   row["interventions"] = flags
 
 
+def _price_changed(before, after, *, eps: float = 1e-8) -> bool:
+  if after is None:
+    return False
+  if before is None:
+    return True
+  try:
+    return abs(float(before) - float(after)) > eps
+  except (TypeError, ValueError):
+    return True
+
+
+_FALSE_MANUAL_NOISE = {
+  "user_sl_tp", "mt5_deal", "ea_reconnect_reconcile", "ea_trail", "intervened",
+}
+
+
+def repair_false_manual_user_sl_tp(bridge_dir: Path | None = None) -> int:
+  """Clear mode=manual when EA echoed user_sl_tp but SL/TP never moved."""
+  trades = load_trades(bridge_dir)
+  n = 0
+  for row in trades:
+    if str(row.get("mode") or "").lower() != MODE_MANUAL:
+      continue
+    if str(row.get("origin") or "") != "strategy":
+      continue
+    flags = [str(x) for x in (row.get("interventions") or [])]
+    if "user_sl_tp" not in flags:
+      continue
+    if any(f not in _FALSE_MANUAL_NOISE for f in flags):
+      continue
+    if _price_changed(row.get("sl_initial"), row.get("sl")) or _price_changed(
+      row.get("tp_initial"), row.get("tp")
+    ):
+      continue
+    row["mode"] = MODE_AUTO
+    row["intervened"] = False
+    row["interventions"] = [f for f in flags if f not in ("user_sl_tp", "intervened")]
+    n += 1
+  if n:
+    save_trades(trades, bridge_dir)
+  return n
+
+
 def trade_mode(trade: dict) -> str:
   """Normalize mode for filtering (legacy rows → auto unless markers present)."""
   m = str(trade.get("mode") or "").lower()
@@ -376,18 +419,28 @@ def process_fill(
       return None
     _append_fill_log({**fill, "event": event}, bridge_dir)
     detail_l = detail or str(fill.get("reason") or "").lower()
-    if fill.get("sl") is not None:
-      row["sl"] = float(fill["sl"])
-    if fill.get("tp") is not None:
-      row["tp"] = float(fill["tp"])
+    old_sl = row.get("sl")
+    old_tp = row.get("tp")
+    new_sl = float(fill["sl"]) if fill.get("sl") is not None else None
+    new_tp = float(fill["tp"]) if fill.get("tp") is not None else None
+    sl_changed = _price_changed(old_sl, new_sl)
+    tp_changed = _price_changed(old_tp, new_tp)
+    if new_sl is not None:
+      row["sl"] = new_sl
+    if new_tp is not None:
+      row["tp"] = new_tp
     if fill.get("lots") is not None:
       try:
         row["lots"] = float(fill["lots"])
       except (TypeError, ValueError):
         pass
-    # EA trail sync keeps auto mode; user edit → manual
-    if detail_l in ("user_sl_tp",) or fill.get("manual") is True or str(fill.get("source") or "") == "user_edit":
-      _mark_manual(row, "user_sl_tp")
+    # EA reconnect echoes user_sl_tp with manual=true even when SL/TP did not move.
+    explicit_user = fill.get("manual") is True or str(fill.get("source") or "") == "user_edit"
+    if detail_l == "user_sl_tp":
+      if sl_changed or tp_changed:
+        _mark_manual(row, "user_sl_tp")
+    elif explicit_user:
+      _mark_manual(row, "user_edit")
     elif detail_l == "ea_trail":
       flags = list(row.get("interventions") or [])
       if "ea_trail" not in flags:

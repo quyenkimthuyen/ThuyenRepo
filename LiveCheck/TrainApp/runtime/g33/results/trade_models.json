@@ -1,3 +1,575 @@
 {
-  "models": []
+  "models": [
+    {
+      "train_weeks": 12,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_full",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 2.3,
+      "slippage_pips": 0.3,
+      "total_r": 13.397,
+      "win_rate_pct": 40.74,
+      "max_drawdown_r": 5.38,
+      "profit_factor": 1.741,
+      "n_trades": 27,
+      "feature_profile": "m5_parity",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.5,
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          288
+        ],
+        "min_bars_between": [
+          36
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 2.5,
+        "max_trades_per_day": 2,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 2.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M5",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2025-04-07 00:05:00",
+      "data_end": "2026-08-13 14:15:00",
+      "data_bars": 99969,
+      "data_fingerprint": "db9f84a7465fe46645ae9a53c7d41c3fa3ff377712eee047dcf29cfff644a135",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260819_232636",
+      "grid_key": "a18d99ae5eb4",
+      "label_custom": true,
+      "id": "tm_wr40_7r13_4dd5_4_40b60cbe",
+      "label": "WR40.7R13.4DD5.4",
+      "created_at": "2026-08-19T23:26:36+07:00",
+      "kb_pin_path": "trade_models\\tm_wr40_7r13_4dd5_4_40b60cbe_kb_pin.json",
+      "kb_fingerprint": "61974630717a8884",
+      "kb_pin_bytes": 2178867,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\LiveCheck\\TrainApp\\runtime\\g33\\learning\\kb_profiles\\snapshots\\era_2025_full\\ep004.json"
+    },
+    {
+      "train_weeks": 12,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_full",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 2.3,
+      "slippage_pips": 0.3,
+      "total_r": 33.388,
+      "win_rate_pct": 40.0,
+      "max_drawdown_r": 9.48,
+      "profit_factor": 1.508,
+      "n_trades": 85,
+      "feature_profile": "m5_parity",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.2,
+          3.5,
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          288
+        ],
+        "min_bars_between": [
+          36
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 3.5,
+        "max_trades_per_day": 2,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 3.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M5",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2025-04-07 00:05:00",
+      "data_end": "2026-08-13 14:15:00",
+      "data_bars": 99969,
+      "data_fingerprint": "db9f84a7465fe46645ae9a53c7d41c3fa3ff377712eee047dcf29cfff644a135",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260819_232636",
+      "grid_key": "6c7f1dbdac93",
+      "label_custom": true,
+      "id": "tm_wr40r33_4dd9_5_8faf342e",
+      "label": "WR40R33.4DD9.5",
+      "created_at": "2026-08-19T23:26:36+07:00",
+      "kb_pin_path": "trade_models\\tm_wr40r33_4dd9_5_8faf342e_kb_pin.json",
+      "kb_fingerprint": "61974630717a8884",
+      "kb_pin_bytes": 2178867,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\LiveCheck\\TrainApp\\runtime\\g33\\learning\\kb_profiles\\snapshots\\era_2025_full\\ep004.json"
+    },
+    {
+      "train_weeks": 3,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_full",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 2.3,
+      "slippage_pips": 0.3,
+      "total_r": 37.045,
+      "win_rate_pct": 40.0,
+      "max_drawdown_r": 13.91,
+      "profit_factor": 1.56,
+      "n_trades": 105,
+      "feature_profile": "m5_parity",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.2,
+          3.5,
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          288
+        ],
+        "min_bars_between": [
+          36
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 3.5,
+        "max_trades_per_day": 2,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 3.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M5",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2025-04-07 00:05:00",
+      "data_end": "2026-08-13 14:15:00",
+      "data_bars": 99969,
+      "data_fingerprint": "db9f84a7465fe46645ae9a53c7d41c3fa3ff377712eee047dcf29cfff644a135",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260819_232636",
+      "grid_key": "fe062deb65af",
+      "label_custom": true,
+      "id": "tm_wr40r37dd13_9_8fdbf5c1",
+      "label": "WR40R37DD13.9",
+      "created_at": "2026-08-19T23:26:36+07:00",
+      "kb_pin_path": "trade_models\\tm_wr40r37dd13_9_8fdbf5c1_kb_pin.json",
+      "kb_fingerprint": "60307b6ffa71b7ad",
+      "kb_pin_bytes": 1164891,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\LiveCheck\\TrainApp\\runtime\\g33\\learning\\kb_profiles\\snapshots\\era_2025_full\\ep002.json"
+    },
+    {
+      "train_weeks": 12,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_full",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 2.3,
+      "slippage_pips": 0.3,
+      "total_r": 27.766,
+      "win_rate_pct": 39.02,
+      "max_drawdown_r": 9.57,
+      "profit_factor": 1.507,
+      "n_trades": 82,
+      "feature_profile": "m5_parity",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.2,
+          3.5,
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          288
+        ],
+        "min_bars_between": [
+          36
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 3.5,
+        "max_trades_per_day": 2,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 3.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M5",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2025-04-07 00:05:00",
+      "data_end": "2026-08-13 14:15:00",
+      "data_bars": 99969,
+      "data_fingerprint": "db9f84a7465fe46645ae9a53c7d41c3fa3ff377712eee047dcf29cfff644a135",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260819_232636",
+      "grid_key": "d3f5510fde5d",
+      "label_custom": true,
+      "id": "tm_wr39r27_8dd9_6_7b2d9552",
+      "label": "WR39R27.8DD9.6",
+      "created_at": "2026-08-19T23:26:36+07:00",
+      "kb_pin_path": "trade_models\\tm_wr39r27_8dd9_6_7b2d9552_kb_pin.json",
+      "kb_fingerprint": "60307b6ffa71b7ad",
+      "kb_pin_bytes": 1164891,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\LiveCheck\\TrainApp\\runtime\\g33\\learning\\kb_profiles\\snapshots\\era_2025_full\\ep002.json"
+    },
+    {
+      "train_weeks": 3,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_full",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 2.3,
+      "slippage_pips": 0.3,
+      "total_r": 25.335,
+      "win_rate_pct": 38.37,
+      "max_drawdown_r": 9.83,
+      "profit_factor": 1.557,
+      "n_trades": 86,
+      "feature_profile": "m5_parity",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.2,
+          3.5,
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          288
+        ],
+        "min_bars_between": [
+          36
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 3.5,
+        "max_trades_per_day": 2,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 3.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M5",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2025-04-07 00:05:00",
+      "data_end": "2026-08-13 14:15:00",
+      "data_bars": 99969,
+      "data_fingerprint": "db9f84a7465fe46645ae9a53c7d41c3fa3ff377712eee047dcf29cfff644a135",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260819_232636",
+      "grid_key": "7dc297650b57",
+      "label_custom": true,
+      "id": "tm_wr38_4r25_3dd9_8_0c70bca7",
+      "label": "WR38.4R25.3DD9.8",
+      "created_at": "2026-08-19T23:26:36+07:00",
+      "kb_pin_path": "trade_models\\tm_wr38_4r25_3dd9_8_0c70bca7_kb_pin.json",
+      "kb_fingerprint": "60307b6ffa71b7ad",
+      "kb_pin_bytes": 1164891,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\LiveCheck\\TrainApp\\runtime\\g33\\learning\\kb_profiles\\snapshots\\era_2025_full\\ep002.json"
+    }
+  ]
 }

@@ -175,7 +175,7 @@ def archive_live_like_run(payload: dict | None = None) -> dict[str, Any]:
       "schedule_hits": stats.get("schedule_hits"),
       "remine_count": stats.get("remine_count"),
       "skip_count": stats.get("skip_count"),
-      "force_remine": stats.get("force_remine"),
+      "strategy_mode": stats.get("strategy_mode"),
     },
   }
   mode_n = str(paper.get("mode") or "live_like")

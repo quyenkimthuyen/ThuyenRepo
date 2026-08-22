@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMinerM15 bridge"
-#property version   "1.22"
+#property version   "1.25"
 
 #include <Trade/Trade.mqh>
 
@@ -85,7 +85,7 @@ bool     g_ea_modifying = false;    // next SL/TP change is from EA trail
 string   g_open_source = "strategy"; // strategy | manual_test
 ulong    g_active_magic = 0;        // magic for current open/fill context
 string   g_active_model_id = "";
-int      g_exit_mode = 1;
+int      g_exit_mode = 0;
 double   g_trail_act = 1.0;
 double   g_trail_dist = 0.5;
 int      g_max_hold = 36;
@@ -160,6 +160,7 @@ string   g_pending_decision = "";
 bool     g_paper_open = false;
 int      g_paper_held = 0;
 ulong    g_paper_ticket = 700000;
+int      g_last_hist_spread_pts = 0;  // last non-zero MqlRates.spread (avoid weekend tick)
 
 //+------------------------------------------------------------------+
 string BridgePath(const string name)
@@ -170,6 +171,7 @@ string BridgePath(const string name)
 // Forward decls — roster loader uses JSON helpers defined below
 string JsonGetString(const string json, const string key);
 double JsonGetDouble(const string json, const string key, const double def = 0);
+int    ParseExitMode(const string json);
 void RefreshChartComment(const bool force = false);
 void WriteEaSyncJson();
 void PublishBarSyncBegin(const string bar_want);
@@ -179,6 +181,7 @@ bool DecisionMatchesBar(const string json, const string want_bar_time);
 bool TryReadDecisionForBar(const string want_bar_time, const string model_id, string &json_out);
 bool ApplyLiveDecisionSlot(const int slot, const string json, bool &any_open);
 void TryRecoverLateDecisions();
+void WaitHistoryDecisionsForBar(const string want);
 
 string DecisionPathForModel(const string model_id)
 {
@@ -423,6 +426,9 @@ void OnTimer()
 {
    if(InpMode == BRIDGE_HISTORY_FEED)
    {
+      // Reset may have wiped parquet; workers block on history_request.
+      // Serve export chunks while pumping OOS bars — otherwise no decide/hits.
+      ProcessHistoryRequest();
       ProcessHistoryFeed();
       return;
    }
@@ -444,6 +450,7 @@ void OnTimer()
             WriteConnectionJson();
             g_last_heartbeat_ms = now_ms;
          }
+         ProcessHistoryRequest();
          ProcessHistoryFeed();
          return;
       }
@@ -654,7 +661,7 @@ double LotsForRisk(double sl_dist)
 //+------------------------------------------------------------------+
 string JsonGetString(const string json, const string key)
 {
-   string pat = "\"" + key + "\"";
+   string pat = "\"" + key + "\":";
    int p = StringFind(json, pat);
    if(p < 0) return "";
    int colon = StringFind(json, ":", p);
@@ -672,7 +679,7 @@ string JsonGetString(const string json, const string key)
 
 double JsonGetDouble(const string json, const string key, const double def = 0)
 {
-   string pat = "\"" + key + "\"";
+   string pat = "\"" + key + "\":";
    int p = StringFind(json, pat);
    if(p < 0) return def;
    int colon = StringFind(json, ":", p);
@@ -703,9 +710,24 @@ double JsonGetDouble(const string json, const string key, const double def = 0)
    return StringToDouble(rest);
 }
 
+int ParseExitMode(const string json)
+{
+   // Exact "exit_mode": — do not match mining key exit_modes_full_only.
+   string em = JsonGetString(json, "exit_mode");
+   StringToLower(em);
+   if(em == "full" || em == "0") return 0;
+   if(em == "hybrid" || em == "1") return 1;
+   if(em == "trail" || em == "2") return 2;
+   if(em == "partial" || em == "3") return 3;
+   double n = JsonGetDouble(json, "exit_mode", -1);
+   if(n >= 0.0 && n <= 3.0)
+      return (int)n;
+   return 0;
+}
+
 bool JsonGetBool(const string json, const string key, const bool def = false)
 {
-   string pat = "\"" + key + "\"";
+   string pat = "\"" + key + "\":";
    int p = StringFind(json, pat);
    if(p < 0) return def;
    int colon = StringFind(json, ":", p);
@@ -1013,7 +1035,7 @@ bool WriteConnectionJson()
    json += "\"symbol\":\"" + _Symbol + "\",";
    json += "\"period\":\"" + PeriodTag() + "\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
-   json += "\"ea_version\":\"1.22\",";
+   json += "\"ea_version\":\"1.25\",";
    json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"account_margin_mode\":" + IntegerToString(AccountInfoInteger(ACCOUNT_MARGIN_MODE)) + ",";
@@ -1609,13 +1631,7 @@ bool OpenFromDecision(const string json)
    double sl = JsonGetDouble(json, "sl", 0);
    double tp = JsonGetDouble(json, "tp", 0);
 
-   string em = JsonGetString(json, "exit_mode");
-   StringToLower(em);
-   if(em == "full" || em == "0") g_exit_mode = 0;
-   else if(em == "hybrid" || em == "1") g_exit_mode = 1;
-   else if(em == "trail" || em == "2") g_exit_mode = 2;
-   else if(em == "partial" || em == "3") g_exit_mode = 3;
-   else g_exit_mode = 2;
+   g_exit_mode = ParseExitMode(json);
    g_trail_act = JsonGetDouble(json, "trail_activate_r", 1.0);
    g_trail_dist = JsonGetDouble(json, "trail_distance_r", 0.5);
    g_max_hold = (int)JsonGetDouble(json, "max_hold_bars", InpMaxHoldBars);
@@ -1837,18 +1853,17 @@ void ManageOpen()
       if(PositionsByMagic(want) == 0)
          continue;
       SetActiveSlot(s);
-      // BUG-11: restore this model's exit params before trail / max_hold
+      // Always restore this model's exit params. Gating on max_hold lost
+      // full-TP genomes after reconnect (slot max_hold=0 → hybrid trail).
+      g_exit_mode = g_slot_exit_mode[s];
       if(g_slot_max_hold[s] > 0)
-      {
          g_max_hold = g_slot_max_hold[s];
-         g_exit_mode = g_slot_exit_mode[s];
-         if(g_slot_trail_act[s] > 0)
-            g_trail_act = g_slot_trail_act[s];
-         if(g_slot_trail_dist[s] > 0)
-            g_trail_dist = g_slot_trail_dist[s];
-         if(g_slot_risk[s] > 0)
-            g_risk = g_slot_risk[s];
-      }
+      if(g_slot_trail_act[s] > 0)
+         g_trail_act = g_slot_trail_act[s];
+      if(g_slot_trail_dist[s] > 0)
+         g_trail_dist = g_slot_trail_dist[s];
+      if(g_slot_risk[s] > 0)
+         g_risk = g_slot_risk[s];
       for(int i = PositionsTotal() - 1; i >= 0; i--)
       {
          ulong ticket = PositionGetTicket(i);
@@ -1871,7 +1886,7 @@ void ManageOpen()
 
          datetime open_time = (datetime)PositionGetInteger(POSITION_TIME);
          int held = (int)((TimeCurrent() - open_time) / PeriodSeconds(Period()));
-         if(held >= g_max_hold)
+         if(g_max_hold > 0 && held >= g_max_hold)
          {
             if(trade.PositionClose(ticket))
                ReportCloseIfNeeded("max_hold");
@@ -2144,6 +2159,7 @@ bool LoadHistoryRatesRange()
    g_open_ticket = 0;
    g_open_signal_id = "";
    g_had_position = false;
+   g_last_hist_spread_pts = 0;
    // Multi-model: wipe ALL slot paper/pending — otherwise a Stop mid-trade leaves
    // g_slot_paper_open[] true while journal was cleared, or vice versa.
    ArrayInitialize(g_slot_paper_open, false);
@@ -2188,6 +2204,20 @@ void ReportPaperClose(const string reason, const double exit_px, const string ba
    g_had_position = false;
 }
 
+double HistSpreadPrice(const MqlRates &r)
+{
+   // OHLC from CopyRates is Bid. Live fills BUY at Ask / SELL at Bid.
+   // Prefer the bar's stored spread — never weekend SYMBOL_SPREAD during Replay.
+   int pts = (int)r.spread;
+   if(pts > 0)
+      g_last_hist_spread_pts = pts;
+   else if(g_last_hist_spread_pts > 0)
+      pts = g_last_hist_spread_pts;
+   else
+      pts = 10; // 1.0 pip on 3/5-digit
+   return pts * _Point;
+}
+
 void ManagePaperHistory(const MqlRates &r)
 {
    if(!g_paper_open)
@@ -2199,23 +2229,31 @@ void ManagePaperHistory(const MqlRates &r)
    if(g_paper_held <= 1)
       return;
 
-   // Match Python OOS trail: activate/move from bar high (BUY) / low (SELL)
+   const double spr = HistSpreadPrice(r);
+   const double bid_h = r.high;
+   const double bid_l = r.low;
+   const double bid_c = r.close;
+   const double ask_h = r.high + spr;
+   const double ask_l = r.low + spr;
+   const double ask_c = r.close + spr;
+
+   // Live trail: BUY from Bid, SELL from Ask
    if(g_exit_mode == 1 || g_exit_mode == 2)
    {
       if(g_open_action == "BUY")
       {
-         if(r.high >= g_open_entry + g_risk * g_trail_act)
+         if(bid_h >= g_open_entry + g_risk * g_trail_act)
          {
-            double nsl = r.high - g_risk * g_trail_dist;
+            double nsl = bid_h - g_risk * g_trail_dist;
             if(nsl > g_open_sl)
                g_open_sl = nsl;
          }
       }
       else
       {
-         if(r.low <= g_open_entry - g_risk * g_trail_act)
+         if(ask_l <= g_open_entry - g_risk * g_trail_act)
          {
-            double nsl = r.low + g_risk * g_trail_dist;
+            double nsl = ask_l + g_risk * g_trail_dist;
             if(g_open_sl == 0 || nsl < g_open_sl)
                g_open_sl = nsl;
          }
@@ -2227,13 +2265,13 @@ void ManagePaperHistory(const MqlRates &r)
 
    if(g_open_action == "BUY")
    {
-      if(g_open_sl > 0 && r.low <= g_open_sl)
+      if(g_open_sl > 0 && bid_l <= g_open_sl)
       {
          ReportPaperClose(trail_moved ? "trail" : "sl", g_open_sl,
                           TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
-      if(g_open_tp > 0 && r.high >= g_open_tp)
+      if(g_open_tp > 0 && bid_h >= g_open_tp)
       {
          ReportPaperClose("tp", g_open_tp, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
@@ -2241,13 +2279,13 @@ void ManagePaperHistory(const MqlRates &r)
    }
    else
    {
-      if(g_open_sl > 0 && r.high >= g_open_sl)
+      if(g_open_sl > 0 && ask_h >= g_open_sl)
       {
          ReportPaperClose(trail_moved ? "trail" : "sl", g_open_sl,
                           TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
-      if(g_open_tp > 0 && r.low <= g_open_tp)
+      if(g_open_tp > 0 && ask_l <= g_open_tp)
       {
          ReportPaperClose("tp", g_open_tp, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
@@ -2255,11 +2293,14 @@ void ManagePaperHistory(const MqlRates &r)
    }
 
    // held includes entry bar; Python uses (i - entry_idx) >= max_hold
-   if(g_paper_held - 1 >= g_max_hold)
-      ReportPaperClose("max_hold", r.close, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
+   // max_hold<=0 means unlimited (full TP) — never treat 0 as "close next bar"
+   if(g_max_hold > 0 && g_paper_held - 1 >= g_max_hold)
+      ReportPaperClose("max_hold",
+                       (g_open_action == "BUY") ? bid_c : ask_c,
+                       TimeToString(r.time, TIME_DATE | TIME_MINUTES));
 }
 
-bool PaperOpenFromDecision(const string json, const double entry_price, const string bar_time = "")
+bool PaperOpenFromDecision(const string json, const MqlRates &r, const string bar_time = "")
 {
    string action = JsonGetString(json, "action");
    StringToUpper(action);
@@ -2291,23 +2332,20 @@ bool PaperOpenFromDecision(const string json, const double entry_price, const st
    double planned = JsonGetDouble(json, "entry", 0);
    double sl = JsonGetDouble(json, "sl", 0);
    double tp = JsonGetDouble(json, "tp", 0);
+   // Same as live OrderSend: BUY at Ask, SELL at Bid (OHLC is Bid).
+   const double spr = HistSpreadPrice(r);
+   const double entry_price = (action == "BUY") ? (r.open + spr) : r.open;
    if(sl <= 0 || tp <= 0 || entry_price <= 0)
       return false;
 
-   string em = JsonGetString(json, "exit_mode");
-   StringToLower(em);
-   if(em == "full" || em == "0") g_exit_mode = 0;
-   else if(em == "hybrid" || em == "1") g_exit_mode = 1;
-   else if(em == "trail" || em == "2") g_exit_mode = 2;
-   else if(em == "partial" || em == "3") g_exit_mode = 3;
-   else g_exit_mode = 2;
+   g_exit_mode = ParseExitMode(json);
    g_trail_act = JsonGetDouble(json, "trail_activate_r", 1.0);
    g_trail_dist = JsonGetDouble(json, "trail_distance_r", 0.5);
    g_max_hold = (int)JsonGetDouble(json, "max_hold_bars", InpMaxHoldBars);
 
-   // Rebase SL/TP onto actual fill open using planned risk/RR from App decision.
-   // HistoryFeed fills at bar open (raw); decision levels are vs spread-adjusted
-   // planned entry — without rebase, risk collapses and paper R explodes vs OOS.
+   // Rebase SL/TP onto Bid/Ask fill using planned risk/RR from App decision.
+   // Decision levels are vs lab spread-adjusted entry; live also rebases onto
+   // current Ask/Bid so lot size and R stay as intended.
    double planned_risk = (planned > 0.0) ? MathAbs(planned - sl) : 0.0;
    double rr = JsonGetDouble(json, "rr", 0.0);
    if(rr <= 0.0 && planned_risk > 0.0 && planned > 0.0)
@@ -2375,7 +2413,7 @@ bool PaperOpenFromDecision(const string json, const double entry_price, const st
                    false, "strategy", bt);
    Print("ForgeBridgeLive HistoryFeed paper ", action, " @", entry_price,
          " sl=", sl, " tp=", tp, " risk=", sl_dist,
-         " sid=", sid, " bar=", bt);
+         " spread=", spr, " sid=", sid, " bar=", bt);
    return true;
 }
 
@@ -2397,7 +2435,7 @@ void ApplyPendingOpen(const MqlRates &r)
       SetActiveSlot(s);
       bool ok = false;
       if(UsePaperFills())
-         ok = PaperOpenFromDecision(g_slot_pending[s], r.open, bt);
+         ok = PaperOpenFromDecision(g_slot_pending[s], r, bt);
       else
          ok = OpenFromDecision(g_slot_pending[s]);
       if(ok && UsePaperFills())
@@ -2472,6 +2510,70 @@ void ManagePaperHistoryAll(const MqlRates &r)
          g_paper_open = true;
 }
 
+void WaitHistoryDecisionsForBar(const string want)
+{
+   // Live polls every flat model in parallel until each has a bar-matched
+   // decision. Sequential wait with delay_ms+6000 starved models 2–5 →
+   // missed entries and different fills every Replay run.
+   LoadModelsRoster();
+   bool pending[MAX_MODELS];
+   int n_pending = 0;
+   for(int s = 0; s < g_model_n; s++)
+   {
+      pending[s] = false;
+      bool flat = UsePaperFills()
+         ? (!g_slot_paper_open[s])
+         : (PositionsByMagic(g_model_magics[s]) == 0);
+      if(!flat || g_slot_pending[s] != "")
+      {
+         PublishBarSyncModel(s, "OPEN", "-", "skip");
+         continue;
+      }
+      pending[s] = true;
+      n_pending++;
+   }
+
+   int wait_ms = (int)MathMax(InpHistoryDecisionWaitMs, 30000 * MathMax(1, g_model_n));
+   wait_ms = (int)MathMin(wait_ms, 120000);
+   uint deadline = GetTickCount() + (uint)wait_ms;
+   int poll = (int)MathMax(20, MathMin(50, InpPollMs));
+
+   while(n_pending > 0 && GetTickCount() < deadline)
+   {
+      for(int s = 0; s < g_model_n; s++)
+      {
+         if(!pending[s])
+            continue;
+         string json;
+         if(!TryReadDecisionForBar(want, g_model_ids[s], json))
+            continue;
+         string action = JsonGetString(json, "action");
+         StringToUpper(action);
+         if(action == "BUY" || action == "SELL")
+         {
+            g_slot_pending[s] = json;
+            PublishBarSyncModel(s, "OK", action, "pending");
+         }
+         else
+            PublishBarSyncModel(s, "OK", (action == "" ? "FLAT" : action), "");
+         pending[s] = false;
+         n_pending--;
+      }
+      if(n_pending > 0)
+         Sleep(poll);
+   }
+
+   for(int s = 0; s < g_model_n; s++)
+   {
+      if(!pending[s])
+         continue;
+      PublishBarSyncModel(s, "TIMEOUT", "-", IntegerToString(wait_ms) + "ms");
+      Print("ForgeBridgeLive HistoryFeed: no decision for ", want,
+            " model=", g_model_ids[s],
+            " (waited ", wait_ms, "ms)");
+   }
+}
+
 void ProcessHistoryFeed()
 {
    static string s_loaded_request = "";
@@ -2511,43 +2613,19 @@ void ProcessHistoryFeed()
 
    if(g_hist_n < 1 || g_hist_cursor >= g_hist_n)
    {
-      // Force-close every paper slot (not only the last active globals).
-      if(UsePaperFills())
-      {
-         for(int s = 0; s < g_model_n; s++)
-         {
-            if(!g_slot_paper_open[s])
-               continue;
-            SetActiveSlot(s);
-            g_open_ticket = g_slot_ticket[s];
-            g_open_signal_id = g_slot_sid[s];
-            g_open_action = g_slot_action[s];
-            g_open_entry = g_slot_entry[s];
-            g_open_sl = g_slot_sl[s];
-            g_open_sl_initial = g_slot_sl_init[s];
-            g_open_tp = g_slot_tp[s];
-            g_open_lots = g_slot_lots[s];
-            g_risk = g_slot_risk[s];
-            g_paper_open = true;
-            ReportPaperClose(
-              "end_range",
-              g_hist_n > 0 ? g_hist_rates[g_hist_n - 1].close : g_open_entry,
-              g_hist_n > 0
-                ? TimeToString(g_hist_rates[g_hist_n - 1].time, TIME_DATE | TIME_MINUTES)
-                : g_sim_last_bar
-            );
-            g_slot_paper_open[s] = false;
-            g_slot_ticket[s] = 0;
-            g_slot_sid[s] = "";
-         }
-         g_paper_open = false;
-      }
-      else if(g_had_position && PositionsByMagic() > 0)
+      // Live leaves positions open at Friday close. Force-close at last Bid
+      // ("end_range") invented R (incl. ~-2R after worker weekend reconcile).
+      int n_open = 0;
+      for(int s = 0; s < g_model_n; s++)
+         if(g_slot_paper_open[s])
+            n_open++;
+      if(!UsePaperFills() && g_had_position && PositionsByMagic() > 0)
          CloseAllByMagic("end_range");
       g_sim_ea_status = "completed";
       g_sim_enabled = false;
       WriteSimControlFile();
-      Print("ForgeBridgeLive HistoryFeed completed bars=", g_hist_n);
+      Print("ForgeBridgeLive HistoryFeed completed bars=", g_hist_n,
+            " paper_open=", n_open, " (left open like Live)");
       return;
    }
 
@@ -2574,51 +2652,7 @@ void ProcessHistoryFeed()
    string want = TimeToString(r.time, TIME_DATE | TIME_MINUTES);
    g_sim_last_bar = want;
    PublishBarSyncBegin(want);
-
-   // Ask each flat model for a decision — ONE shared wait budget for the bar
-   // (not wait_ms × N models).
-   LoadModelsRoster();
-   int wait_ms = (int)MathMax(2500, MathMin(InpHistoryDecisionWaitMs, g_sim_delay_ms + 6000));
-   wait_ms = (int)MathMax(wait_ms, 1500 * MathMax(1, g_model_n));
-   wait_ms = (int)MathMin(wait_ms, InpHistoryDecisionWaitMs);
-   uint deadline = GetTickCount() + (uint)wait_ms;
-   for(int s = 0; s < g_model_n; s++)
-   {
-      bool flat = UsePaperFills()
-         ? (!g_slot_paper_open[s])
-         : (PositionsByMagic(g_model_magics[s]) == 0);
-      if(!flat || g_slot_pending[s] != "")
-      {
-         PublishBarSyncModel(s, "OPEN", "-", "skip");
-         continue;
-      }
-      int remain = (int)(deadline - GetTickCount());
-      if(remain < 150)
-      {
-         PublishBarSyncModel(s, "TIMEOUT", "-", "budget");
-         continue;
-      }
-      string json;
-      if(WaitDecisionForBar(want, json, remain, g_model_ids[s]))
-      {
-         string action = JsonGetString(json, "action");
-         StringToUpper(action);
-         if(action == "BUY" || action == "SELL")
-         {
-            g_slot_pending[s] = json;
-            PublishBarSyncModel(s, "OK", action, "pending");
-         }
-         else
-            PublishBarSyncModel(s, "OK", (action == "" ? "FLAT" : action), "");
-      }
-      else
-      {
-         PublishBarSyncModel(s, "TIMEOUT", "-", IntegerToString(wait_ms) + "ms");
-         Print("ForgeBridgeLive HistoryFeed: no decision for ", want,
-               " model=", g_model_ids[s],
-               " (waited ", wait_ms, "ms — Start feed App / bridge_sim loop?)");
-      }
-   }
+   WaitHistoryDecisionsForBar(want);
    PublishBarSyncEnd(true);
 
    g_hist_cursor++;

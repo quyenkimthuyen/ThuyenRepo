@@ -260,6 +260,12 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
   workers = list(bstat.get("workers") or extra_workers.get("workers") or [])
   bridge_running = bool(bstat.get("running"))
   remine_gate_on = bool(gate_enabled())
+  strategy_frozen = False
+  try:
+    from strategy_mode import frozen_enabled
+    strategy_frozen = bool(frozen_enabled())
+  except Exception:
+    strategy_frozen = False
 
   books_out: list[dict[str, Any]] = []
   alerts: list[dict[str, Any]] = []
@@ -622,6 +628,22 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
             + "; ".join(str(x) for x in (dec.get("risk_cap_reasons") or [reason]))
           )[:160],
         })
+      elif strat_src == "frozen_missing" or reason == "frozen_missing":
+        flags.append("FROZEN_MISS")
+        level = _worst(level, "warn")
+        alerts.append({
+          "level": "warn",
+          "scope": "model",
+          "symbol": sym_n,
+          "timeframe": tf_n,
+          "model_id": mid,
+          "code": "FROZEN_MISSING",
+          "message": f"{label}: frozen mode — no schedule/live_weeks genome",
+        })
+      elif strat_src in ("frozen",) or (
+        strat_src == "schedule" and strategy_frozen
+      ):
+        flags.append("FROZEN")
       elif strat_src == "remine":
         # Remine past schedule is normal on Live. Only surface as WARN when the
         # quality gate is ON (and passed). Gate OFF → keep src=remine in meta,
@@ -736,6 +758,11 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
       "level": book_level,
       "models": models_out,
       "n_models": len(models_out),
+      "last": (
+        bar.get("close")
+        if isinstance(bar, dict) and bar.get("close") is not None
+        else (conn.get("bid") if isinstance(conn, dict) else None)
+      ),
     }
     quote = live_quote(conn if isinstance(conn, dict) else {}, bar if isinstance(bar, dict) else {})
     book_row.update(quote)
@@ -790,4 +817,5 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
     "books": books_out,
     "remine_gate_last": remine_last,
     "risk_cap_last": risk_cap_last,
+    "strategy_mode": "frozen" if strategy_frozen else "weekly",
   }

@@ -123,8 +123,13 @@ def reset_live_data(
   include_packages: bool = True,
   reseed_ohlc: bool = True,
   disarm_kill: bool = True,
+  keep_live_weeks: bool = True,
 ) -> dict[str, Any]:
-  """Full Live data reset. Returns a summary payload."""
+  """Full Live data reset. Returns a summary payload.
+
+  ``keep_live_weeks`` (default True) preserves ``*_live_weeks.json`` — the
+  frozen Monday remine Replay must reuse to match Live.
+  """
   summary: dict[str, Any] = {
     "updated_at": _now(),
     "stopped": {},
@@ -134,6 +139,7 @@ def reset_live_data(
     "packages_removed": 0,
     "roster_cleared": False,
     "reseed": [],
+    "live_weeks_kept": [],
     "errors": [],
   }
 
@@ -172,14 +178,19 @@ def reset_live_data(
           summary["results_removed"].append(p.name)
 
   if runtime:
-    # materialized schedules / pins / live_weeks
+    # materialized schedules / pins — keep frozen live remine by default
     tm = RESULTS_DIR / "trade_models"
     if tm.exists():
       n = 0
+      kept: list[str] = []
       for p in list(tm.iterdir()):
+        if keep_live_weeks and p.name.endswith("_live_weeks.json"):
+          kept.append(p.name)
+          continue
         if _rm(p):
           n += 1
       summary["trade_models_files_removed"] = n
+      summary["live_weeks_kept"] = kept
     workers = RESULTS_DIR / "workers"
     if workers.exists():
       n = 0

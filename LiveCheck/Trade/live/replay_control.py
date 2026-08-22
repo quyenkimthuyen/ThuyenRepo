@@ -32,7 +32,7 @@ LIVE_LIKE_MODES = frozenset({"live_like", "paper", "inline"})
 EA_MODES = frozenset({"ea", "ea_sim", "simulate", "history_feed"})
 PARITY_MODES = frozenset({"parity", "lab", "schedule_parity"})
 EA_DELAY_MS = 100
-HISTORY_FEED_EA_VERSION = (1, 21)
+HISTORY_FEED_EA_VERSION = (1, 25)
 
 
 def _now() -> str:
@@ -50,7 +50,7 @@ def _parse_ea_version(raw: Any) -> tuple[int, ...]:
 
 
 def live_ea_needs_history_feed_binary() -> bool:
-  """True when charts still run ForgeBridgeLive < 1.21 (Live mode ignores sim_control)."""
+  """True when charts still run ForgeBridgeLive < 1.25 (HistoryFeed wait/parity)."""
   dirs = live_bridge_dirs()
   if not dirs:
     return True
@@ -101,7 +101,6 @@ def load_oos_prefs() -> dict[str, Any]:
     "from": str(data.get("from") or OOS_FROM)[:10],
     "to": str(data.get("to") or OOS_TO)[:10],
     "mode": normalize_replay_mode(data.get("mode") or "live_like"),
-    "force_remine": bool(data.get("force_remine")),
     "delay_ms": max(1, min(delay, 5000)),
   }
 
@@ -111,7 +110,6 @@ def save_oos_prefs(
   date_from: str | None = None,
   date_to: str | None = None,
   mode: str | None = None,
-  force_remine: bool | None = None,
   delay_ms: int | None = None,
   **_extra: Any,
 ) -> dict[str, Any]:
@@ -124,7 +122,6 @@ def save_oos_prefs(
     "from": str(date_from if date_from is not None else prev["from"])[:10],
     "to": str(date_to if date_to is not None else prev["to"])[:10],
     "mode": normalize_replay_mode(mode if mode is not None else prev["mode"]),
-    "force_remine": bool(force_remine if force_remine is not None else prev["force_remine"]),
     "delay_ms": max(1, min(delay, 5000)),
     "updated_at": _now(),
   }
@@ -134,7 +131,6 @@ def save_oos_prefs(
     "from": payload["from"],
     "to": payload["to"],
     "mode": payload["mode"],
-    "force_remine": payload["force_remine"],
     "delay_ms": payload["delay_ms"],
   }
 
@@ -147,11 +143,17 @@ def _normalize_oos_range(date_from: str, date_to: str) -> tuple[str, str]:
   return a, b
 
 
-def reset_strategy_stats(*, mode: str, force_remine: bool = False) -> dict[str, Any]:
+def reset_strategy_stats(*, mode: str, **_extra: Any) -> dict[str, Any]:
+  sm = "weekly"
+  try:
+    from strategy_mode import strategy_mode as _strategy_mode
+    sm = _strategy_mode()
+  except Exception:
+    sm = "weekly"
   payload = {
     "updated_at": _now(),
     "mode": normalize_replay_mode(mode),
-    "force_remine": bool(force_remine),
+    "strategy_mode": sm,
     "schedule_hits": 0,
     "remine_count": 0,
     "skip_count": 0,
@@ -417,7 +419,6 @@ def _start_ea_simulate(
   *,
   date_from: str,
   date_to: str,
-  force: bool,
   delay_ms: int,
 ) -> dict[str, Any]:
   if os.name != "nt":
@@ -429,7 +430,7 @@ def _start_ea_simulate(
   env["LIVE_REPLAY_FROM"] = date_from
   env["LIVE_REPLAY_TO"] = date_to
   env["LIVE_REPLAY_MODE"] = "ea"
-  env["LIVE_REPLAY_FORCE_REMINE"] = "1" if force else "0"
+  env.pop("LIVE_REPLAY_FORCE_REMINE", None)
 
   # Write control first so a Live EA already on chart starts HistoryFeed
   # immediately (OnTick skips live ticks). Deploy after if charts are missing.
@@ -469,7 +470,6 @@ def _start_ea_simulate(
     "mode": "ea",
     "oos_from": date_from,
     "oos_to": date_to,
-    "force_remine": force,
     "delay_ms": delay_ms,
     "started_at": _now(),
     "pid": primary_pid,
@@ -486,7 +486,6 @@ def _start_ea_simulate(
     "started": True,
     "pid": primary_pid,
     "mode": "ea",
-    "force_remine": force,
     "script": "ea_history_feed",
     "log": str(LOG_PATH),
     "from": date_from,
@@ -506,8 +505,8 @@ def start_oos_replay(
   date_to: str | None = None,
   restart: bool = True,
   mode: str | None = None,
-  force_remine: bool | None = None,
   delay_ms: int | None = None,
+  **_extra: Any,
 ) -> dict[str, Any]:
   prefs = load_oos_prefs()
   date_from, date_to = _normalize_oos_range(
@@ -515,9 +514,6 @@ def start_oos_replay(
     date_to or prefs["to"],
   )
   mode_n = normalize_replay_mode(mode if mode is not None else prefs["mode"])
-  force = bool(force_remine if force_remine is not None else prefs["force_remine"])
-  if mode_n == "parity":
-    force = False
   try:
     delay = int(delay_ms if delay_ms is not None else prefs.get("delay_ms") or EA_DELAY_MS)
   except (TypeError, ValueError):
@@ -526,7 +522,6 @@ def start_oos_replay(
     date_from=date_from,
     date_to=date_to,
     mode=mode_n,
-    force_remine=force,
     delay_ms=delay,
   )
 
@@ -535,13 +530,12 @@ def start_oos_replay(
     time.sleep(0.5)
 
   RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-  reset_strategy_stats(mode=mode_n, force_remine=force)
+  reset_strategy_stats(mode=mode_n)
 
   if mode_n == "ea":
     return _start_ea_simulate(
       date_from=date_from,
       date_to=date_to,
-      force=force,
       delay_ms=delay,
     )
 
@@ -549,14 +543,14 @@ def start_oos_replay(
   env["LIVE_REPLAY_FROM"] = date_from
   env["LIVE_REPLAY_TO"] = date_to
   env["LIVE_REPLAY_MODE"] = "paper" if mode_n == "live_like" else "parity"
-  env["LIVE_REPLAY_FORCE_REMINE"] = "1" if force else "0"
+  env.pop("LIVE_REPLAY_FORCE_REMINE", None)
   env.setdefault("PYTHONUTF8", "1")
   env.setdefault("PYTHONIOENCODING", "utf-8")
 
   script = SCRIPT_PAPER if mode_n == "live_like" else SCRIPT_PARITY
   logf = open(LOG_PATH, "a", encoding="utf-8")
   logf.write(
-    f"\n==== UI start {_now()} mode={mode_n} force_remine={force} "
+    f"\n==== UI start {_now()} mode={mode_n} "
     f"{date_from}->{date_to} ====\n"
   )
   logf.flush()
@@ -582,7 +576,6 @@ def start_oos_replay(
     "started": True,
     "pid": proc.pid,
     "mode": mode_n,
-    "force_remine": force,
     "script": str(script),
     "log": str(LOG_PATH),
     "from": date_from,
@@ -682,7 +675,6 @@ def load_sim_progress() -> dict[str, Any]:
     "pid": int(PID_PATH.read_text().strip()) if PID_PATH.exists() and is_replay_running() else None,
     "log": str(LOG_PATH),
     "mode": mode,
-    "force_remine": bool(prefs.get("force_remine")),
     "books": books,
     "batch": batch,
     "strategy_stats": stats,

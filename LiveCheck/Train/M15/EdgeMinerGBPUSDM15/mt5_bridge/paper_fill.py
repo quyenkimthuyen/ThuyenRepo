@@ -39,7 +39,7 @@ def _exit_mode_code(raw: Any) -> int:
     return 2
   if s in ("partial", "3"):
     return 3
-  return 2
+  return 0
 
 
 @dataclass

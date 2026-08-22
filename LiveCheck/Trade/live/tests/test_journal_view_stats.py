@@ -4,6 +4,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 LIVE = Path(__file__).resolve().parents[1]
 if str(LIVE) not in sys.path:
   sys.path.insert(0, str(LIVE))
@@ -143,3 +145,38 @@ def test_today_seven_losses_when_mt5_profit_present():
   assert s["win_rate_pct"] == 0.0
   assert s["total_r"] < 0
   assert wl_text(s["wins"], s["losses"], s["be"]) == "0/7"
+
+
+def test_historyfeed_paper_profit_is_r_not_money():
+  """Replay WriteFillJsonEx stores R-multiple in profit; must not divide by lot*contract."""
+  t = _closed(
+    direction="BUY",
+    entry_px=1.15966,
+    exit_px=1.15914,
+    sl=1.15914,
+    sl_initial=1.15914,
+    lots=0.13,
+    r=-1.0,
+    result="LOSS",
+    profit=-1.0,
+    reason="sl",
+  )
+  assert _trade_r(t) == pytest.approx(-1.0)
+  s = _summarize_group([
+    t,
+    _closed(
+      direction="BUY",
+      entry_px=1.16,
+      exit_px=1.1632,
+      sl=1.1592,
+      sl_initial=1.1592,
+      lots=0.13,
+      r=4.0,
+      result="WIN",
+      profit=4.0,
+      reason="tp",
+    ),
+  ])
+  assert s["total_r"] == pytest.approx(3.0)
+  assert s["wins"] == 1
+  assert s["losses"] == 1

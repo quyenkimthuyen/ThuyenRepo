@@ -224,9 +224,13 @@ def main() -> int:
   results["books"] = finished
   results["finished_at"] = _now()
   results["status"] = "completed"
-  results["force_remine"] = os.environ.get("LIVE_REPLAY_FORCE_REMINE", "").strip().lower() in (
-    "1", "true", "yes", "on",
-  )
+  sm = "weekly"
+  try:
+    from strategy_mode import strategy_mode as _sm
+    sm = _sm()
+  except Exception:
+    sm = "weekly"
+  results["strategy_mode"] = sm
   results["ok"] = all(b.get("rc") == 0 for b in results["books"])
   _write_batch(results)
   print(f"\nWrote {OUT}", flush=True)

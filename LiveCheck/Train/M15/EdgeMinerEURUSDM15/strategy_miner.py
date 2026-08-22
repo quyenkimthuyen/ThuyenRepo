@@ -370,6 +370,78 @@ def _pa_confluence_bonus(fm, i: int, direction: int) -> float:
   return 0.35 * v
 
 
+def watch_last_bar(fm, strat, i: int) -> dict:
+  """Last-bar gates for Live Now: score, ML, HTF, confluence, RSI/VWAP."""
+  def _feat(name: str):
+    try:
+      v = float(fm.get(name)[i])
+    except (KeyError, AttributeError, TypeError, ValueError, IndexError):
+      return None
+    if np.isnan(v):
+      return None
+    return v
+
+  ls, lc = _count_matching_rules(fm, strat.long_rules, i)
+  ss, sc = _count_matching_rules(fm, strat.short_rules, i)
+  ml = getattr(strat, "ml_scorer", None)
+  ml_l_arr = getattr(ml, "_prob_long", None) if ml is not None else None
+  ml_s_arr = getattr(ml, "_prob_short", None) if ml is not None else None
+  ml_l = (
+    float(ml_l_arr[i])
+    if ml_l_arr is not None and 0 <= i < len(ml_l_arr) and not np.isnan(ml_l_arr[i])
+    else 0.5
+  )
+  ml_s = (
+    float(ml_s_arr[i])
+    if ml_s_arr is not None and 0 <= i < len(ml_s_arr) and not np.isnan(ml_s_arr[i])
+    else 0.5
+  )
+  ml_live = bool(
+    ml_l_arr is not None and 0 <= i < len(ml_l_arr) and not np.isnan(ml_l_arr[i])
+  ) or bool(
+    ml_s_arr is not None and 0 <= i < len(ml_s_arr) and not np.isnan(ml_s_arr[i])
+  )
+  htf_l = _htf_bias(fm, i, 1, strat)
+  htf_s = _htf_bias(fm, i, -1, strat)
+  pa_l = _pa_confluence_bonus(fm, i, 1)
+  pa_s = _pa_confluence_bonus(fm, i, -1)
+  combined_l = ls * (0.5 + ml_l) * htf_l + pa_l
+  combined_s = ss * (0.5 + ml_s) * htf_s + pa_s
+  thr = float(getattr(strat, "score_threshold", 0.6) or 0.6)
+  ml_min = float(getattr(strat, "ml_prob_min", 0.4) or 0.4)
+  return {
+    "buy": {
+      "w": round(float(ls), 4),
+      "n": int(lc),
+      "ml": round(ml_l, 4),
+      "htf": round(float(htf_l), 4),
+      "pa": round(float(pa_l), 4),
+      "score": round(float(combined_l), 4),
+      "score_ok": bool(combined_l >= thr),
+      "ml_ok": bool(ml_l >= ml_min),
+    },
+    "sell": {
+      "w": round(float(ss), 4),
+      "n": int(sc),
+      "ml": round(ml_s, 4),
+      "htf": round(float(htf_s), 4),
+      "pa": round(float(pa_s), 4),
+      "score": round(float(combined_s), 4),
+      "score_ok": bool(combined_s >= thr),
+      "ml_ok": bool(ml_s >= ml_min),
+    },
+    "score_threshold": thr,
+    "ml_prob_min": ml_min,
+    "min_rules": int(getattr(strat, "min_rules_match", 2) or 2),
+    "ml_live": ml_live,
+    "rsi": _feat("rsi"),
+    "vwap": _feat("session_vwap_dist"),
+    "htf_trend": _feat("htf_trend"),
+    "confluence_long": _feat("confluence_long"),
+    "confluence_short": _feat("confluence_short"),
+  }
+
+
 def generate_signals_mined(
   fm, strat, start_idx=0, end_idx=None, *, include_last_bar: bool = False,
 ):

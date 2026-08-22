@@ -58,7 +58,7 @@ def _exit_mode_code(raw: Any) -> int:
     return 2
   if s in ("partial", "3"):
     return 3
-  return 2
+  return 0
 
 
 @dataclass
@@ -79,7 +79,7 @@ class PaperBook:
   tp: float = 0.0
   lots: float = 0.01
   risk: float = 0.0
-  exit_mode: int = 2
+  exit_mode: int = 0
   trail_act: float = 1.0
   trail_dist: float = 0.5
   max_hold: int = 96

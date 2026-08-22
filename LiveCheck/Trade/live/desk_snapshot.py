@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -78,6 +79,303 @@ def _fmt_age(sec: float | None) -> str:
   if sec < 3600:
     return f"{int(sec // 60)}m"
   return f"{int(sec // 3600)}h"
+
+
+_WATCH_ACTION_RANK = {
+  "BUY": 0, "LONG": 0, "SELL": 1, "SHORT": 1, "HOLD": 2, "FLAT": 3,
+}
+
+
+def _fmt_watch_px(value) -> str:
+  if value is None or value == "":
+    return "—"
+  try:
+    return f"{float(value):.5f}".rstrip("0").rstrip(".")
+  except (TypeError, ValueError):
+    return str(value)
+
+
+def short_watch_name(label: str | None, symbol: str | None = "") -> str:
+  """EUR WR57.1 from 'EURUSD M15 · WR57.1R66.4DD3.9'."""
+  text = str(label or "")
+  m = re.search(r"(WR[\d.]+)", text, re.I)
+  wr = m.group(1).upper() if m else (text.split("·")[-1].strip()[:16] or "—")
+  blob = f"{symbol or ''} {text}".upper()
+  if "EUR" in blob:
+    return f"EUR {wr}"
+  if "GBP" in blob:
+    return f"GBP {wr}"
+  return wr
+
+
+def _trade_day_key(raw: Any) -> str:
+  s = str(raw or "").strip().replace(".", "-")
+  return s[:10] if len(s) >= 10 and s[4] == "-" else ""
+
+
+def _watch_bar_day(raw: Any) -> str:
+  key = _trade_day_key(raw)
+  if key:
+    return key
+  return datetime.now().astimezone().strftime("%Y-%m-%d")
+
+
+def max_trades_per_day_map() -> dict[str, int]:
+  data = _read(RESULTS_DIR / "trade_models.json") or {}
+  out: dict[str, int] = {}
+  for m in data.get("models") or []:
+    mid = str(m.get("id") or m.get("model_id") or "")
+    if not mid:
+      continue
+    try:
+      out[mid] = max(0, int(m.get("max_trades_per_day") or 2))
+    except (TypeError, ValueError):
+      out[mid] = 2
+  return out
+
+
+def _count_day_trades(trades: list[dict], *, model_id: str, day: str) -> int:
+  return len(_day_hit_marks(trades, model_id=model_id, day=day))
+
+
+def _day_hit_marks(trades: list[dict], *, model_id: str, day: str) -> list[dict[str, Any]]:
+  """Today's strategy fills for one model — entry time + side, oldest first."""
+  out: list[dict[str, Any]] = []
+  mid = str(model_id or "")
+  for t in trades:
+    if str(t.get("model_id") or "") != mid:
+      continue
+    st = str(t.get("status") or "").upper()
+    if st not in ("OPEN", "CLOSED"):
+      continue
+    entry = t.get("entry_time") or t.get("bar_time") or t.get("updated_at")
+    if _trade_day_key(entry) != day:
+      continue
+    side = str(t.get("direction") or t.get("action") or "").upper()
+    out.append({
+      "time": entry,
+      "side": side,
+      "status": st,
+      "ticket": t.get("ticket"),
+    })
+  out.sort(key=lambda h: str(h.get("time") or ""))
+  return out
+
+
+PERIOD_TAG = {
+  "today": "D",
+  "week": "W",
+  "month": "M",
+  "all": "ALL",
+}
+
+
+def inspect_model_label(row: dict | None, *, period: str | None = None) -> str:
+  """Model name in Now inspect / radio: only the selected D/W/M/ALL count."""
+  row = row or {}
+  name = str(row.get("model") or row.get("short") or row.get("model_id") or "—")
+  p = str(period or row.get("period") or "today").lower().strip()
+  n = None
+  counts = row.get("period_counts")
+  if isinstance(counts, dict) and p in counts:
+    n = counts.get(p)
+  if n is None:
+    n = row.get("period_n")
+  if n is None:
+    hits = row.get("period_hits")
+    if isinstance(hits, list):
+      n = len(hits)
+  if n is None:
+    return name
+  try:
+    n_i = int(n)
+  except (TypeError, ValueError):
+    return name
+  tag = PERIOD_TAG.get(p, p.upper()[:1] if p else "D")
+  return f"{name} · {tag}({n_i})"
+
+
+def _day_slots_pack(
+  *,
+  model: dict,
+  dec: dict,
+  trades: list[dict],
+  day: str,
+  max_map: dict[str, int],
+) -> dict[str, Any]:
+  mid = str(model.get("model_id") or dec.get("model_id") or "")
+  raw_max = (
+    model.get("max_trades_per_day")
+    if model.get("max_trades_per_day") is not None
+    else dec.get("max_trades_per_day")
+  )
+  if raw_max is None:
+    raw_max = max_map.get(mid, 2)
+  try:
+    max_day = max(0, int(raw_max))
+  except (TypeError, ValueError):
+    max_day = 2
+  hits = _day_hit_marks(trades, model_id=mid, day=day)
+  taken = len(hits)
+  remaining = max(0, max_day - taken)
+  return {
+    "max_trades_per_day": max_day,
+    "day_taken": taken,
+    "slots_remaining": remaining,
+    "day_slots": f"{taken}/{max_day}",
+    "day_full": taken >= max_day,
+    "day_hits": hits,
+  }
+
+
+def now_watch_rows(snap: dict | None) -> list[dict[str, Any]]:
+  """One row per enabled model for the Live Now watch table."""
+  snap = snap or {}
+  health = snap.get("health_detail") or {}
+  books = list(health.get("books") or [])
+  by_dec: dict[str, dict] = {}
+  for d in snap.get("decisions") or []:
+    mid = str(d.get("model_id") or "")
+    if mid:
+      by_dec[mid] = d
+  max_map = max_trades_per_day_map()
+  snap_trades = list(snap.get("open_trades") or []) + list(snap.get("journal_trades") or [])
+  trades_by_dir: dict[str, list[dict]] = {}
+
+  def _trades_for(book: dict | None) -> list[dict]:
+    bdir = str((book or {}).get("bridge_dir") or "").strip()
+    if not bdir:
+      return snap_trades
+    if bdir not in trades_by_dir:
+      try:
+        trades_by_dir[bdir] = list(load_trades(Path(bdir)))
+      except Exception:
+        trades_by_dir[bdir] = []
+    return trades_by_dir[bdir] or snap_trades
+
+  rows: list[dict[str, Any]] = []
+
+  def _append(*, model: dict, book: dict | None, last) -> None:
+    mid = str(model.get("model_id") or "")
+    dec = by_dec.get(mid) or {}
+    day = _watch_bar_day(
+      dec.get("bar_time") or model.get("bar_time") or (book or {}).get("bar_time")
+    )
+    slots = _day_slots_pack(
+      model=model, dec=dec, trades=_trades_for(book), day=day, max_map=max_map,
+    )
+    action = str(model.get("action") or dec.get("action") or "—").upper()
+    reason = str(model.get("reason") or dec.get("reason") or dec.get("halt_source") or "—")
+    bar_time = dec.get("bar_time") or model.get("bar_time") or (book or {}).get("bar_time") or "—"
+    label = str(model.get("label") or mid or "—")
+    levels = ""
+    if action in ("BUY", "SELL", "LONG", "SHORT"):
+      bits = []
+      if dec.get("entry") is not None:
+        bits.append(_fmt_watch_px(dec.get("entry")))
+      if dec.get("sl") is not None:
+        bits.append(f"SL {_fmt_watch_px(dec.get('sl'))}")
+      if dec.get("tp") is not None:
+        bits.append(f"TP {_fmt_watch_px(dec.get('tp'))}")
+      levels = " · ".join(bits)
+    tone = "hold" if action == "HOLD" else _decision_tone(action)
+    expect_cur = {
+      "expect": "—", "current": "—", "hits": [], "hit": False,
+      "buy_text": "—", "sell_text": "—", "why": reason or "—",
+      "buy_lines": [], "sell_lines": [],
+      "buy_gate": "—", "sell_gate": "—",
+      "buy_ready": False, "sell_ready": False,
+      "wait": "—", "wait_ok": True, "wait_code": "",
+      "session_gate": "—", "session_ok": True,
+    }
+    try:
+      from watch_expect import watch_expect_current
+      expect_cur = watch_expect_current(
+        model_id=mid, book=book, action=action, reason=reason, bar_time=bar_time,
+        dumped=dec.get("watch") if isinstance(dec.get("watch"), dict) else None,
+        fills=slots.get("day_hits") or [],
+        timeframe=(book or {}).get("timeframe") or model.get("timeframe") or "M15",
+      )
+    except Exception:
+      pass
+    rows.append({
+      "action": action,
+      "tone": tone,
+      "model": label,
+      "short": short_watch_name(label, (book or {}).get("symbol") or model.get("symbol") or ""),
+      "model_id": mid,
+      "reason": reason or "—",
+      "why": expect_cur.get("why") or reason or "—",
+      "bar_time": bar_time or "—",
+      "last": _fmt_watch_px(last),
+      "levels": levels,
+      "expect": expect_cur.get("expect") or "—",
+      "current": expect_cur.get("current") or "—",
+      "buy_text": expect_cur.get("buy_text") or "—",
+      "sell_text": expect_cur.get("sell_text") or "—",
+      "buy_lines": list(expect_cur.get("buy_lines") or []),
+      "sell_lines": list(expect_cur.get("sell_lines") or []),
+      "buy_gate": expect_cur.get("buy_gate") or "—",
+      "sell_gate": expect_cur.get("sell_gate") or "—",
+      "buy_ready": bool(expect_cur.get("buy_ready")),
+      "sell_ready": bool(expect_cur.get("sell_ready")),
+      "wait": expect_cur.get("wait") or "—",
+      "wait_ok": bool(expect_cur.get("wait_ok")),
+      "wait_code": expect_cur.get("wait_code") or "",
+      "session_gate": expect_cur.get("session_gate") or "—",
+      "session_ok": bool(expect_cur.get("session_ok", True)),
+      "chase_block": bool(expect_cur.get("chase_block")),
+      "chase_on": bool(expect_cur.get("chase_on")),
+      "score_buy": expect_cur.get("score_buy") or "—",
+      "score_sell": expect_cur.get("score_sell") or "—",
+      "score_ok": bool(expect_cur.get("score_ok")),
+      "ml_buy": expect_cur.get("ml_buy") or "—",
+      "ml_sell": expect_cur.get("ml_sell") or "—",
+      "ml_ok": bool(expect_cur.get("ml_ok")),
+      "ml_live": bool(expect_cur.get("ml_live")),
+      "gap": expect_cur.get("gap") or "—",
+      "gap_ok": bool(expect_cur.get("gap_ok", True)),
+      "gap_on": bool(expect_cur.get("gap_on")),
+      "rsi_text": expect_cur.get("rsi_text") or "—",
+      "rsi_ok": bool(expect_cur.get("rsi_ok")),
+      "htf_text": expect_cur.get("htf_text") or "—",
+      "htf_ok": bool(expect_cur.get("htf_ok")),
+      "pa_buy": expect_cur.get("pa_buy") or "—",
+      "pa_sell": expect_cur.get("pa_sell") or "—",
+      "pa_ok": bool(expect_cur.get("pa_ok")),
+      "hits": list(expect_cur.get("hits") or []),
+      "magic": model.get("magic") or dec.get("magic"),
+      "symbol": (book or {}).get("symbol") or model.get("symbol") or "",
+      "timeframe": (book or {}).get("timeframe") or model.get("timeframe") or "",
+      "slots_remaining": slots.get("slots_remaining"),
+      "max_trades_per_day": slots.get("max_trades_per_day"),
+      "day_taken": slots.get("day_taken"),
+      "day_slots": slots.get("day_slots") or "—",
+      "day_full": bool(slots.get("day_full")),
+      "day_hits": list(slots.get("day_hits") or []),
+    })
+
+  if books:
+    for book in books:
+      last = book.get("last")
+      if last is None:
+        last = book.get("bid")
+      for model in book.get("models") or []:
+        _append(model=model, book=book, last=last)
+  else:
+    for model in snap.get("models") or []:
+      mid = str(model.get("model_id") or "")
+      dec = by_dec.get(mid) or {}
+      merged = {**model, "action": dec.get("action"), "reason": dec.get("reason"), "bar_time": dec.get("bar_time")}
+      _append(model=merged, book=None, last=(snap.get("bar") or {}).get("close"))
+
+  rows.sort(key=lambda r: (
+    _WATCH_ACTION_RANK.get(str(r.get("action") or ""), 9),
+    str(r.get("symbol") or ""),
+    int(r.get("magic") or 0),
+    str(r.get("model") or ""),
+  ))
+  return rows
 
 
 def _decision_tone(action: str | None) -> str:
