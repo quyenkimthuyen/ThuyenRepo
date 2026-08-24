@@ -2,13 +2,13 @@
   "meta": {
     "model_id": "tm_wr52_2r60_9dd4_1_310cea9d",
     "source": "live_remine",
-    "n_weeks": 1
+    "n_weeks": 2
   },
   "weekly": [
     {
       "week_start": "2026-08-17",
       "strategy": {
-        "name": "Forge RR4 full 2L5S session+swing #8F46|chase:fixed_or_rsi<55+vwap<99",
+        "name": "Forge RR3 full 2L4S session+squeeze #19E4|chase:fixed_or_rsi<55+vwap<99",
         "exit_mode": "full",
         "ml_prob_min": 0.36,
         "rr": 4.0,
@@ -50,7 +50,7 @@
             "direction": "long",
             "op": "lt",
             "thr": -1.4147132690474444,
-            "w": 42.38122048971203
+            "w": 7.47787319182908
           }
         ],
         "short_rules": [
@@ -59,40 +59,122 @@
             "direction": "short",
             "op": "eq1",
             "thr": 0.5,
-            "w": 0.03
-          },
-          {
-            "feat": "session_vwap_dist",
-            "direction": "short",
-            "op": "gt",
-            "thr": 0.10847013199470697,
-            "w": 4.9068872490144555
+            "w": 0.001967365384615384
           },
           {
             "feat": "swing_strength",
             "direction": "short",
             "op": "gt",
             "thr": 0.6066153603808739,
-            "w": 3.952373299447947
+            "w": 2.0078581838465657
           },
           {
             "feat": "price_vs_ema50",
             "direction": "short",
             "op": "gt",
             "thr": -0.9623188688712904,
-            "w": 4.021019873527528
+            "w": 2.663749988149136
           },
           {
             "feat": "price_vs_ema50",
             "direction": "short",
             "op": "gt",
-            "thr": 0.8793865128985499,
-            "w": 0.4353871231794615
+            "thr": 0.8987634048222335,
+            "w": 1.2408275877310124
           }
         ]
       },
-      "train_start_idx": 37324,
-      "train_end_idx": 40204
+      "train_start_idx": 62222,
+      "train_end_idx": 65102
+    },
+    {
+      "week_start": "2026-08-24",
+      "strategy": {
+        "name": "Forge RR4 full 2L5S session+swing #E863|chase:fixed_or_rsi<55+vwap<99",
+        "exit_mode": "full",
+        "ml_prob_min": 0.36,
+        "rr": 4.0,
+        "atr_mult": 1.05,
+        "score_threshold": 0.6,
+        "atr_mult_sl": 1.05,
+        "rr_ratio": 4.0,
+        "min_rules_match": 2,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": true,
+        "anti_chase_rsi_short_max": 55.0,
+        "anti_chase_rsi_long_min": 45.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.7613636363636362
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "long",
+            "op": "lt",
+            "thr": -1.460902960531308,
+            "w": 17.088714199781155
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "macd_cross_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 5.3118865384615355e-05
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10847013199470697,
+            "w": 3.5842028324989674
+          },
+          {
+            "feat": "swing_strength",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.6066153603808739,
+            "w": 3.6115112338916235
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": -0.9623188688712904,
+            "w": 3.287984679967569
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.8987634048222335,
+            "w": 0.42651780311461435
+          }
+        ]
+      },
+      "train_start_idx": 62702,
+      "train_end_idx": 65582
     }
   ]
 }
