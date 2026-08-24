@@ -1,0 +1,24 @@
+id: g33
+label: G33
+core: m5
+port: 8831
+pair: GBP/USD
+symbol: GBPUSD
+tf: M5
+bar_minutes: 5
+instance_id: M5G33
+bridge_subdir: bridge_m5g33
+bridge_sim_subdir: bridge_sim_m5g33
+magic: 20261081
+sim_magic: 20262081
+spread_pips: 2.3
+slippage_pips: 0.3
+train_weeks: 3
+# Hybrid M5 capacity (CLONE_IDENTITY). Sniper presets still override down to ~3–4 TPW.
+# Was locked at M15-parity 10/2 — too sparse for denser M5 balanced books.
+target_trades_per_week: 16.0
+max_trades_per_day: 5
+min_train_bars: 1500
+start_date: "2025-01-01"
+feature_profile: m5_parity
+score_desk: GBP
