@@ -14,6 +14,51 @@ from gui.desk_ui import bars_per_day, chart_bars_presets, tf_label
 
 MAX_COMPARE_MODELS = 5
 
+_CHART_RANGE_DAYS = {
+  "1 ngày": 0,
+  "1 tuần": 6,
+  "1 tháng": 29,
+  "6 tháng": 182,
+}
+
+
+def _fit_chart_to_run(
+  run_from: date,
+  run_to: date,
+  chart_from,
+  chart_to,
+  range_label: str,
+  *,
+  running: bool,
+) -> tuple[date, date, bool]:
+  """Keep Chart từ/đến inside the run. Re-anchor when a saved window misses it.
+
+  Stale prefs (e.g. May 2025) clamp to run_from/run_from → 2026-01-01 only,
+  which is a holiday with no M15 bars.
+  """
+  if run_to < run_from:
+    run_to = run_from
+  cf = chart_from if isinstance(chart_from, date) else run_from
+  ct = chart_to if isinstance(chart_to, date) else run_to
+  overlaps = not (ct < run_from or cf > run_to)
+  days = _CHART_RANGE_DAYS.get(range_label)
+  if not overlaps:
+    if range_label == "Tất cả" or days is None:
+      return run_from, run_to, True
+    if running:
+      start = run_from
+      span = 1 if days == 0 else days
+      end = min(run_to, start + timedelta(days=span))
+      return start, end, True
+    end = run_to
+    start = end if days == 0 else max(run_from, end - timedelta(days=days))
+    return start, end, True
+  cf = max(run_from, min(cf, run_to))
+  ct = max(run_from, min(ct, run_to))
+  if ct < cf:
+    ct = cf
+  return cf, ct, False
+
 
 def _parse_ui_date(v):
   if isinstance(v, date):
@@ -414,12 +459,20 @@ def render():
       cf = _parse_ui_date(cf) or run_from
     if not isinstance(ct, date):
       ct = _parse_ui_date(ct) or run_to
-    cf = max(run_from, min(cf, run_to))
-    ct = max(run_from, min(ct, run_to))
-    if ct < cf:
-      ct = cf
+    range_now = st.session_state.get("cmp_chart_range") or "1 tuần"
+    cf, ct, reanchored = _fit_chart_to_run(
+      run_from, run_to, cf, ct, str(range_now),
+      running=str(run.get("status") or "").lower() in ("running", "paused"),
+    )
     st.session_state["cmp_chart_from"] = cf
     st.session_state["cmp_chart_to"] = ct
+    if reanchored:
+      set_preference("compare.chart_from", cf)
+      set_preference("compare.chart_to", ct)
+      st.caption(
+        f"Chart đã neo lại vào run `{run_from}` → `{run_to}` "
+        f"(cửa sổ lưu trước đó nằm ngoài khoảng này)."
+      )
 
     c_range, c_from, c_to, c_reset = st.columns([1.4, 1.2, 1.2, 0.8])
     with c_range:
@@ -540,6 +593,8 @@ def render():
       "run_id": run_id,
       "date_from": from_txt,
       "date_to": to_txt,
+      "run_date_from": str(run.get("date_from") or run_from),
+      "run_date_to": str(run.get("date_to") or run_to),
       "max_bars": int(max_bars),
       "show_connectors": bool(show_lines),
       "models": models_payload,
@@ -550,7 +605,7 @@ def render():
     if server_ok:
       # Stable URL — date/model/max_bars via chart_view.json (keeps pan/zoom like Simulate)
       components.iframe(
-        f"{cmp_url}/chart?mode=compare&bars=200000&v=cmp3",
+        f"{cmp_url}/chart?mode=compare&bars=200000&v=cmp5",
         height=700,
         scrolling=False,
       )

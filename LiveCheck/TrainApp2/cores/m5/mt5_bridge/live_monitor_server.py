@@ -331,6 +331,60 @@ def load_compare_chart_view() -> dict:
   return data if isinstance(data, dict) else {}
 
 
+def _slice_compare_ohlc(
+  cache,
+  t0,
+  t1,
+  *,
+  limit: int,
+  run_from=None,
+  run_to=None,
+):
+  """Clip OHLC to [t0, t1]. If empty (holiday / stale prefs), widen then fall back."""
+  import pandas as pd
+
+  if cache is None or getattr(cache, "empty", True):
+    return cache, "no_cache"
+
+  def _cut(start, end):
+    frame = cache
+    if start is not None:
+      frame = frame.loc[frame.index >= pd.Timestamp(start).normalize()]
+    if end is not None:
+      last = (
+        pd.Timestamp(end).normalize()
+        + pd.Timedelta(days=1)
+        - pd.Timedelta(seconds=1)
+      )
+      frame = frame.loc[frame.index <= last]
+    return frame
+
+  frame = _cut(t0, t1)
+  hint = None
+  if frame.empty:
+    pad = pd.Timedelta(days=10)
+    a = (pd.Timestamp(t0) - pad) if t0 is not None else run_from
+    b = (pd.Timestamp(t1) + pad) if t1 is not None else run_to
+    if run_from is not None and a is not None:
+      a = max(pd.Timestamp(a), pd.Timestamp(run_from))
+    if run_to is not None and b is not None:
+      b = min(pd.Timestamp(b), pd.Timestamp(run_to))
+    frame = _cut(a, b)
+    hint = "widened"
+  if frame.empty and (run_from is not None or run_to is not None):
+    frame = _cut(run_from, run_to)
+    hint = "run_window"
+  if frame.empty:
+    frame = cache
+    hint = "full_cache"
+  if frame is not None and len(frame) > limit:
+    if hint in ("run_window", "full_cache"):
+      frame = frame.head(limit)
+    else:
+      frame = frame.tail(limit)
+  return frame, hint
+
+
 def build_compare_snapshot(*, max_bars: int | None = None) -> dict:
   """OHLC + multi-model trades for Compare Trade iframe chart."""
   import pandas as pd
@@ -359,8 +413,13 @@ def build_compare_snapshot(*, max_bars: int | None = None) -> dict:
 
   cache = _cached_broker_ohlc()
   bars: list[dict] = []
+  ohlc_hint = None
+  cache_from = cache_to = None
+  n_cache = 0
   if cache is not None and not cache.empty:
-    frame = cache
+    n_cache = int(len(cache))
+    cache_from = str(cache.index[0].date())
+    cache_to = str(cache.index[-1].date())
 
     def _bound(s):
       if not s:
@@ -372,22 +431,20 @@ def build_compare_snapshot(*, max_bars: int | None = None) -> dict:
         return _parse_broker_bar_time(s)
 
     t0, t1 = _bound(date_from), _bound(date_to)
-    if t0 is not None:
-      frame = frame.loc[frame.index >= t0.normalize()]
-    if t1 is not None:
-      end = t1.normalize() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
-      frame = frame.loc[frame.index <= end]
-    if len(frame) > limit:
-      frame = frame.tail(limit)
-    for ts, row in frame.iterrows():
-      bars.append({
-        "time": ts.strftime("%Y.%m.%d %H:%M"),
-        "open": float(row["Open"]),
-        "high": float(row["High"]),
-        "low": float(row["Low"]),
-        "close": float(row["Close"]),
-        "tick_volume": float(row["Volume"]) if "Volume" in row.index else 0.0,
-      })
+    run_t0, run_t1 = _bound(view.get("run_date_from")), _bound(view.get("run_date_to"))
+    frame, ohlc_hint = _slice_compare_ohlc(
+      cache, t0, t1, limit=limit, run_from=run_t0, run_to=run_t1,
+    )
+    if frame is not None and not frame.empty:
+      for ts, row in frame.iterrows():
+        bars.append({
+          "time": ts.strftime("%Y.%m.%d %H:%M"),
+          "open": float(row["Open"]),
+          "high": float(row["High"]),
+          "low": float(row["Low"]),
+          "close": float(row["Close"]),
+          "tick_volume": float(row["Volume"]) if "Volume" in row.index else 0.0,
+        })
 
   trades: list[dict] = []
   n_models = 0
@@ -435,6 +492,11 @@ def build_compare_snapshot(*, max_bars: int | None = None) -> dict:
       "n_trades": len(trades),
       "show_connectors": show_connectors,
       "models": models,
+      "n_bars": len(bars),
+      "n_cache": n_cache,
+      "cache_from": cache_from,
+      "cache_to": cache_to,
+      "hint": ohlc_hint,
     },
     "online": bool(bars),
     "progress": f"{len(bars)} bars · {len(trades)} fills",
@@ -723,10 +785,16 @@ async function refresh() {{
     rows=Array.from(byTime.values()).sort((a,b)=>String(a.time).localeCompare(String(b.time)));
     // Compare: server already clipped via chart_view.json — do not re-slice with URL bars=
     if (!COMPARE_MODE) rows = rows.slice(-MAX_BARS);
-    if (!rows.length) throw new Error(
-      COMPARE_MODE ? "Chưa có nến Compare (kiểm tra Chart từ/đến + MT5 cache)"
-      : (SIM_MODE ? "Chưa có nến Simulate (chọn from/to hoặc Start feed)" : "Chưa có bars.json")
-    );
+    if (!rows.length) {{
+      const cmp = snap.compare || {{}};
+      throw new Error(
+        COMPARE_MODE
+          ? ("Chưa có nến Compare · chart "+(cmp.date_from||"?")+" → "+(cmp.date_to||"?")
+             +" · cache "+(cmp.cache_from || "trống")+" → "+(cmp.cache_to || "—")
+             +" ("+(cmp.n_cache||0)+" bars)")
+          : (SIM_MODE ? "Chưa có nến Simulate (chọn from/to hoặc Start feed)" : "Chưa có bars.json")
+      );
+    }}
 
     const age=Math.max(0,(Date.now()/1000)-Number(snap.connection_mtime || 0));
     const state=snap.state || {{}};

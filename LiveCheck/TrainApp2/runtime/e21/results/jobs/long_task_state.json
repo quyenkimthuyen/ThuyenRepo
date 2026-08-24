@@ -1,103 +1,83 @@
 {
-  "status": "interrupted",
-  "job_type": "model_health",
-  "job_id": "job_model_health_20260824_194852",
-  "label": "Sức khỏe model · EUR anti_chase_70 · OOS 2026 · WR45 +121",
+  "status": "completed",
+  "job_type": "compare_trade",
+  "job_id": "job_compare_trade_20260824_231124",
+  "label": "Compare Trade",
   "params": {
-    "model_id": "tm_m15r_anti_chase_fixed_70_wr4_4a4a914b",
-    "refresh_kb_on": false,
-    "start_date": "2022-01-01",
-    "train_weeks": 4,
-    "spread_pips": 1.9,
-    "slippage_pips": 0.3,
-    "kb_profile": "era_2025_full",
-    "kb_snapshot": 1,
-    "oos_from": "2026-01-01",
-    "oos_to": "2026-12-31",
-    "feature_profile": "current",
-    "mining_search_space": {
-      "rr_ratios": [
-        2.5,
-        3.0,
-        3.2
-      ],
-      "atr_multipliers": [
-        0.9,
-        1.05
-      ],
-      "max_hold_bars": [
-        96
-      ],
-      "min_bars_between": [
-        12
-      ],
-      "session_ranges": [
-        [
-          7,
-          20
-        ]
-      ],
-      "session_filters": [
-        true
-      ],
-      "score_thresholds": [
-        0.6,
-        1.0,
-        1.6,
-        2.2
-      ],
-      "min_rules_matches": [
-        1,
-        2
-      ],
-      "ml_probability_thresholds": [
-        0.36,
-        0.4,
-        0.44,
-        0.48
-      ],
-      "min_feature_samples": 30,
-      "min_threshold_samples": 10,
-      "min_binary_samples": 8,
-      "include_session_regime_rules": false,
-      "target_trades_per_week": 7.0,
-      "drawdown_penalty": 0.0,
-      "loss_streak_penalty": 0.0,
-      "selection_mode": "expectancy_frontier",
-      "edge_surgery": false,
-      "edge_surgery_min_hour_trades": 3,
-      "edge_surgery_max_hour_wr": 0.42,
-      "edge_surgery_dominant_side_ratio": 0.7,
-      "edge_surgery_hours": true,
-      "anti_chase": true,
-      "anti_chase_mode": "fixed",
-      "anti_chase_fixed_rsi": 70.0,
-      "anti_chase_fixed_vwap": 99.0,
-      "anti_chase_rsi_caps": [
-        60.0,
-        62.0,
-        65.0,
-        68.0,
-        100.0
-      ],
-      "anti_chase_min_tpw": 5.0,
-      "anti_chase_use_vwap": false,
-      "anti_chase_vwap_caps": [
-        1.5,
-        2.0,
-        2.5,
-        99.0
-      ],
-      "anti_chase_logic": "or",
-      "exit_modes_full_only": false
+    "model_ids": [
+      "tm_m15r_anti_chase_fixed_70_wr4_4a4a914b",
+      "tm_m15q_elite_60_3_vwap_wr67_rr_17f02183",
+      "tm_m15q_elite_or_quality_wr62_r_0b140e51",
+      "tm_m15q_elite_55_4_wr59_rr2_95__aac3ed9f",
+      "tm_m15q_elite_60_3_wr63_rr2_73__3d3a5f7a"
+    ],
+    "date_from": "2026-01-01",
+    "date_to": "2026-08-07",
+    "risk_pct": 1.0
+  },
+  "total": 14944,
+  "done": 14944,
+  "progress_text": "",
+  "result": {
+    "run_id": "ct_20260824_231127_c29240",
+    "n_models": 5,
+    "bars_done": 14944,
+    "bars_total": 14944,
+    "per_model": {
+      "tm_m15r_anti_chase_fixed_70_wr4_4a4a914b": {
+        "n_fills": 464,
+        "error": null,
+        "stats": {
+          "total_r": 229.03,
+          "win_rate_pct": 50.9,
+          "n_trades": 232,
+          "max_drawdown_r": 10.0
+        }
+      },
+      "tm_m15q_elite_60_3_vwap_wr67_rr_17f02183": {
+        "n_fills": 136,
+        "error": null,
+        "stats": {
+          "total_r": 123.16,
+          "win_rate_pct": 61.8,
+          "n_trades": 68,
+          "max_drawdown_r": 3.0
+        }
+      },
+      "tm_m15q_elite_or_quality_wr62_r_0b140e51": {
+        "n_fills": 162,
+        "error": "deadlock detected by _ModuleLock('mt5_bridge.protocol') at 1689952422096",
+        "stats": {
+          "total_r": 133.6,
+          "win_rate_pct": 61.7,
+          "n_trades": 81,
+          "max_drawdown_r": 4.0
+        }
+      },
+      "tm_m15q_elite_55_4_wr59_rr2_95__aac3ed9f": {
+        "n_fills": 88,
+        "error": null,
+        "stats": {
+          "total_r": 96.0,
+          "win_rate_pct": 63.6,
+          "n_trades": 44,
+          "max_drawdown_r": 2.0
+        }
+      },
+      "tm_m15q_elite_60_3_wr63_rr2_73__3d3a5f7a": {
+        "n_fills": 86,
+        "error": null,
+        "stats": {
+          "total_r": 50.0,
+          "win_rate_pct": 46.5,
+          "n_trades": 43,
+          "max_drawdown_r": 7.0
+        }
+      }
     }
   },
-  "total": 34,
-  "done": 26,
-  "progress_text": "KB OFF · WF 26/34",
-  "result": null,
-  "started_at": "2026-08-24T19:48:52+07:00",
-  "updated_at": "2026-08-24T19:57:39+07:00",
-  "finished_at": "2026-08-24T19:57:39+07:00",
-  "error": "Server restart — chạy lại task."
+  "started_at": "2026-08-24T23:11:24+07:00",
+  "updated_at": "2026-08-25T00:26:47+07:00",
+  "finished_at": "2026-08-25T00:26:47+07:00",
+  "error": null
 }
