@@ -128,7 +128,7 @@ def run_desk(desk: str, *, promote_only: bool, widen: bool, workers: int) -> dic
 
 def main() -> int:
   ap = argparse.ArgumentParser()
-  ap.add_argument("--desks", default="e21,g23,e31,g33")
+  ap.add_argument("--desks", default="e21,g23")
   ap.add_argument("--promote-only", action="store_true")
   ap.add_argument("--widen-weeks", action="store_true", default=True)
   ap.add_argument("--no-widen-weeks", action="store_true")
@@ -138,7 +138,7 @@ def main() -> int:
   widen = bool(args.widen_weeks) and not args.no_widen_weeks
   summary = []
   for desk in desks:
-    workers = args.workers if args.workers > 0 else (6 if desk in ("e31", "g33") else 1)
+    workers = args.workers if args.workers > 0 else 1
     try:
       summary.append(run_desk(desk, promote_only=args.promote_only, widen=widen, workers=workers))
     except Exception as exc:

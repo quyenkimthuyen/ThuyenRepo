@@ -34,7 +34,7 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
       pass
   ap = argparse.ArgumentParser(description=__doc__)
-  ap.add_argument("--desk", choices=list_desks(), help="TrainApp desk: e21 g23 e31 g33")
+  ap.add_argument("--desk", choices=list_desks(), help="TrainApp desk: e21 g23")
   ap.add_argument("--list", action="store_true", help="List models + schedule readiness")
   ap.add_argument("--model-id")
   ap.add_argument("--label")
@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
   args = ap.parse_args(argv)
 
   if not args.desk:
-    ap.error("Pass --desk e21|g23|e31|g33")
+    ap.error("Pass --desk e21|g23")
 
   _bind(args.desk)
   from gui.export_live_package import (  # noqa: E402

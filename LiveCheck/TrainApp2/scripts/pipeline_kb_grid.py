@@ -282,17 +282,17 @@ def main() -> int:
     except Exception:
       pass
   ap = argparse.ArgumentParser(description=__doc__)
-  ap.add_argument("--desks", default="e21,e31,g23,g33")
+  ap.add_argument("--desks", default="e21,g23")
   ap.add_argument("--reset-kb", action="store_true")
   ap.add_argument("--workers", type=int, default=0,
-                  help="0 = auto (M5=4, M15=2)")
+                  help="0 = auto (2)")
   ap.add_argument("--promote-only", action="store_true")
   args = ap.parse_args()
   desks = [d.strip().lower() for d in args.desks.split(",") if d.strip()]
   summary = []
   rc = 0
   for desk in desks:
-    auto_w = 4 if desk in ("e31", "g33") else 2
+    auto_w = 2
     workers = args.workers if args.workers > 0 else auto_w
     try:
       summary.append(run_desk(

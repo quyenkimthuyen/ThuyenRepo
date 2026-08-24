@@ -12,6 +12,11 @@ from mt5_bridge import background as bridge_bg
 from mt5_bridge.loss_guard import loss_guard_status
 from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT, ensure_chart_server
 from mt5_bridge.protocol import normalize_model_ids, resolve_live_bridge_dir
+from gui.live_autostart import (
+  autostart_is_marked,
+  disable_live_autostart,
+  enable_live_autostart,
+)
 
 _CSS_KEY = "_live_trade_dash_css_v4"  # bump when CSS changes (debug/cache only)
 
@@ -119,6 +124,11 @@ def _start_live_bridge(model_ids: list[str]) -> bool:
   ok = bridge_bg.start_worker(detached=True)
   if ok:
     ensure_chart_server(bdir, DEFAULT_MONITOR_PORT)
+    as_ok, as_msg = enable_live_autostart()
+    if as_ok:
+      st.toast("Windows logon: tự chạy App + MT5 + Bridge")
+    else:
+      st.warning(as_msg)
   return ok
 
 
@@ -353,7 +363,12 @@ def _render_dashboard_body() -> None:
       key="live_dash_stop_bridge",
     ):
       bridge_bg.stop_worker()
-      st.toast("Đã Stop Bridge")
+      as_ok, as_msg = disable_live_autostart()
+      if as_ok:
+        st.toast("Đã Stop Bridge · đã gỡ auto-start Windows")
+      else:
+        st.toast("Đã Stop Bridge")
+        st.warning(as_msg)
       st.rerun()
   else:
     start_label = (
@@ -366,9 +381,11 @@ def _render_dashboard_body() -> None:
       key="live_dash_start_bridge",
       disabled=not model_ids,
       help=(
-        "Bật service Bridge với roster đang chọn."
+        "Bật Bridge với roster đang chọn. Đồng thời đăng ký tự chạy App + MT5 "
+        "sau khi Windows đăng nhập (phòng restart)."
         if ea_online else
-        "Live EA offline — Deploy Live rồi Start Bridge trong một bước."
+        "Live EA offline — Deploy Live rồi Start Bridge trong một bước. "
+        "Start cũng đăng ký tự chạy App + MT5 sau Windows logon."
       ),
     ):
       ea_ready = ea_online
@@ -405,6 +422,9 @@ def _render_dashboard_body() -> None:
     if not model_ids:
       st.warning("Chưa có Trade Model trong roster — mở MT5 Bridge → Trade Models.")
 
+  if bridge_running and autostart_is_marked():
+    st.caption("Windows restart: tự mở App + XM MT5 + Bridge cho desk này. Stop sẽ gỡ auto-start.")
+
   # App sổ lệnh ↔ MT5 (tránh kẹt «đang có lệnh» ảo)
   desync = snap.get("journal_mt5_desync")
   if desync:
@@ -416,17 +436,35 @@ def _render_dashboard_body() -> None:
         type="primary",
         use_container_width=True,
         key="live_dash_clear_ghost_opens",
-        help="Chỉ khi MT5 đã hết lệnh mở. Xóa trạng thái lệnh treo trên App để model vào lệnh mới được.",
+        help="Chỉ khi MT5 đã hết lệnh mở. Xóa trạng thái lệnh treo trên App và bắt Bridge tính lại decision.",
       ):
-        from mt5_bridge.trade_journal import close_ghost_journal_opens
-        n = close_ghost_journal_opens(_live_dir(), reason="journal_desync")
-        st.toast(f"Đã xóa {n} lệnh treo trên App")
-        st.rerun()
+        from mt5_bridge.trade_journal import (
+          ea_position_count,
+          reconcile_ghost_opens_if_ea_flat,
+          request_live_redecide,
+        )
+        ea_n = ea_position_count(snap.get("connection"))
+        if ea_n is None:
+          st.warning("Chưa đọc được số lệnh MT5 — đợi EA heartbeat rồi thử lại.")
+        elif ea_n > 0:
+          st.warning("MT5 vẫn còn lệnh mở — App không xóa sổ. Đóng lệnh trên MT5 trước.")
+        else:
+          n = reconcile_ghost_opens_if_ea_flat(
+            _live_dir(),
+            connection=snap.get("connection") if isinstance(snap.get("connection"), dict) else None,
+            require_fresh_heartbeat=False,
+          )
+          request_live_redecide(_live_dir())
+          if n:
+            st.toast(f"Đã xóa {n} lệnh treo trên App · Bridge đang tính lại")
+          else:
+            st.toast("Đã gửi Bridge tính lại decision (MT5 trống)")
+          st.rerun()
     else:
       st.warning(msg)
   elif ea_online:
     ea_n = snap.get("ea_positions")
-    j_n = int(snap.get("open_auto") or 0)
+    j_n = int(snap.get("open_auto") or 0) + int(snap.get("open_manual") or 0)
     if ea_n is not None:
       if j_n == 0 and int(ea_n) == 0:
         st.caption("Không có lệnh mở — App và MT5 khớp ✓")
@@ -452,6 +490,8 @@ def _render_dashboard_body() -> None:
       _hero_flat_html(action=action, reason=reason),
       unsafe_allow_html=True,
     )
+
+  from gui.signal_wait_ui import wait_side_caption
 
   # D. Scoreboard — aggregate (all models)
   today_r = float(today_stats.get("total_r") or 0.0) if today_stats.get("n_trades") else 0.0
@@ -482,6 +522,7 @@ def _render_dashboard_body() -> None:
         ws = pm.get("week_stats") or {}
         ot_m = pm.get("open_trade")
         ur_m = pm.get("unrealized_r")
+        wait = pm.get("signal_wait") if isinstance(pm.get("signal_wait"), dict) else {}
         rows.append({
           "Model": format_model_label(m) if m else (mid or "?")[:28],
           "Magic": pm.get("magic"),
@@ -489,6 +530,8 @@ def _render_dashboard_body() -> None:
             f"{ot_m.get('direction')} uR={ur_m:+.2f}" if ot_m and ur_m is not None
             else (str(ot_m.get("direction")) if ot_m else "—")
           ),
+          "BUY": wait_side_caption(wait.get("buy")),
+          "SELL": wait_side_caption(wait.get("sell")),
           "Today R": ts.get("total_r"),
           "Week R": ws.get("total_r"),
           "N today": ts.get("n_trades") or 0,
@@ -521,6 +564,9 @@ def _render_dashboard_body() -> None:
     ),
     unsafe_allow_html=True,
   )
+
+  from gui.signal_wait_ui import render_signal_wait
+  render_signal_wait(file_status=file_status, decision=decision)
 
 
 @st.fragment(run_every=timedelta(seconds=5))

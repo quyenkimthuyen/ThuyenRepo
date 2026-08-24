@@ -1,9 +1,9 @@
-# TrainApp manager — unified Train desks (E21/G23/E31/G33).
+# TrainApp manager — M15 desks only (E21 / G23).
 #
 #   .\manage.ps1 Start
 #   .\manage.ps1 Start e21,g23
 #   .\manage.ps1 Stop
-#   .\manage.ps1 Restart e31
+#   .\manage.ps1 Restart e21
 #   .\manage.ps1 Status
 #   .\manage.ps1 Check
 #
@@ -14,7 +14,7 @@ param(
   [string]$Action = "Status",
   [Parameter(Position = 1)]
   [Alias("App")]
-  [string[]]$Apps = @("e21", "g23", "e31", "g33"),
+  [string[]]$Apps = @("e21", "g23"),
   [ValidateRange(5, 120)]
   [int]$TimeoutSeconds = 40
 )
@@ -31,8 +31,6 @@ if (-not $Python) { throw "Python not found on PATH" }
 $Catalog = [ordered]@{
   e21 = @{ Port = 8711; Label = "E21" }
   g23 = @{ Port = 8731; Label = "G23" }
-  e31 = @{ Port = 8811; Label = "E31" }
-  g33 = @{ Port = 8831; Label = "G33" }
 }
 
 function Resolve-DeskIds([string[]]$Requested) {
@@ -44,21 +42,18 @@ function Resolve-DeskIds([string[]]$Requested) {
         foreach ($k in $Catalog.Keys) { if (-not $keys.Contains($k)) { [void]$keys.Add($k) } }
         continue
       }
+      if ($token -in @("e31", "g33", "eur5", "gbp5", "eurm5", "gbpm5", "m5e31", "m5g33")) {
+        throw "M5 desk '$part' is retired. This app only runs M15 desks e21 and g23."
+      }
       $map = @{
         e21 = "e21"; eur15 = "e21"; eurm15 = "e21"; m15e21 = "e21"
+        eur = "e21"; eurusd = "e21"
         g23 = "g23"; gbp15 = "g23"; gbpm15 = "g23"; m15g23 = "g23"
-        e31 = "e31"; eur5 = "e31"; eurm5 = "e31"; m5e31 = "e31"
-        g33 = "g33"; gbp5 = "g33"; gbpm5 = "g33"; m5g33 = "g33"
-      }
-      if ($token -eq "gbp" -or $token -eq "gbpusd") {
-        throw "Alias '$part' is ambiguous (G23=M15 vs G33=M5). Use g23 or g33 (or gbp15 / gbp5)."
-      }
-      if ($token -eq "eur" -or $token -eq "eurusd") {
-        throw "Alias '$part' is ambiguous (E21=M15 vs E31=M5). Use e21 or e31 (or eur15 / eur5)."
+        gbp = "g23"; gbpusd = "g23"
       }
       if ($Catalog.Contains($token)) { $id = $token }
       elseif ($map.ContainsKey($token)) { $id = $map[$token] }
-      else { throw "Unknown desk '$part'. Use e21 g23 e31 g33 or All." }
+      else { throw "Unknown desk '$part'. Use e21 g23 or All." }
       if (-not $keys.Contains($id)) { [void]$keys.Add($id) }
     }
   }
@@ -73,8 +68,7 @@ function Get-DeskProcesses([string]$DeskId, [int]$Port) {
       $_.CommandLine -and
       $_.CommandLine -match "streamlit" -and
       (
-        $_.CommandLine -match [regex]::Escape("TrainApp") -or
-        $_.CommandLine -match "run_desk" -or
+        $_.CommandLine -match [regex]::Escape($Root) -or
         $_.CommandLine -match [regex]::Escape("LiveCheck\Train\") -or
         $_.CommandLine -match [regex]::Escape("LiveCheck/Train/")
       ) -and
@@ -95,10 +89,7 @@ function Get-DeskProcesses([string]$DeskId, [int]$Port) {
 
 function Test-IsTrainAppProcess($Proc) {
   if (-not $Proc -or -not $Proc.CommandLine) { return $false }
-  return (
-    $Proc.CommandLine -match [regex]::Escape("TrainApp") -or
-    $Proc.CommandLine -match "run_desk"
-  )
+  return ($Proc.CommandLine -match [regex]::Escape($Root))
 }
 
 function Stop-Desk([string]$DeskId) {
@@ -174,6 +165,10 @@ foreach ($id in $selected) {
     "Restart" { Stop-Desk $id; Start-Sleep -Seconds 1; Start-Desk $id }
     "Status" { Show-Status $id }
     "Check" {
+      $deploy = Join-Path $Root "scripts\deploy_xm_forgebridge.ps1"
+      if (-not (Test-Path -LiteralPath $deploy)) {
+        throw "Missing deploy script: $deploy"
+      }
       & $Python (Join-Path $Root "run_desk.py") $id --check
       if ($LASTEXITCODE -ne 0) { throw "Check failed for $id" }
     }

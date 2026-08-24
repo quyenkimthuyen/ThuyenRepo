@@ -27,6 +27,7 @@ from mt5_bridge.protocol import (
   MAX_BRIDGE_MODELS,
   atomic_write_json,
   bar_path,
+  connection_path,
   decision_path,
   ensure_bridge_dir,
   fill_path,
@@ -38,15 +39,25 @@ from mt5_bridge.protocol import (
   write_models_roster,
   write_status,
 )
-from mt5_bridge.trade_journal import process_fill
+from mt5_bridge.trade_journal import (
+  consume_live_redecide,
+  ea_heartbeat_age_sec,
+  ea_is_fresh_flat,
+  ea_position_count,
+  process_fill,
+  reconcile_ghost_opens_if_ea_flat,
+  request_live_redecide,
+  restore_false_manual_edits,
+)
 from run_backtest import REPORT_DIR
 
-from app_paths import get_root
+from app_paths import get_core_root, get_root, relocate_under_root
 ROOT = get_root()
+CORE_ROOT = get_core_root()
 CONFIG_PATH = REPORT_DIR / "mt5_bridge_config.json"
 PID_PATH = REPORT_DIR / "mt5_bridge_service.pid"
 SERVICE_LOG = REPORT_DIR / "mt5_bridge_service.log"
-SERVICE_SCRIPT = ROOT / "scripts" / "mt5_bridge_service.py"
+SERVICE_SCRIPT = CORE_ROOT / "scripts" / "mt5_bridge_service.py"
 
 _lock = threading.Lock()
 _thread: threading.Thread | None = None
@@ -110,14 +121,9 @@ def sync_bridge_roster(
   cfg = load_config()
   ids = normalize_model_ids(model_ids, fallback=None) or config_model_ids(cfg)
   risk = float(risk_pct if risk_pct is not None else cfg.get("risk_pct") or 1.0)
-  from mt5_bridge.protocol import BRIDGE_SIM_DIR
+  from mt5_bridge.protocol import BRIDGE_DIR
   bdir = ensure_bridge_dir(bridge_dir or Path(cfg.get("bridge_dir") or BRIDGE_DIR))
-  is_sim = Path(bdir).resolve() == BRIDGE_SIM_DIR.resolve()
-  base = int(
-    base_magic
-    if base_magic is not None
-    else (DEFAULT_SIM_MAGIC if is_sim else DEFAULT_MAGIC)
-  )
+  base = int(base_magic if base_magic is not None else DEFAULT_MAGIC)
   label_map = dict(labels or {})
   if not label_map:
     try:
@@ -192,6 +198,9 @@ def _cfg_float(data: dict, key: str, default: float = 0.0) -> float:
 def load_config() -> dict:
   data = _read_json(CONFIG_PATH) or {}
   bridge_dir = data.get("bridge_dir") or str(BRIDGE_DIR)
+  relocated = relocate_under_root(bridge_dir, root=ROOT)
+  if relocated is not None:
+    bridge_dir = str(relocated)
   # Config may come from the old Linux/Docker deployment. On native Windows
   # that path is invalid and causes a failed service restart on every rerun.
   if os.name == "nt" and str(bridge_dir).startswith("/"):
@@ -450,7 +459,7 @@ def _cycle(
   last_bar_fp: str | None,
   last_fill_fp: str | None,
 ):
-  from mt5_bridge.protocol import BRIDGE_SIM_DIR
+  from mt5_bridge.protocol import history_replay_active
 
   if isinstance(engines, BridgeEngine):
     eng_map: dict[str, BridgeEngine] = {engines.model_id: engines}
@@ -458,9 +467,10 @@ def _cycle(
     eng_map = dict(engines or {})
   primary = next(iter(eng_map.values()), None)
   primary_id = primary.model_id if primary else None
-  is_sim = Path(bridge_dir).resolve() == BRIDGE_SIM_DIR.resolve()
+  is_sim = history_replay_active(bridge_dir)
   roster = read_models_roster(bridge_dir)
   seen_fills = _load_seen_fills(last_fill_fp)
+  ingested_any_fill = False
 
   def _resolve_engine_for_fill(fill: dict) -> BridgeEngine | None:
     mid = str(fill.get("model_id") or "") or None
@@ -482,7 +492,7 @@ def _cycle(
     return primary
 
   def _ingest_fill(fill: dict) -> None:
-    nonlocal seen_fills
+    nonlocal seen_fills, ingested_any_fill
     fp_fill = _fill_fp(fill)
     if not fp_fill or fp_fill in seen_fills:
       return
@@ -507,6 +517,7 @@ def _cycle(
       model_id=(eng.model_id if eng else None) or fill.get("model_id"),
     )
     seen_fills = _remember_fill(seen_fills, fp_fill)
+    ingested_any_fill = True
     if not is_sim:
       save_config(last_run_at=_now_iso())
 
@@ -523,15 +534,15 @@ def _cycle(
   last_fill_fp = _dump_seen_fills(seen_fills)
 
   bar = read_json(bar_path(bridge_dir))
-  if not is_sim:
-    trip = check_and_apply_loss_guard(
-      bridge_dir=bridge_dir,
-      bar=bar if isinstance(bar, dict) else None,
-      model_id=primary_id,
-      model_ids=list(eng_map.keys()),
-    )
-    if trip:
-      return last_bar_fp, last_fill_fp
+  # Same pipeline Live + history replay. is_sim only skips noisy I/O below.
+  trip = check_and_apply_loss_guard(
+    bridge_dir=bridge_dir,
+    bar=bar if isinstance(bar, dict) else None,
+    model_id=primary_id,
+    model_ids=list(eng_map.keys()),
+  )
+  if trip:
+    return last_bar_fp, last_fill_fp
 
   if not isinstance(bar, dict):
     return last_bar_fp, last_fill_fp
@@ -540,7 +551,42 @@ def _cycle(
   if not fp:
     return last_bar_fp, last_fill_fp
 
-  if fp == last_bar_fp:
+  need_redecide = False
+  if not is_sim:
+    n_restored = restore_false_manual_edits(bridge_dir)
+    if n_restored:
+      need_redecide = True
+      for eng in eng_map.values():
+        eng._last_bar_key = None
+    conn = read_json(connection_path(bridge_dir)) or {}
+    age = ea_heartbeat_age_sec(bridge_dir)
+    user_redecide = consume_live_redecide(bridge_dir)
+    if ingested_any_fill:
+      # Fill just landed — EA may still be writing positions=0. Retry next poll.
+      if user_redecide:
+        request_live_redecide(bridge_dir)
+    else:
+      n_ghost = reconcile_ghost_opens_if_ea_flat(
+        bridge_dir,
+        connection=conn,
+        require_fresh_heartbeat=not user_redecide,
+      )
+      hold_cached = any(
+        str((getattr(eng, "_last_decision", None) or {}).get("reason") or "").lower()
+        == "position_open"
+        for eng in eng_map.values()
+      )
+      flat = ea_is_fresh_flat(conn, age)
+      if (flat and (n_ghost or hold_cached)) or (
+        user_redecide and ea_position_count(conn) == 0
+      ):
+        need_redecide = True
+        for eng in eng_map.values():
+          eng._last_bar_key = None
+          if str((getattr(eng, "_last_decision", None) or {}).get("reason") or "").lower() == "position_open":
+            eng._last_decision = None
+
+  if fp == last_bar_fp and not need_redecide:
     # Idle wait — do not rewrite status.json every ~30ms (GUI + antivirus lag)
     return last_bar_fp, last_fill_fp
 
@@ -558,16 +604,12 @@ def _cycle(
       summary=f"bar {bar.get('symbol')} {bar.get('time') or bar.get('bar_time')} c={bar.get('close')}",
     )
 
-  runtime = load_config() if not is_sim else {}
+  runtime = load_config()
   halted_models = {
     str(x) for x in (runtime.get("loss_guard_halted_models") or []) if x
   }
-  svc_off = (not is_sim) and not runtime.get("enabled", True)
-  book_trip = (
-    (not is_sim)
-    and bool(runtime.get("loss_guard_tripped"))
-    and not halted_models
-  )
+  svc_off = not runtime.get("enabled", True)
+  book_trip = bool(runtime.get("loss_guard_tripped")) and not halted_models
   book_halt = svc_off or book_trip
   per_model: dict[str, dict] = {}
   last_decision: dict | None = None
@@ -596,6 +638,7 @@ def _cycle(
       "magic": decision.get("magic"),
       "strategy_name": decision.get("strategy_name"),
       "conditions_fp": decision.get("conditions_fp") or eng.conditions_fp,
+      "signal_wait": decision.get("signal_wait"),
     }
     action_u = str(decision.get("action") or "").upper()
     if not is_sim or action_u in ("BUY", "SELL"):
@@ -688,6 +731,9 @@ def _worker():
       break
     poll = max(0.3, float(cfg.get("poll_sec") or 2.0))
     try:
+      from mt5_bridge.protocol import history_replay_active
+      if history_replay_active(bridge_dir):
+        poll = 0.03
       process_history_sync(bridge_dir)
       if not MT5_CACHE_PATH.exists():
         _stop.wait(poll)
@@ -903,7 +949,7 @@ _sim_lock = threading.Lock()
 
 SIM_PID_PATH = REPORT_DIR / "mt5_bridge_sim_service.pid"
 SIM_SERVICE_LOG = REPORT_DIR / "mt5_bridge_sim_service.log"
-SIM_SERVICE_SCRIPT = ROOT / "scripts" / "mt5_bridge_sim_service.py"
+SIM_SERVICE_SCRIPT = CORE_ROOT / "scripts" / "mt5_bridge_sim_service.py"
 
 
 def _read_sim_pid() -> int | None:
@@ -932,12 +978,18 @@ def is_sim_thread_running() -> bool:
 
 
 def is_sim_running() -> bool:
-  return is_sim_process_running() or is_sim_thread_running()
+  if is_sim_thread_running():
+    return True
+  try:
+    from mt5_bridge.protocol import BRIDGE_DIR, history_replay_active
+    return history_replay_active(BRIDGE_DIR)
+  except Exception:
+    return False
 
 
 def get_sim_status() -> dict:
   from mt5_bridge.ea_simulator import load_sim_state, sync_state_from_ea
-  from mt5_bridge.protocol import BRIDGE_SIM_DIR
+  from mt5_bridge.protocol import history_replay_active
 
   # Short TTL cache — Streamlit fragments must not hammer disk every redraw
   now = time.time()
@@ -1003,7 +1055,7 @@ def _run_sim_bridge_loop(
     ids,
     risk_pct=float(risk_pct),
     bridge_dir=bridge_dir,
-    base_magic=DEFAULT_SIM_MAGIC,
+    base_magic=DEFAULT_MAGIC,
   )
   primary = next(iter(engines.values()), None)
   try:
@@ -1092,78 +1144,47 @@ def start_sim_worker(
   risk_pct: float = 1.0,
   detached: bool = True,
 ) -> bool:
-  """Start HISTORY_FEED control + bridge_sim decide loop.
-
-  Default = detached OS process (GUI stays smooth, like Live service).
-  """
+  """Write sim_control.json for the Live EA. Decide loop = Live worker."""
   global _sim_thread, _sim_bridge_thread
   with _sim_lock:
+    leftover = _read_sim_pid()
+    if _pid_alive(leftover):
+      try:
+        os.kill(int(leftover), signal.SIGTERM)
+      except OSError:
+        pass
+      _clear_sim_pid()
     if is_sim_running():
       return False
     from mt5_bridge.ea_simulator import SimConfig, run_history_feed_control, write_sim_state
-    from mt5_bridge.protocol import BRIDGE_SIM_DIR
+    from mt5_bridge.protocol import BRIDGE_DIR
 
     ids = normalize_model_ids(model_ids, fallback=model_id or load_config().get("model_id"))
     mid = ids[0] if ids else (model_id or load_config().get("model_id"))
     delay = max(1, int(delay_ms))
     sync_bridge_roster(
-      bridge_dir=BRIDGE_SIM_DIR,
+      bridge_dir=BRIDGE_DIR,
       model_ids=ids,
       risk_pct=float(risk_pct),
-      base_magic=DEFAULT_SIM_MAGIC,
+      base_magic=DEFAULT_MAGIC,
     )
 
-    if detached:
-      REPORT_DIR.mkdir(parents=True, exist_ok=True)
-      cmd = [
-        sys.executable,
-        str(SIM_SERVICE_SCRIPT),
-        "--from", str(date_from),
-        "--to", str(date_to),
-        "--delay-ms", str(delay),
-        "--risk-pct", str(float(risk_pct)),
-        "--bridge-dir", str(BRIDGE_SIM_DIR),
-      ]
-      if ids:
-        cmd.extend(["--model-ids", ",".join(ids)])
-      if mid:
-        cmd.extend(["--model-id", str(mid)])
-      logf = open(SIM_SERVICE_LOG, "a", encoding="utf-8")
-      logf.write(f"\n--- start {_now_iso()} ---\n")
-      logf.flush()
-      proc = subprocess.Popen(
-        cmd,
-        cwd=str(ROOT),
-        stdout=logf,
-        stderr=subprocess.STDOUT,
-        start_new_session=True,
-        close_fds=True,
-      )
-      SIM_PID_PATH.write_text(str(proc.pid), encoding="utf-8")
-      write_sim_state({
-        "status": "running",
-        "runtime": "process",
-        "service_pid": proc.pid,
-        "model_id": mid,
-        "model_ids": ids,
-        "date_from": date_from,
-        "date_to": date_to,
-        "delay_ms": delay,
-        "error": None,
-      })
-      return True
+    if not is_running():
+      save_config(enabled=True)
+      start_worker(detached=True)
 
-    # Fallback: in-process threads (dev only — blocks Streamlit when remine)
-    _sim_stop.clear()
-    _sim_pause.clear()
     cfg = SimConfig(
       date_from=date_from,
       date_to=date_to,
       delay_ms=delay,
       model_id=mid,
       risk_pct=float(risk_pct),
-      bridge_dir=BRIDGE_SIM_DIR,
+      bridge_dir=BRIDGE_DIR,
+      clear_journal=False,
     )
+
+    _sim_stop.clear()
+    _sim_pause.clear()
 
     def _run_control():
       try:
@@ -1177,19 +1198,20 @@ def start_sim_worker(
       finally:
         _sim_stop.set()
 
-    _sim_bridge_thread = threading.Thread(
-      target=_run_sim_bridge_loop,
-      args=(_sim_stop, mid, float(risk_pct), ids),
-      name="ea-history-bridge",
-      daemon=True,
-    )
-    _sim_bridge_thread.start()
     _sim_thread = threading.Thread(target=_run_control, name="ea-history-control", daemon=True)
     _sim_thread.start()
     write_sim_state({
-      "status": "running", "runtime": "thread", "model_id": mid, "model_ids": ids,
+      "status": "running",
+      "runtime": "live_worker",
+      "model_id": mid,
+      "model_ids": ids,
+      "date_from": date_from,
+      "date_to": date_to,
+      "delay_ms": delay,
+      "error": None,
     })
     return True
+
 
 
 def pause_sim_worker(paused: bool = True) -> None:

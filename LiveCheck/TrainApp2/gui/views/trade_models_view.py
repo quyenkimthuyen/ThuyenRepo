@@ -240,23 +240,25 @@ def _render_models_overview(models: list[dict], active: dict | None):
     st.info("Chưa có Trade Model trong store.")
     return
 
+  restore_widget("tm_ov_show_all", False, preference_key="trade_models.overview_show_all")
+  restore_widget("tm_ov_show_archived", False, preference_key="trade_models.overview_show_archived")
   f1, f2 = st.columns(2)
   with f1:
     show_all = st.toggle(
       "Hiện tất cả",
-      value=False,
-      key="tm_overview_show_all",
+      key="tm_ov_show_all",
       help=(
-        f"Mặc định ẩn High-DD (DD>{OVERVIEW_HIGH_DD_R:g}R), model chưa OOS, và Archived. "
-        "Model đang trên Bridge luôn hiện. Bật để xem toàn bộ store."
+        "Mặc định chỉ Active + Bridge (model đang chọn trên roster). "
+        "Bật để xem toàn bộ store, kể cả catalog/Archived."
       ),
+      on_change=preference_callback("tm_ov_show_all", "trade_models.overview_show_all"),
     )
   with f2:
     show_archived = st.toggle(
       "Hiện Archived",
-      value=False,
-      key="tm_overview_show_archived",
-      help="Hiện model đã Archive (kệ nghiên cứu). Không tự đưa lại lên Bridge.",
+      key="tm_ov_show_archived",
+      help="Thêm kệ nghiên cứu (model cũ đã Archive). Không tự đưa lại lên Bridge.",
+      on_change=preference_callback("tm_ov_show_archived", "trade_models.overview_show_archived"),
     )
 
   rows = [
@@ -271,8 +273,8 @@ def _render_models_overview(models: list[dict], active: dict | None):
   hidden_n = len(all_rows) - len(rows)
   if hidden_n > 0 and not show_all:
     st.caption(
-      f"Đang ẩn **{hidden_n}** model (Archived / High-DD / chưa OOS). "
-      "Bật **Hiện Archived** hoặc **Hiện tất cả** để xem."
+      f"Đang ẩn **{hidden_n}** model (catalog / Archived). "
+      "Bảng mặc định chỉ **Active + Bridge**. Bật **Hiện Archived** hoặc **Hiện tất cả** để xem phần còn lại."
     )
 
   if not rows:

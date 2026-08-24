@@ -5,11 +5,10 @@
 ```
 TrainApp/
   gui/                 # ONE Streamlit GUI (desk-aware via config)
-  desks/               # e21.yaml g23.yaml e31.yaml g33.yaml
+  desks/               # e21.yaml g23.yaml (M15 only)
   cores/
     m15/               # M15 domain: config, data_loader, mt5_bridge, learning…
-    m5/                # M5 domain (same surface, TF defaults differ)
-  runtime/{e21,g23,e31,g33}/   # per-desk data/results/learning/mt5
+  runtime/{e21,g23}/   # per-desk data/results/learning/mt5
   desk_context.py
   run_desk.py
   manage.ps1
@@ -21,7 +20,7 @@ Legacy clones in `LiveCheck/Train/M15|M5/EdgeMiner*` are unused for day-to-day.
 ## Commands
 
 ```powershell
-cd C:\Work\ThuyenRepo\LiveCheck\TrainApp
+cd <path-to>\TrainApp2
 .\manage.ps1 Check
 .\manage.ps1 Start
 .\manage.ps1 Status
@@ -33,7 +32,7 @@ Or one desk:
 
 ```powershell
 python run_desk.py e21
-python run_desk.py g33 --check
+python run_desk.py g23 --check
 ```
 
 ## Ports
@@ -42,13 +41,21 @@ python run_desk.py g33 --check
 |------|-----|
 | E21 EURUSD M15 | http://127.0.0.1:8711 |
 | G23 GBPUSD M15 | http://127.0.0.1:8731 |
-| E31 EURUSD M5  | http://127.0.0.1:8811 |
-| G33 GBPUSD M5  | http://127.0.0.1:8831 |
 
 ## How it works
 
 1. `desks/*.yaml` — pair, TF, port, magic, bridge, spread, score weights.
 2. `gui/` — shared UI; labels/bars/day/feature profile from `config` + `gui/desk_ui.py`.
-3. `cores/m15|m5` — domain code only (no duplicate Streamlit tree).
-4. `runtime/<desk>/` — state (currently junctioned to old Train folders).
-5. Env: `TRAINAPP_DESK`, `TRAINAPP_RUNTIME`, `TRAINAPP_CORE`, `TRAINAPP_ROOT`.
+3. `cores/m15` — domain code only (no duplicate Streamlit tree).
+4. `runtime/<desk>/` — per-desk state (self-contained; copy the whole TrainApp2 folder).
+5. Env: `TRAINAPP_DESK`, `TRAINAPP_RUNTIME`, `TRAINAPP_CORE`, `TRAINAPP_ROOT` (always bound to this copy).
+
+Copy/move: copy the entire `TrainApp2` directory. Do not rely on `C:\Work\...` paths. Then:
+
+```powershell
+cd <new>\TrainApp2
+.\manage.ps1 Check
+.\manage.ps1 Start
+```
+
+Stale `bridge_dir` values in runtime JSON are remapped on desk start.

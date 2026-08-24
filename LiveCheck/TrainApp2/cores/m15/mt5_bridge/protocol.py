@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from app_paths import get_root
+from app_paths import get_root, relocate_under_root
 ROOT = get_root()
 
 def _desk_bridge_defaults():
@@ -30,7 +30,8 @@ _CFG = _desk_bridge_defaults()
 _BRIDGE = str(_CFG.get("bridge_subdir") or "bridge_m15e21")
 _BRIDGE_SIM = str(_CFG.get("bridge_sim_subdir") or "bridge_sim_m15e21")
 BRIDGE_DIR = ROOT / "mt5" / _BRIDGE
-BRIDGE_SIM_DIR = ROOT / "mt5" / _BRIDGE_SIM
+# One Live EA: history test uses sim_control.json in the Live folder.
+BRIDGE_SIM_DIR = BRIDGE_DIR
 CONFIG_PATH = ROOT / "results" / "mt5_bridge_config.json"
 
 BAR_NAME = "bar.json"
@@ -74,7 +75,7 @@ def _read_config_bridge_dir() -> Path | None:
     raw = str(data.get("bridge_dir") or "").strip()
     if not raw:
       return None
-    return Path(raw)
+    return relocate_under_root(raw, root=ROOT) or Path(raw)
   except Exception:
     return None
 
@@ -115,11 +116,8 @@ def resolve_live_bridge_dir() -> Path:
 
 
 def resolve_sim_bridge_dir() -> Path:
-  """Simulate EA I/O dir — bridge_sim_m15aN on clones, else bridge_sim."""
-  discovered = _discover_named_bridge(sim=True)
-  if discovered is not None:
-    return ensure_bridge_dir(discovered)
-  return BRIDGE_SIM_DIR
+  """History test I/O dir — same Live EA folder (sim_control.json)."""
+  return resolve_live_bridge_dir()
 
 
 def safe_replace(src: Path, dst: Path, attempts: int = 5, delay: float = 0.05) -> None:
@@ -388,12 +386,20 @@ def replay_csv_path(bridge_dir: Path | None = None) -> Path:
 
 
 def sim_control_path(bridge_dir: Path | None = None) -> Path:
-  return ensure_bridge_dir(bridge_dir or BRIDGE_SIM_DIR) / SIM_CONTROL_NAME
+  return ensure_bridge_dir(bridge_dir or BRIDGE_DIR) / SIM_CONTROL_NAME
 
 
 def read_sim_control(bridge_dir: Path | None = None) -> dict[str, Any]:
   data = read_json(sim_control_path(bridge_dir))
   return data if isinstance(data, dict) else {}
+
+
+def history_replay_active(bridge_dir: Path | None = None) -> bool:
+  """True while the Live EA is running a from/to history test."""
+  ctrl = read_sim_control(bridge_dir)
+  if bool(ctrl.get("enabled")):
+    return True
+  return str(ctrl.get("ea_status") or "") == "running"
 
 
 def write_sim_control(

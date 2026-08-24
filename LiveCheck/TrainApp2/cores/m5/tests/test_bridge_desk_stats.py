@@ -78,3 +78,38 @@ def test_count_open_auto():
     {"status": "CLOSED", "mode": "auto"},
   ]
   assert count_open(trades, mode="auto") == 1
+  assert count_open(trades, mode=None) == 2
+
+
+def test_desync_hold_without_mt5():
+  from gui.bridge_desk_stats import journal_mt5_position_desync
+
+  d = journal_mt5_position_desync(
+    journal_open_n=0,
+    ea_positions=0,
+    ea_online=True,
+    decision_reason="position_open",
+  )
+  assert d is not None
+  assert d["kind"] == "hold_without_mt5"
+  assert d.get("fixable") is True
+
+
+def test_desync_counts_manual_opens_against_mt5():
+  from gui.bridge_desk_stats import journal_mt5_position_desync
+
+  matched = journal_mt5_position_desync(
+    journal_open_n=2,
+    ea_positions=2,
+    ea_online=True,
+    decision_reason="signal",
+  )
+  assert matched is None
+  ghost = journal_mt5_position_desync(
+    journal_open_n=2,
+    ea_positions=0,
+    ea_online=True,
+    decision_reason="signal",
+  )
+  assert ghost is not None
+  assert ghost["kind"] == "journal_ghost_open"

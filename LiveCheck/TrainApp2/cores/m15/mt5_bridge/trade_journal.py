@@ -304,6 +304,71 @@ def _mark_manual(row: dict, reason: str) -> None:
   row["interventions"] = flags
 
 
+def _px_same(a, b, *, eps: float = 1e-6) -> bool:
+  try:
+    return abs(float(a) - float(b)) <= eps
+  except (TypeError, ValueError):
+    return a is None and b is None
+
+
+def _is_manual_test_row(row: dict) -> bool:
+  sid = str(row.get("signal_id") or "")
+  origin = str(row.get("origin") or "").lower()
+  flags = [str(x) for x in (row.get("interventions") or [])]
+  if any(sid.startswith(p) for p in _MANUAL_OPEN_MARKERS):
+    return True
+  if origin in ("manual_test", "manual"):
+    return True
+  if "manual_test_open" in flags:
+    return True
+  return False
+
+
+def _restore_false_user_sl_tp(row: dict) -> bool:
+  """Undo EA false-positive user_sl_tp (multi-slot g_sync_sl clash / restart)."""
+  if str(row.get("mode") or "").lower() != MODE_MANUAL:
+    return False
+  if _is_manual_test_row(row):
+    return False
+  flags = [str(x) for x in (row.get("interventions") or [])]
+  origin = str(row.get("origin") or "").lower()
+  if "user_sl_tp" in flags:
+    if not _px_same(row.get("sl"), row.get("sl_initial")) or not _px_same(
+      row.get("tp"), row.get("tp_initial")
+    ):
+      return False
+  elif "orphan_close" in flags and origin in ("user_edit", "strategy", ""):
+    pass
+  else:
+    return False
+  row["mode"] = MODE_AUTO
+  row["intervened"] = False
+  if origin in ("user_edit", "manual"):
+    row["origin"] = "strategy"
+  row["interventions"] = [f for f in flags if f not in ("user_sl_tp", "intervened")]
+  row["updated_at"] = _now()
+  return True
+
+
+def restore_false_manual_edits(bridge_dir: Path | None = None) -> int:
+  """Reclassify strategy trades that EA tagged as user SL/TP by mistake."""
+  trades = load_trades(bridge_dir)
+  n = 0
+  for t in trades:
+    if _restore_false_user_sl_tp(t):
+      n += 1
+  if n:
+    save_trades(trades, bridge_dir)
+    append_event(
+      "system",
+      "false_manual_restored",
+      bridge_dir=bridge_dir,
+      summary=f"restored {n} auto trades mis-tagged as user_sl_tp",
+      payload={"n": n},
+    )
+  return n
+
+
 def trade_mode(trade: dict) -> str:
   """Normalize mode for filtering (legacy rows → auto unless markers present)."""
   m = str(trade.get("mode") or "").lower()
@@ -448,6 +513,8 @@ def process_fill(
       return None
     _append_fill_log({**fill, "event": event}, bridge_dir)
     detail_l = detail or str(fill.get("reason") or "").lower()
+    sl_changed = fill.get("sl") is not None and not _px_same(fill.get("sl"), row.get("sl"))
+    tp_changed = fill.get("tp") is not None and not _px_same(fill.get("tp"), row.get("tp"))
     if fill.get("sl") is not None:
       row["sl"] = float(fill["sl"])
     if fill.get("tp") is not None:
@@ -457,8 +524,14 @@ def process_fill(
         row["lots"] = float(fill["lots"])
       except (TypeError, ValueError):
         pass
-    # EA trail sync keeps auto mode; user edit → manual
-    if detail_l in ("user_sl_tp",) or fill.get("manual") is True or str(fill.get("source") or "") == "user_edit":
+    # EA trail sync keeps auto mode; user edit → manual.
+    # No-op modify (same SL/TP) is a false user_sl_tp from multi-slot EA sync.
+    user_edit = (
+      detail_l in ("user_sl_tp",)
+      or fill.get("manual") is True
+      or str(fill.get("source") or "") == "user_edit"
+    )
+    if user_edit and (sl_changed or tp_changed):
       _mark_manual(row, "user_sl_tp")
     elif detail_l == "ea_trail":
       flags = list(row.get("interventions") or [])
@@ -907,3 +980,83 @@ def count_open_trades(bridge_dir: Path | None = None, *, model_id: str | None = 
       continue
     n += 1
   return n
+
+
+EA_FLAT_RECONCILE_MAX_AGE_SEC = 15.0
+REDECIDE_REQUEST_NAME = "redecide_request.json"
+
+
+def ea_heartbeat_age_sec(bridge_dir: Path | None = None) -> float | None:
+  from mt5_bridge.protocol import connection_path
+
+  try:
+    return max(0.0, time.time() - connection_path(bridge_dir).stat().st_mtime)
+  except OSError:
+    return None
+
+
+def ea_position_count(connection: dict | None) -> int | None:
+  if not isinstance(connection, dict) or "positions" not in connection:
+    return None
+  try:
+    return int(connection.get("positions"))
+  except (TypeError, ValueError):
+    return None
+
+
+def ea_is_fresh_flat(
+  connection: dict | None,
+  heartbeat_age_sec: float | None,
+  *,
+  max_age_sec: float = EA_FLAT_RECONCILE_MAX_AGE_SEC,
+) -> bool:
+  if heartbeat_age_sec is None or heartbeat_age_sec > float(max_age_sec):
+    return False
+  return ea_position_count(connection) == 0
+
+
+def request_live_redecide(bridge_dir: Path | None = None) -> None:
+  """Ask the live worker to drop HOLD cache and decide the current bar again."""
+  atomic_write_json(
+    ensure_bridge_dir(bridge_dir) / REDECIDE_REQUEST_NAME,
+    {"requested_at": time.time(), "reason": "hold_without_mt5"},
+  )
+
+
+def consume_live_redecide(bridge_dir: Path | None = None) -> bool:
+  path = ensure_bridge_dir(bridge_dir) / REDECIDE_REQUEST_NAME
+  if not path.exists():
+    return False
+  try:
+    path.unlink()
+  except OSError:
+    return True
+  return True
+
+
+def reconcile_ghost_opens_if_ea_flat(
+  bridge_dir: Path | None = None,
+  *,
+  connection: dict | None = None,
+  require_fresh_heartbeat: bool = True,
+  max_age_sec: float = EA_FLAT_RECONCILE_MAX_AGE_SEC,
+) -> int:
+  """Close journal OPEN rows only when EA reports 0 positions.
+
+  Live worker keeps ``require_fresh_heartbeat=True`` so a stale
+  ``connection.json`` cannot wipe real trades. The dashboard button may
+  pass False after the user confirms MT5 is empty.
+  """
+  from mt5_bridge.protocol import connection_path
+
+  conn = connection if isinstance(connection, dict) else (read_json(connection_path(bridge_dir)) or {})
+  if ea_position_count(conn) != 0:
+    return 0
+  if require_fresh_heartbeat:
+    age = ea_heartbeat_age_sec(bridge_dir)
+    if age is None or age > float(max_age_sec):
+      return 0
+  if count_open_trades(bridge_dir) <= 0:
+    clear_sticky_fill_files(bridge_dir)
+    return 0
+  return close_ghost_journal_opens(bridge_dir, reason="journal_desync")

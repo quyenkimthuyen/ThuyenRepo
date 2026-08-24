@@ -16,7 +16,7 @@ from desk_context import apply_desk_env, list_desks  # noqa: E402
 
 def main(argv: list[str] | None = None) -> int:
   parser = argparse.ArgumentParser(description="Start TrainApp desk UI")
-  parser.add_argument("desk", nargs="?", help="Desk id: e21 g23 e31 g33")
+  parser.add_argument("desk", nargs="?", help="Desk id: e21 g23")
   parser.add_argument("--list", action="store_true", help="List desks")
   parser.add_argument("--port", type=int, default=0, help="Override port")
   parser.add_argument("--check", action="store_true", help="Validate desk then exit")

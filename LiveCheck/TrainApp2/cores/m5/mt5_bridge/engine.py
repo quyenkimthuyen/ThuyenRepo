@@ -29,8 +29,8 @@ from mt5_bridge.trade_journal import load_trades, trade_mode
 from optimizer import get_knowledge_base, optimize_on_window, set_kb_profile
 from paper_monitor import _project_signal_levels, _week_bounds_for_ts
 from strategy_miner import (
-  backtest_mined, ensure_label_cache_for_df, generate_signals_mined,
-  mining_search_space_from_dict,
+  backtest_mined, ensure_label_cache_for_df, explain_bar_gates,
+  generate_signals_mined, mining_search_space_from_dict,
 )
 from trade_model_schedule import (
   append_live_week,
@@ -82,6 +82,58 @@ def _journal_open_and_day_count(
     except Exception:
       continue
   return has_open, day_n
+
+
+def _stamp_signal_wait(
+  decision: dict,
+  wait: dict | None,
+  *,
+  slots_left: int | None = None,
+  position_open: bool = False,
+) -> dict:
+  """Attach BUY/SELL gate dump + runtime slots/position to a decision."""
+  if not wait:
+    return decision
+  stamped = {
+    "bar_time": wait.get("bar_time"),
+    "hour": wait.get("hour"),
+    "buy": dict(wait.get("buy") or {}),
+    "sell": dict(wait.get("sell") or {}),
+  }
+  extras: list[dict] = []
+  if position_open:
+    extras.append({
+      "id": "position",
+      "label": "No open position",
+      "ok": False,
+      "current": "OPEN",
+      "expect": "FLAT",
+    })
+  if slots_left is not None:
+    extras.append({
+      "id": "slots",
+      "label": "Day slots left",
+      "ok": int(slots_left) > 0,
+      "current": int(slots_left),
+      "expect": ">= 1",
+    })
+  for key in ("buy", "sell"):
+    block = dict(stamped.get(key) or {})
+    gates = [dict(g) for g in (block.get("gates") or [])]
+    side = block.get("side") or key.upper()
+    for extra in extras:
+      gates.append({**extra, "side": side})
+    waiting = [g for g in gates if not g.get("ok")]
+    block["gates"] = gates
+    block["total"] = len(gates)
+    block["passed"] = sum(1 for g in gates if g.get("ok"))
+    block["waiting_n"] = len(waiting)
+    block["waiting"] = [g.get("label") for g in waiting]
+    if extras:
+      block["ready"] = bool(block.get("ready")) and all(g.get("ok") for g in extras)
+    stamped[key] = block
+  decision["signal_wait"] = stamped
+  return decision
 
 
 class BridgeEngine:
@@ -483,6 +535,11 @@ class BridgeEngine:
     if isinstance(bar_idx, slice):
       bar_idx = bar_idx.start
 
+    try:
+      wait = explain_bar_gates(fm, strat, bar_idx)
+    except Exception:
+      wait = None
+
     direction = int(signals[bar_idx]) if 0 <= bar_idx < len(signals) else 0
     broker_day = utc_to_broker_time(bar_ts).date()
     if self.bridge_dir is not None:
@@ -496,7 +553,10 @@ class BridgeEngine:
         decision = self._hold(
           bar_ts, model_id, reason="position_open", week_start=week_start, strat=strat,
         )
-        return self._remember(bar_key, decision)
+        return self._remember(
+          bar_key,
+          _stamp_signal_wait(decision, wait, slots_left=slots_left, position_open=True),
+        )
     else:
       day_trades = [
         trade for trade in week_trades
@@ -507,7 +567,10 @@ class BridgeEngine:
         decision = self._hold(
           bar_ts, model_id, reason="position_open", week_start=week_start, strat=strat,
         )
-        return self._remember(bar_key, decision)
+        return self._remember(
+          bar_key,
+          _stamp_signal_wait(decision, wait, slots_left=slots_left, position_open=True),
+        )
 
     if direction == 0 or slots_left <= 0:
       decision = self._flat(
@@ -515,7 +578,10 @@ class BridgeEngine:
         reason="no_signal" if direction == 0 else "no_slots",
         week_start=week_start, strat=strat, slots_remaining=slots_left,
       )
-      return self._remember(bar_key, decision)
+      return self._remember(
+        bar_key,
+        _stamp_signal_wait(decision, wait, slots_left=slots_left),
+      )
 
     proj = _project_signal_levels(fm, strat, bar_idx, direction, spread, slip)
     if not proj:
@@ -523,7 +589,10 @@ class BridgeEngine:
         bar_ts, model_id, reason="levels_unavailable", week_start=week_start, strat=strat,
         slots_remaining=slots_left,
       )
-      return self._remember(bar_key, decision)
+      return self._remember(
+        bar_key,
+        _stamp_signal_wait(decision, wait, slots_left=slots_left),
+      )
 
     action = "BUY" if direction == 1 else "SELL"
     sig_id = _signal_id(model_id, bar_ts, action)
@@ -554,7 +623,10 @@ class BridgeEngine:
       "conditions_fp": self.conditions_fp,
       "run_conditions": strategy_conditions(self._params),
     }
-    return self._remember(bar_key, decision)
+    return self._remember(
+      bar_key,
+      _stamp_signal_wait(decision, wait, slots_left=slots_left),
+    )
 
   def _remember(self, bar_key: str, decision: dict) -> dict:
     self._last_bar_key = bar_key

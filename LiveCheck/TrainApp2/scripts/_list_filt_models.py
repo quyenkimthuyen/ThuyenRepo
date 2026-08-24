@@ -1,6 +1,6 @@
 ﻿import json
 from pathlib import Path
-for desk in ("e21", "g23", "e31", "g33"):
+for desk in ("e21", "g23"):
   p = Path(rf"C:\Work\ThuyenRepo\LiveCheck\TrainApp\runtime\{desk}\results\trade_models.json")
   print("====", desk, "====")
   if not p.exists():

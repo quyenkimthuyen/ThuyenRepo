@@ -151,12 +151,20 @@ def check_app_ast() -> str:
   assert "st_autorefresh" not in src
   assert "desk_refresh_now" in src
   assert "_run_live_now_tick" in src
+  assert "_run_live_status_tick" in src
+  assert "_render_live_status_header" in src
+  assert "_status_refresh_every" in src
   assert "LIVE_SECTIONS" in src
   assert "_render_live_control" in src
   assert "format_func=_period_label" in src
   assert "_live_stats_period_seeded" not in src
   assert "_live_desk_section_seeded" not in src
   assert "restore_widget_choice" in src
+  header = src[src.find("def _render_live_status_header") : src.find("def _live_status_tick_body")]
+  assert "n_open" in header, "open-count pill must live in the ticking header"
+  desk = src[src.find("def render_live_desk") : src.find("def _render_live_control")]
+  assert 'pill(f"{snap[\'n_open\']} open"' not in desk
+  assert desk.find("_run_live_status_tick()") < desk.find('key="live_desk_section"')
   return "app.py parse + Live desk markup"
 
 

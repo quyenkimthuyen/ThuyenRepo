@@ -1,19 +1,19 @@
 {
-  "label": "M15Q nova WR47 RR2.37 +110R",
-  "kb_profile": "era_2025_h1",
-  "kb_snapshot": 2,
+  "label": "GBP elite_or_quality · OOS 2026 · WR52 +54R",
+  "kb_profile": "era_2025_h2",
+  "kb_snapshot": 4,
   "oos_from": "2026-01-01",
   "oos_to": "2026-12-31",
   "use_learning": true,
-  "train_weeks": 12,
+  "train_weeks": 5,
   "spread_pips": 2.3,
   "slippage_pips": 0.3,
   "feature_profile": "current",
   "mining_search_space": {
     "rr_ratios": [
-      2.5,
-      3.0,
-      3.2
+      3.2,
+      3.5,
+      4.0
     ],
     "atr_multipliers": [
       0.9,
@@ -54,21 +54,20 @@
     "min_threshold_samples": 10,
     "min_binary_samples": 8,
     "include_session_regime_rules": false,
-    "target_trades_per_week": 7.0,
-    "drawdown_penalty": 0.0,
-    "loss_streak_penalty": 0.0,
-    "selection_mode": "expectancy_frontier",
-    "edge_surgery": true,
+    "target_trades_per_week": 3.5,
+    "drawdown_penalty": 0.5,
+    "loss_streak_penalty": 1.0,
+    "selection_mode": "elite_frontier",
+    "edge_surgery": false,
     "edge_surgery_min_hour_trades": 3,
     "edge_surgery_max_hour_wr": 0.42,
-    "edge_surgery_dominant_side_ratio": 0.65,
-    "edge_surgery_hours": false,
+    "edge_surgery_dominant_side_ratio": 0.7,
+    "edge_surgery_hours": true,
     "anti_chase": true,
-    "anti_chase_mode": "calibrate",
-    "anti_chase_fixed_rsi": 65.0,
-    "anti_chase_fixed_vwap": 99.0,
+    "anti_chase_mode": "fixed",
+    "anti_chase_fixed_rsi": 58.0,
+    "anti_chase_fixed_vwap": 1.5,
     "anti_chase_rsi_caps": [
-      58.0,
       60.0,
       62.0,
       65.0,
@@ -84,7 +83,7 @@
       99.0
     ],
     "anti_chase_logic": "or",
-    "exit_modes_full_only": false
+    "exit_modes_full_only": true
   },
-  "trade_model_id": "tm_m15q_nova_wr47_rr2_37_110r_ef1b530d"
+  "trade_model_id": "tm_fine_wr52_rr2_66_54r_2fda252b"
 }

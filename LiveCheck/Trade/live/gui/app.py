@@ -1364,35 +1364,30 @@ def _render_live_session_body(snap: dict, *, period: str, bdirs: list, session: 
       st.dataframe(fills, use_container_width=True, hide_index=True)
 
 
-def _live_now_tick_body() -> None:
-  period = st.session_state.get("live_stats_period") or "today"
-  section = st.session_state.get("live_desk_section") or "now"
-  _render_live_live_panels(period=str(period), section=str(section))
-
-
-def _run_live_now_tick() -> None:
-  """Native Streamlit fragment tick — streamlit_autorefresh is not installed."""
+def _auto_refresh_every() -> float | None:
   auto = bool(st.session_state.get("auto_refresh"))
   try:
     every = int(st.session_state.get("auto_refresh_every") or 5)
   except (TypeError, ValueError):
     every = 5
-  run_every = float(every) if auto else None
-  st.fragment(run_every=run_every)(_live_now_tick_body)()
+  return float(every) if auto else None
 
 
-def render_live_desk() -> dict:
-  """Live desk — tabs: Now · Health · Trades."""
-  st.session_state.desk_mode = "Live"
-  _seed_live_stats_period()
-  _seed_live_desk_section()
+def _status_refresh_every() -> float:
+  """Pills always tick — n_open/EA age must not wait for a full page rerun."""
+  try:
+    every = int(st.session_state.get("auto_refresh_every") or 5)
+  except (TypeError, ValueError):
+    every = 5
+  return float(max(5, every))
 
-  snap = desk_snapshot(sim=False)
+
+def _render_live_status_header(snap: dict) -> None:
+  """LIVE / Running / models / EA / n_open — always from the given snapshot."""
   tone = snap["health_tone"]
   health_detail = snap.get("health_detail") or {}
   models = snap.get("models") or []
   running = bool(snap.get("bridge_running"))
-
   st.markdown(
     f"""
     <div class="desk-top">
@@ -1405,7 +1400,6 @@ def render_live_desk() -> dict:
     """,
     unsafe_allow_html=True,
   )
-
   n_on = len(models)
   pills = [
     pill(snap["health"], tone),
@@ -1427,11 +1421,41 @@ def render_live_desk() -> dict:
       h_tone = "warn"
     pills.append(pill(str(health_detail.get("summary") or "HEALTH"), h_tone))
   st.markdown(f'<div class="pill-row">{"".join(pills)}</div>', unsafe_allow_html=True)
-
   for err in snap.get("chart_errors") or []:
     st.error(err)
   for w in (snap.get("chart_warnings") or [])[:2]:
     st.warning(w)
+
+
+def _live_status_tick_body() -> None:
+  """Fresh desk_snapshot each Auto-refresh tick — n_open/EA age must not lag a full page rerun."""
+  _render_live_status_header(desk_snapshot(sim=False))
+
+
+def _run_live_status_tick() -> None:
+  st.fragment(run_every=_status_refresh_every())(_live_status_tick_body)()
+
+
+def _live_now_tick_body() -> None:
+  period = st.session_state.get("live_stats_period") or "today"
+  section = st.session_state.get("live_desk_section") or "now"
+  _render_live_live_panels(period=str(period), section=str(section))
+
+
+def _run_live_now_tick() -> None:
+  """Native Streamlit fragment tick — streamlit_autorefresh is not installed."""
+  st.fragment(run_every=_auto_refresh_every())(_live_now_tick_body)()
+
+
+def render_live_desk() -> dict:
+  """Live desk — tabs: Now · Health · Trades."""
+  st.session_state.desk_mode = "Live"
+  _seed_live_stats_period()
+  _seed_live_desk_section()
+
+  _run_live_status_tick()
+
+  snap = desk_snapshot(sim=False)
 
   if st.session_state.get("live_desk_section") not in LIVE_SECTIONS:
     st.session_state.live_desk_section = "now"
@@ -2275,7 +2299,9 @@ with st.sidebar:
     st.session_state["_desk_tick"] = _time.time()
   st.caption(f"{LIVE_INSTANCE_ID} · :{LIVE_APP_PORT} · magic {LIVE_MAGIC_BASE}")
   if auto:
-    st.caption(f"Live numbers refresh every {int(every)}s — D/W/M/ALL stays put.")
+    st.caption(f"Status + Live numbers refresh every {int(every)}s — D/W/M/ALL stays put.")
+  else:
+    st.caption(f"Status pills refresh every {int(every)}s. Bật Auto-refresh để Now/Trades tick theo.")
 
 snap: dict = {"journal": {}, "bridge_dirs": []}
 journal = {}

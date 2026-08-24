@@ -307,6 +307,7 @@ def bridge_roster_display_rows(
       "oos_to": resolved.get("oos_to"),
       "last_action": pm.get("action") if include_runtime else None,
       "last_reason": (pm.get("reason") or "")[:40] if include_runtime else None,
+      "signal_wait": pm.get("signal_wait") if include_runtime else None,
       "strategy": (pm.get("strategy_name") or "")[:36] if include_runtime else None,
       "conditions_fp": pm.get("conditions_fp") if include_runtime else None,
       "model": m,
@@ -626,21 +627,19 @@ def overview_row_visible(
   show_archived: bool = False,
   bridge_ids: list[str] | None = None,
 ) -> bool:
-  """Default filter: hide archived, High-DD, non-OOS (Bridge ghosts still shown)."""
-  if row.get("_archived") and not show_archived and not show_all:
-    return False
+  """Default: only Active + Bridge. Catalog/archived need an explicit toggle."""
+  archived = bool(row.get("_archived"))
   if show_all:
     return True
-  bridge_set = {str(x) for x in (bridge_ids or []) if x}
-  if row.get("id") in bridge_set:
+  if archived:
+    return bool(show_archived)
+  role = str(row.get("Vai trò") or "")
+  if "Active" in role or "Bridge" in role:
     return True
-  if row.get("_archived"):
-    return False
-  if row.get("_high_dd"):
-    return False
-  if not row.get("_has_oos"):
-    return False
-  return True
+  bridge_set = {str(x) for x in (bridge_ids or []) if x}
+  if str(row.get("id") or "") in bridge_set:
+    return True
+  return False
 
 
 def model_report_path(model_id: str) -> Path:

@@ -66,7 +66,7 @@ def render():
 
   st.caption(
     f"Desk **{d['instance']}** · {d['pair_label']} {d['tf']} · "
-    f"EA `{d['ea_live']}` / `{d['ea_sim']}` · "
+    f"EA `{d['ea_live']}` · "
     f"bridge `{d['bridge_live']}` · magic `{d['magic']}`"
   )
 
@@ -102,7 +102,7 @@ Sidebar hiện tại (**không** còn Paper Monitor / Phân tích riêng):
 | **Trade Models** | Active (phân tích) · **Tổng hợp** (so sánh / Archive / đổi tên) · Sức khỏe · Rủi ro · Nhật ký · Chiến lược |
 | **Compare Trade** | So nhiều model trên lịch sử (**không EA**; sim fills) |
 | **Live Trade** | Desk theo dõi Live hàng ngày (KPI / trạng thái) |
-| **MT5 Bridge** | Roster 1–{d['max_models']} model · **Live** + **Simulate** · remine · Parity · Loss guard |
+| **MT5 Bridge** | Roster 1–{d['max_models']} model · **một EA Live** · test lịch sử from/to · remine · Parity · Loss guard |
 | **Hướng dẫn** | Trang này |
 
 Thứ tự đọc khuyến nghị: mục **2** → **3** → chạy workflow → quay lại **7–8** khi vướng.
@@ -132,7 +132,7 @@ Panel workflow trên **Tổng quan** và thứ tự vận hành:
 | Vận hành | Bridge roster + remine tuần · **không** Grid lại mỗi tuần |
 | Cất nghiên cứu | **Archive** (giữ report) thay vì Xóa cứng |
 
-Chỉ Live **micro lot** khi Parity / Health khớp kỳ vọng. Simulate & Compare **không** thay lệnh MT5.
+Chỉ Live **micro lot** khi Parity / Health khớp kỳ vọng. Test lịch sử & Compare **không** thay lệnh MT5.
 """
   )
 
@@ -140,12 +140,12 @@ Chỉ Live **micro lot** khi Parity / Health khớp kỳ vọng. Simulate & Comp
   st.markdown("## 3. Khái niệm dễ nhầm")
   st.markdown(
     f"""
-### Active ≠ Bridge ≠ Compare ≠ Simulate
+### Active ≠ Bridge ≠ Compare ≠ Test lịch sử
 
-| | **Active** | **Bridge roster** | **Compare** | **Simulate** |
+| | **Active** | **Bridge roster** | **Compare** | **Test lịch sử** |
 |---|---|---|---|---|
-| Ở đâu | Dropdown Trade Models | Multiselect MT5 Bridge | Trang Compare Trade | Tab Bridge · Simulate |
-| Việc | Phân tích / Health / Journal | Remine + quyết định Live/Sim | So lịch sử, không EA | Replay App↔EA HistoryFeed |
+| Ở đâu | Dropdown Trade Models | Tab MT5 Bridge · Trade Models | Trang Compare Trade | Tab MT5 Bridge · Test lịch sử (chỉ from/to) |
+| Việc | Phân tích / Health / Journal | Remine + quyết định Live | So lịch sử, không EA | Ghi from/to → EA → bar/fill hiện trên **Live** |
 | Điều khiển lệnh MT5? | Không | **Live:** có (cần EA) | Không | Không (không tiền thật) |
 | Khớp lệnh nội bộ | — | Fill EA → `trades.json` | `PaperBook` sim fills | Fill EA sim / paper path |
 
@@ -160,7 +160,7 @@ Chỉ Live **micro lot** khi Parity / Health khớp kỳ vọng. Simulate & Comp
 ### “Paper” trong code ≠ Paper Monitor
 
 Desk **Paper Monitor** đã gỡ (bookmark cũ → Bridge).  
-Module `paper_fill` / `PaperBook` / port chart legacy = **sim fills** cho Compare/HistoryFeed — đúng kỹ thuật, dễ nhầm tên.
+Module `paper_fill` / `PaperBook` / port chart legacy = **sim fills** cho Compare/test lịch sử — đúng kỹ thuật, dễ nhầm tên.
 
 ### Remine vs cập nhật model
 
@@ -204,22 +204,26 @@ So 1–N model trên cache {d['tf']} (`{d['cache']}`). Không EA. Kết quả = 
 ### Live Trade
 Dashboard theo dõi ngày khi Live đang chạy (KPI / trạng thái). Không thay Bridge Start/Stop.
 
-### MT5 Bridge — Live & Simulate
+### MT5 Bridge — một EA Live
 
-1. Tab **Trade Models · Bridge**: chọn 1–{d['max_models']} model (không gồm Archived) · Risk % chung · Loss guard.
-2. **Start** service (process riêng — đổi tab GUI không dừng).
-3. MT5: attach `{d['ea_live']}` · `InpMode = Live` · Files/`{d['bridge_live']}`.
+1. Tab **Trade Models**: chọn 1–{d['max_models']} model (không gồm Archived) · Risk % chung · Loss guard.
+2. **Desk** → **Start** service (process riêng — đổi tab GUI không dừng).
+3. MT5: attach `{d['ea_live']}` · Live · Files/`{d['bridge_live']}`.
 4. Mỗi {d['tf']}: EA `bar.json` → App decide → `decision.json` → BUY/SELL/FLAT → `fill.json` → `trades.json`.
 5. Remine Live cùng đường Health OOS (KB pin, `conditions_fp`). Xem **Parity tuần này**.
-6. **Simulate**: `{d['ea_sim']}` · `HISTORY_FEED` · subdir `{d['bridge_sim']}` · App ghi `sim_control.json`.
+6. Tab **Test lịch sử**: chỉ nhập from/to. App ghi `sim_control.json` vào `{d['bridge_live']}`. EA CopyRates, **cùng** `decide_for_bar` + loss guard như Live, **fill giấy** tại open nến (không OrderSend). Chart / lệnh / thống kê xem **Desk** / **Biểu đồ** (cùng folder). Tick Live tạm dừng đến khi Stop.
+7. Một hàng tab: **Trade Models** · **Desk** · **Biểu đồ** · **Sức khỏe** · **Kỹ thuật** · **Test lịch sử**.
 
-Cần tài khoản **hedging** nếu multi-model. Magic live `{d['magic']}` / sim `{d['magic_sim']}`.
+Cần tài khoản **hedging** nếu multi-model. Magic `{d['magic']}`.
 
-| | Live | Simulate |
+| | Live | Test lịch sử (Simulate) |
 |---|---|---|
-| Tiền | Demo/live MT5 | Không |
-| Journal | `{d['bridge_live']}/trades.json` | `{d['bridge_sim']}/trades.json` |
-| Khi dùng | Vận hành + Parity | Nghi bridge / replay quá khứ |
+| Pipeline | EA nến đóng → App `decide_for_bar` → `OpenFromDecision` | **Cùng** (một EA, một worker, một folder) |
+| Giá | Tick / nến đang chạy | CopyRates lịch sử (OHLC quá khứ) |
+| Lệnh | `OrderSend` tài khoản MT5 | Fill giấy — **không** vào MT5 |
+| Loss guard / roster / magic | Bật | Bật (cùng journal) |
+| Journal / chart | `{d['bridge_live']}/trades.json` + biểu đồ Live | Cùng chỗ (Live không biết đang replay) |
+| Khi dùng | Desk + Sức khỏe / Parity | Test pipeline Live trên nến đã đóng |
 """
   )
 
@@ -278,7 +282,7 @@ Tần suất lệnh/tuần **đã bỏ** khỏi checklist (preset elite cố ý 
 ```powershell
 # Windows — lifecycle
 .\\scripts\\run_app_windows.ps1 Start|Restart|Status|Stop
-.\\scripts\\deploy_xm_forgebridge.ps1 -Mode Live -Attach
+.\\scripts\\deploy_xm_forgebridge.ps1 -Desk e21 -Mode Live -Attach
 ```
 
 ```bash
@@ -288,7 +292,7 @@ python run_learning.py --kb-profile era_2022_2023 --from-date 2022-01-01 --until
 python scripts/mt5_bridge_service.py
 ```
 
-Cache: `{d['cache']}` · Bridge dirs: `mt5/{d['bridge_live']}` · `mt5/{d['bridge_sim']}` · EA: `{d['ea_live']}.mq5`
+Cache: `{d['cache']}` · Bridge: `mt5/{d['bridge_live']}` · EA: `{d['ea_live']}.mq5`
 """
     )
 
@@ -317,7 +321,7 @@ graph TD
   M --> A[Trade Models Active / Tổng hợp]
   M --> B[Bridge roster]
   B --> L[Live + Parity]
-  B --> Sim[Simulate HistoryFeed]
+  B --> Hist[Test lịch sử cùng EA]
   C -.->|không EA| L
 """,
       language="text",
@@ -339,7 +343,7 @@ graph TD
 | Nguồn giá | Chỉ ForgeBridge/XM MT5 (không feed ngoài) |
 | Bridge phụ thuộc EA+service | Cùng lúc; Wine/SSL login có thể fail trên Linux Docker |
 | Multi-model | Cần tài khoản **hedging**; risk ≈ N × Risk% nếu mở đồng thời |
-| Sim fills ≠ Live | Compare/HistoryFeed FILLED không phải lệnh MT5 |
+| Sim fills ≠ Live | Test lịch sử / Compare FILLED không phải lệnh MT5 (broker không nhận giá quá khứ) |
 
 ### Còn thiếu / dễ gây hiểu nhầm (backlog)
 | Hạng mục | Hiện trạng |

@@ -492,6 +492,211 @@ def _is_chase_entry(fm, strat, signal_idx: int, direction: int) -> bool:
   return False
 
 
+def _json_num(value) -> float | None:
+  try:
+    x = float(value)
+  except (TypeError, ValueError):
+    return None
+  if not np.isfinite(x):
+    return None
+  return round(x, 4)
+
+
+def _rule_expect(rule: Rule) -> str:
+  if rule.op == "eq1":
+    return "> 0.5 (bật)"
+  if rule.op == "gt":
+    return f"> {rule.threshold:g}"
+  if rule.op == "lt":
+    return f"< {rule.threshold:g}"
+  return str(rule.op)
+
+
+def _eval_rule(fm, rule: Rule, i: int) -> tuple[bool, float | None]:
+  try:
+    v = float(fm.get(rule.feature)[i])
+  except Exception:
+    return False, None
+  if np.isnan(v):
+    return False, None
+  ok = (
+    (rule.op == "eq1" and v > 0.5)
+    or (rule.op == "gt" and v > rule.threshold)
+    or (rule.op == "lt" and v < rule.threshold)
+  )
+  return ok, v
+
+
+def _gate(
+  gid: str, label: str, ok: bool, current, expect: str, *, side: str,
+) -> dict:
+  if isinstance(current, (int, float)) and not isinstance(current, bool):
+    current = _json_num(current)
+  return {
+    "id": gid,
+    "label": label,
+    "ok": bool(ok),
+    "current": current,
+    "expect": expect,
+    "side": side,
+  }
+
+
+def explain_bar_gates(fm, strat, i: int) -> dict:
+  """Per-side gate dump for the closed bar: current vs expect (Live desk)."""
+  hours = getattr(fm, "broker_hours", None)
+  if hours is None:
+    hours = getattr(fm, "hours", None)
+  hour = None
+  if hours is not None and 0 <= i < len(hours):
+    try:
+      hour = int(hours[i])
+    except (TypeError, ValueError):
+      hour = None
+
+  session_on = (not bool(getattr(strat, "session_filter", True))) or (
+    hour is not None
+    and int(getattr(strat, "session_start_hour", 7))
+    <= hour
+    <= int(getattr(strat, "session_end_hour", 20))
+  )
+  blocked = set(int(h) for h in (getattr(strat, "blocked_hours", ()) or ()))
+  hour_ok = hour is None or hour not in blocked
+  session_expect = (
+    f"{int(getattr(strat, 'session_start_hour', 7))}–"
+    f"{int(getattr(strat, 'session_end_hour', 20))}h"
+    if getattr(strat, "session_filter", True) else "off"
+  )
+  blocked_expect = (
+    "not in " + ",".join(str(h) for h in sorted(blocked))
+    if blocked else "any hour"
+  )
+
+  def _side(direction: int) -> dict:
+    side = "BUY" if direction == 1 else "SELL"
+    rules = strat.long_rules if direction == 1 else strat.short_rules
+    allowed = bool(getattr(strat, "allow_long" if direction == 1 else "allow_short", True))
+    gates = [
+      _gate("allow", f"Allow {side}", allowed, "on" if allowed else "off", "on", side=side),
+      _gate("session", "Session hour", session_on, hour, session_expect, side=side),
+      _gate("blocked_hour", "Hour not blocked", hour_ok, hour, blocked_expect, side=side),
+    ]
+    score, count = _count_matching_rules(fm, rules, i)
+    for r in rules:
+      ok, v = _eval_rule(fm, r, i)
+      gates.append(_gate(
+        f"rule:{r.feature}:{r.op}",
+        str(r.feature),
+        ok,
+        _json_num(v),
+        _rule_expect(r),
+        side=side,
+      ))
+    need = int(getattr(strat, "min_rules_match", 1) or 1)
+    gates.append(_gate(
+      "rules_count",
+      f"Rules matched (≥{need})",
+      count >= need,
+      count,
+      f">= {need} / {len(rules)}",
+      side=side,
+    ))
+
+    ml_arr = None
+    scorer = getattr(strat, "ml_scorer", None)
+    if scorer is not None:
+      ml_arr = scorer._prob_long if direction == 1 else scorer._prob_short
+    ml_v = (
+      float(ml_arr[i])
+      if ml_arr is not None and 0 <= i < len(ml_arr)
+      else 0.5
+    )
+    ml_min = float(getattr(strat, "ml_prob_min", 0.4) or 0.0)
+    gates.append(_gate(
+      "ml", "ML prob", ml_v >= ml_min, _json_num(ml_v), f">= {ml_min:g}", side=side,
+    ))
+
+    other_rules = strat.short_rules if direction == 1 else strat.long_rules
+    other_score, _ = _count_matching_rules(fm, other_rules, i)
+    other_arr = None
+    if scorer is not None:
+      other_arr = scorer._prob_short if direction == 1 else scorer._prob_long
+    other_ml = (
+      float(other_arr[i])
+      if other_arr is not None and 0 <= i < len(other_arr)
+      else 0.5
+    )
+    combined = (
+      score * (0.5 + ml_v) * _htf_bias(fm, i, direction, strat)
+      + _pa_confluence_bonus(fm, i, direction)
+    )
+    other_combined = (
+      other_score * (0.5 + other_ml) * _htf_bias(fm, i, -direction, strat)
+      + _pa_confluence_bonus(fm, i, -direction)
+    )
+    thresh = float(getattr(strat, "score_threshold", 0.0) or 0.0)
+    gates.append(_gate(
+      "score", "Combined score", combined >= thresh,
+      _json_num(combined), f">= {thresh:g}", side=side,
+    ))
+    gates.append(_gate(
+      "score_lead",
+      "Leads opposite side",
+      combined > other_combined,
+      _json_num(combined),
+      f"> {_json_num(other_combined) if other_combined is not None else other_combined}",
+      side=side,
+    ))
+
+    chase_on = bool(getattr(strat, "anti_chase", False))
+    chase = _is_chase_entry(fm, strat, i, direction) if chase_on else False
+    if chase_on:
+      try:
+        rsi_now = float(fm.get("rsi")[i])
+      except Exception:
+        rsi_now = float("nan")
+      if direction > 0:
+        floor = float(getattr(strat, "anti_chase_rsi_long_min", 0.0) or 0.0)
+        expect_ch = f"RSI > {floor:g}"
+      else:
+        cap = float(getattr(strat, "anti_chase_rsi_short_max", 100.0) or 100.0)
+        expect_ch = f"RSI < {cap:g}"
+      gates.append(_gate(
+        "anti_chase", "Anti-chase", not chase, _json_num(rsi_now), expect_ch, side=side,
+      ))
+
+    waiting = [g for g in gates if not g["ok"]]
+    ready = (
+      allowed and session_on and hour_ok
+      and count >= need
+      and combined >= thresh
+      and combined > other_combined
+      and ml_v >= ml_min
+      and not chase
+    )
+    return {
+      "side": side,
+      "ready": bool(ready),
+      "passed": sum(1 for g in gates if g["ok"]),
+      "total": len(gates),
+      "waiting_n": len(waiting),
+      "waiting": [g["label"] for g in waiting],
+      "gates": gates,
+    }
+
+  bar_time = None
+  try:
+    bar_time = str(fm.index[i])
+  except Exception:
+    pass
+  return {
+    "bar_time": bar_time,
+    "hour": hour,
+    "buy": _side(1),
+    "sell": _side(-1),
+  }
+
+
 def backtest_mined(
   fm, strat, signals, start_idx=0, end_idx=None,
   spread_pips: float = 0.0, slippage_pips: float = 0.0,

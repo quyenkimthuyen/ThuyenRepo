@@ -1,4 +1,4 @@
-"""Deploy ForgeBridge EA (Live + Simulate) — sidebar control."""
+"""Deploy ForgeBridge Live EA — sidebar control."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,15 +22,31 @@ def run_deploy_mode(
   timeout_sec: float = 120.0,
 ) -> tuple[int, str, str]:
   """Run deploy_xm_forgebridge.ps1 for one Mode. Returns (code, stdout, stderr)."""
+  import os
   import subprocess
   script = deploy_script_path()
+  if not script.is_file():
+    return 2, "", f"Deploy script missing: {script}"
+  root = _repo_root()
+  env = os.environ.copy()
+  env["TRAINAPP_ROOT"] = str(root)
+  desk = (env.get("TRAINAPP_DESK") or "").strip()
+  if desk:
+    env["TRAINAPP_DESK"] = desk
+    env["TRAINAPP_RUNTIME"] = str((root / "runtime" / desk).resolve())
+    try:
+      from desk_context import load_desk
+      env["TRAINAPP_CORE"] = str(load_desk(desk)["core_root"])
+    except Exception:
+      pass
   cmd = [
     "powershell.exe",
     "-ExecutionPolicy", "Bypass",
     "-File", str(script),
-    "-Mode", mode,
-    "-Attach",
   ]
+  if desk:
+    cmd.extend(["-Desk", desk])
+  cmd.extend(["-Mode", mode, "-Attach"])
   if enable_trading:
     cmd.append("-EnableTrading")
   if skip_bridge_service:
@@ -41,7 +57,8 @@ def run_deploy_mode(
       capture_output=True,
       text=True,
       check=False,
-      cwd=str(script.parent.parent),
+      cwd=str(root),
+      env=env,
       timeout=max(30.0, float(timeout_sec)),
     )
   except subprocess.TimeoutExpired as e:
@@ -56,7 +73,7 @@ def run_deploy_mode(
 
 
 def ea_live_name() -> str:
-  """EA stem matches INSTANCE_ID (e.g. ForgeBridgeM15E21 / ForgeBridgeM5E31)."""
+  """EA stem matches INSTANCE_ID (e.g. ForgeBridgeM15E21)."""
   from mt5_bridge.protocol import INSTANCE_ID
   return f"ForgeBridge{INSTANCE_ID}"
 
@@ -122,19 +139,18 @@ def deploy_ea_and_wait_online(
 
 
 def render_sidebar_deploy_eas() -> None:
-  """Compact Deploy Live+Simulate — one script run, one MT5 restart."""
+  """Compact Deploy Live — one script run, one MT5 restart."""
   live_ea = ea_live_name()
-  sim_ea = ea_sim_name()
   if st.sidebar.button(
-    "Deploy Live + Simulate",
+    "Deploy Live",
     icon=":material/settings_suggest:",
     use_container_width=True,
-    key="sidebar_mt5_deploy_both",
-    help=f"{live_ea} + {sim_ea} · 1 lần restart MT5",
+    key="sidebar_mt5_deploy_live",
+    help=f"{live_ea} · 1 lần restart MT5 · test lịch sử dùng cùng EA",
   ):
-    with st.spinner(f"Deploy {live_ea} + {sim_ea} (một lần)…"):
+    with st.spinner(f"Deploy {live_ea}…"):
       try:
-        code, out, err = run_deploy_mode("Both", enable_trading=True)
+        code, out, err = run_deploy_mode("Live", enable_trading=True)
       except Exception as e:
         st.sidebar.error(str(e))
         return
@@ -143,7 +159,7 @@ def render_sidebar_deploy_eas() -> None:
       with st.sidebar.expander("Log", expanded=True):
         st.code((err + "\n" + out).strip() or "(empty)")
       return
-    st.sidebar.success(f"OK · {live_ea} + {sim_ea}")
+    st.sidebar.success(f"OK · {live_ea}")
     with st.sidebar.expander("Log", expanded=False):
       st.code(out or "(no stdout)")
-    st.toast("Đã deploy Live + Simulate (1 lần restart MT5)")
+    st.toast("Đã deploy Live EA (test lịch sử: from/to trên cùng chart)")

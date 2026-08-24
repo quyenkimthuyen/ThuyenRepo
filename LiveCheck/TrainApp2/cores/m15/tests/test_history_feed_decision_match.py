@@ -65,3 +65,22 @@ def test_live_buy_schema_only_matches_exact_bar_time():
   # Next M15 bar must not accept this decision (would open 1 bar late)
   assert _exact_bar_time_match("2026.03.10 10:15", decision) is False
   assert _mql_string_find_match("2026.03.10 10:15", decision) is True  # documents old bug
+
+
+def test_late_live_sell_is_still_valid_until_expires():
+  """Decision arriving after the first EA wait must still match the closed bar."""
+  decision = {
+    "action": "SELL",
+    "reason": "signal",
+    "bar_time": "2026.08.24 15:15",
+    "expires_bar_time": "2026.08.24 15:30",
+    "entry": 1.16711,
+    "sl": 1.16753,
+    "tp": 1.16584,
+  }
+  closed = "2026.08.24 15:15"
+  forming = "2026.08.24 15:30"
+  assert _exact_bar_time_match(closed, decision) is True
+  assert _exact_bar_time_match(forming, decision) is False
+  assert str(decision["action"]).upper() == "SELL"
+  assert str(decision["reason"]) == "signal"

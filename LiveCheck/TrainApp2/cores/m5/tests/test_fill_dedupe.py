@@ -89,3 +89,125 @@ def test_dedupe_collapses_same_ticket() -> None:
   ]
   out = dedupe_trades(rows)
   assert len(out) == 1
+
+
+def test_noop_user_sl_tp_keeps_auto(tmp_path: Path) -> None:
+  from mt5_bridge.trade_journal import trade_mode
+
+  process_fill(
+    {
+      "ok": True,
+      "event": "open",
+      "action": "SELL",
+      "ticket": 1,
+      "signal_id": "sig_auto",
+      "price": 1.16723,
+      "sl": 1.16768,
+      "tp": 1.16561,
+      "lots": 0.14,
+      "source": "strategy",
+    },
+    bridge_dir=tmp_path,
+    model_id="m1",
+  )
+  process_fill(
+    {
+      "ok": True,
+      "event": "modify",
+      "action": "SELL",
+      "ticket": 1,
+      "signal_id": "sig_auto",
+      "sl": 1.16768,
+      "tp": 1.16561,
+      "lots": 0.14,
+      "detail": "user_sl_tp",
+      "reason": "user_sl_tp",
+      "manual": True,
+      "source": "user_edit",
+    },
+    bridge_dir=tmp_path,
+  )
+  row = load_trades(tmp_path)[0]
+  assert trade_mode(row) == "auto"
+  assert row["origin"] == "strategy"
+
+
+def test_real_user_sl_tp_marks_manual(tmp_path: Path) -> None:
+  from mt5_bridge.trade_journal import trade_mode
+
+  process_fill(
+    {
+      "ok": True,
+      "event": "open",
+      "action": "SELL",
+      "ticket": 2,
+      "signal_id": "sig_auto2",
+      "price": 1.16723,
+      "sl": 1.16768,
+      "tp": 1.16561,
+      "lots": 0.14,
+      "source": "strategy",
+    },
+    bridge_dir=tmp_path,
+    model_id="m1",
+  )
+  process_fill(
+    {
+      "ok": True,
+      "event": "modify",
+      "action": "SELL",
+      "ticket": 2,
+      "signal_id": "sig_auto2",
+      "sl": 1.16790,
+      "tp": 1.16561,
+      "detail": "user_sl_tp",
+      "manual": True,
+      "source": "user_edit",
+    },
+    bridge_dir=tmp_path,
+  )
+  row = load_trades(tmp_path)[0]
+  assert trade_mode(row) == "manual"
+  assert "user_sl_tp" in row["interventions"]
+
+
+def test_restore_false_manual_edits(tmp_path: Path) -> None:
+  from mt5_bridge.trade_journal import restore_false_manual_edits, save_trades, trade_mode
+
+  save_trades(
+    [
+      {
+        "id": "bt_1",
+        "signal_id": "abc",
+        "status": "OPEN",
+        "mode": "manual",
+        "origin": "strategy",
+        "intervened": True,
+        "interventions": ["user_sl_tp"],
+        "sl": 1.16772,
+        "tp": 1.16588,
+        "sl_initial": 1.16772,
+        "tp_initial": 1.16588,
+        "model_id": "m1",
+      },
+      {
+        "id": "bt_2",
+        "signal_id": "manual_test_x",
+        "status": "CLOSED",
+        "mode": "manual",
+        "origin": "manual_test",
+        "interventions": ["manual_test_open"],
+        "sl": 1.1,
+        "tp": 1.0,
+        "sl_initial": 1.1,
+        "tp_initial": 1.0,
+      },
+    ],
+    tmp_path,
+  )
+  n = restore_false_manual_edits(tmp_path)
+  assert n == 1
+  trades = load_trades(tmp_path)
+  by_id = {t["id"]: t for t in trades}
+  assert trade_mode(by_id["bt_1"]) == "auto"
+  assert trade_mode(by_id["bt_2"]) == "manual"

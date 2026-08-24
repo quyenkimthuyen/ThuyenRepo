@@ -188,6 +188,9 @@ def _run_desk(desk: str, *, workers: int) -> dict:
 
 
 def main() -> int:
+  raise SystemExit(
+    "M5 desks e31/g33 are retired. This app only runs M15 desks e21 and g23."
+  )
   if hasattr(sys.stdout, "reconfigure"):
     try:
       sys.stdout.reconfigure(encoding="utf-8", errors="replace")

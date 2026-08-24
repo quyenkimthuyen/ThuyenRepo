@@ -549,7 +549,7 @@ def build_monitor_bundle(
     bridge_dir = Path(bridge_dir)
   else:
     bridge_dir = BRIDGE_SIM_DIR if src == "sim" else BRIDGE_DIR
-  live_label = "Simulate EA" if src == "sim" else "Live Auto"
+  live_label = "Test lịch sử" if src == "sim" else "Live Auto"
 
   bt = load_backtest_baseline(model)
   live = load_live_auto_trades(

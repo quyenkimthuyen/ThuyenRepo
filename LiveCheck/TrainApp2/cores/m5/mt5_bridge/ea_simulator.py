@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from mt5_bridge.protocol import (
+  BRIDGE_DIR,
   BRIDGE_SIM_DIR,
   atomic_write_json,
   ensure_bridge_dir,
@@ -173,23 +174,21 @@ def stop_history_feed_control(bridge_dir: Path | None = None) -> dict[str, Any]:
 
 
 def reset_sim_data(bridge_dir: Path | None = None) -> dict[str, Any]:
-  """Wipe bridge_sim run artifacts so the next History Feed starts clean."""
+  """Reset history-test control files without wiping Live heartbeat or trade journal."""
   from mt5_bridge.comm_log import clear_log
 
-  bridge_dir = ensure_bridge_dir(bridge_dir or BRIDGE_SIM_DIR)
+  bridge_dir = ensure_bridge_dir(bridge_dir or BRIDGE_DIR)
   try:
     from mt5_bridge.sim_history import archive_sim_run
     archive_sim_run(bridge_dir=bridge_dir, status="stopped")
   except Exception:
     pass
-  clear_trades(bridge_dir)
   clear_log(bridge_dir)
 
-  # Ephemeral protocol files from the previous run
+  # Ephemeral protocol files from the previous history test (keep Live heartbeat)
   for name in (
     "bar.json",
     "bars.json",
-    "connection.json",
     "decision.json",
     "fill.json",
     "ea_fills.jsonl",
@@ -197,10 +196,6 @@ def reset_sim_data(bridge_dir: Path | None = None) -> dict[str, Any]:
     "status.json",
     "command.json",
     "command_ack.json",
-    "history_request.json",
-    "history_chunk.json",
-    "history_ack.json",
-    "history_status.json",
   ):
     path = bridge_dir / name
     if path.exists():

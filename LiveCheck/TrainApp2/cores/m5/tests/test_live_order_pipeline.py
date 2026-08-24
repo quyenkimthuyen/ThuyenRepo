@@ -15,6 +15,7 @@ from mt5_bridge.protocol import (
   atomic_write_json,
   bar_path,
   command_path,
+  connection_path,
   decision_path,
   decision_path_for,
   fill_path,
@@ -434,3 +435,65 @@ def test_multi_model_fill_routes_by_magic(tmp_path: Path, monkeypatch):
   assert trades[0]["model_id"] == mid_b
   assert int(trades[0]["magic"]) == mag_b
   assert trades[0]["signal_id"] == "sig_b"
+
+
+def test_cycle_unblocks_hold_when_ea_flat(live_pipeline_env):
+  bridge = live_pipeline_env["bridge"]
+  eng = live_pipeline_env["eng"]
+  save_trades(
+    [
+      {
+        "id": "bt_ghost",
+        "signal_id": "ghost1",
+        "status": "OPEN",
+        "mode": "auto",
+        "direction": "SELL",
+        "entry_px": 1.1670,
+        "model_id": MODEL_ID,
+        "magic": MAGIC,
+      }
+    ],
+    bridge,
+  )
+  eng._last_decision = {"action": "HOLD", "reason": "position_open", "signal_id": None}
+  eng.enqueue({"action": "FLAT", "reason": "no_signal"})
+  atomic_write_json(connection_path(bridge), {"positions": 0, "connected": True})
+  atomic_write_json(bar_path(bridge), _bar("2026.03.10 10:00"))
+
+  last_bar, _ = bridge_bg._cycle({MODEL_ID: eng}, bridge, "2026.03.10 10:00", None)
+
+  assert last_bar == "2026.03.10 10:00"
+  assert load_trades(bridge)[0]["status"] == "CLOSED"
+  decision = read_json(decision_path(bridge))
+  assert decision is not None
+  assert str(decision.get("reason")) != "position_open"
+  assert str(decision.get("action")).upper() == "FLAT"
+
+
+def test_cycle_idle_keeps_open_when_mt5_has_positions(live_pipeline_env):
+  bridge = live_pipeline_env["bridge"]
+  eng = live_pipeline_env["eng"]
+  save_trades(
+    [
+      {
+        "id": "bt_live",
+        "signal_id": "live1",
+        "status": "OPEN",
+        "mode": "auto",
+        "direction": "SELL",
+        "entry_px": 1.1670,
+        "model_id": MODEL_ID,
+        "magic": MAGIC,
+      }
+    ],
+    bridge,
+  )
+  eng._last_decision = {"action": "HOLD", "reason": "position_open", "signal_id": None}
+  atomic_write_json(connection_path(bridge), {"positions": 2, "connected": True})
+  atomic_write_json(bar_path(bridge), _bar("2026.03.10 10:00"))
+
+  last_bar, _ = bridge_bg._cycle({MODEL_ID: eng}, bridge, "2026.03.10 10:00", None)
+
+  assert last_bar == "2026.03.10 10:00"
+  assert load_trades(bridge)[0]["status"] == "OPEN"
+  assert read_json(decision_path(bridge)) is None

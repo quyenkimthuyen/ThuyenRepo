@@ -120,7 +120,7 @@ def journal_mt5_position_desync(
       "mt5_positions": mt5_n,
       "message": (
         "App đang giữ trạng thái «đang có lệnh» trong khi MT5 trống — "
-        "bấm «Xóa lệnh treo trên App» nếu desk vẫn hiện lệnh mở."
+        "Bridge tự gỡ khi EA còn online; bấm «Xóa lệnh treo trên App» nếu desk vẫn kẹt."
       ),
     }
 
@@ -164,11 +164,12 @@ def snapshot_live_desk(
     resolve_live_bridge_dir,
     status_path,
   )
-  from mt5_bridge.trade_journal import load_trades, trade_mode
+  from mt5_bridge.trade_journal import load_trades, restore_false_manual_edits, trade_mode
   from gui.mt5_live_chart import connection_health
 
   bdir = bridge_dir or resolve_live_bridge_dir()
   today = today or date.today()
+  restore_false_manual_edits(bdir)
   connection = read_json(connection_path(bdir)) or {}
   decision = read_json(decision_path(bdir)) or {}
   file_status = read_json(status_path(bdir)) or {}
@@ -193,6 +194,7 @@ def snapshot_live_desk(
     t_stats, w_stats = period_stats(trades, today=today, model_id=mid)
     opens = [t for t in open_trades(trades, mode="auto") if str(t.get("model_id") or "") == mid]
     ot = opens[-1] if opens else None
+    slot = (file_status.get("per_model") or {}).get(mid) or {}
     per_model.append({
       "model_id": mid,
       "today_stats": t_stats,
@@ -200,7 +202,8 @@ def snapshot_live_desk(
       "open_trade": ot,
       "unrealized_r": unrealized_r(ot, connection) if ot else None,
       "open_count": len(opens),
-      "last_action": ((file_status.get("per_model") or {}).get(mid) or {}).get("action"),
+      "last_action": slot.get("action"),
+      "signal_wait": slot.get("signal_wait"),
       "magic": next(
         (r.get("magic") for r in (roster.get("models") or [])
          if isinstance(r, dict) and str(r.get("id")) == mid),
@@ -221,8 +224,9 @@ def snapshot_live_desk(
     ea_pos_n = int(ea_pos) if ea_pos is not None else None
   except (TypeError, ValueError):
     ea_pos_n = None
+  open_all = count_open(trades, mode=None)
   desync = journal_mt5_position_desync(
-    journal_open_n=open_auto,
+    journal_open_n=open_all,
     ea_positions=ea_pos_n,
     ea_online=bool(health.get("online")),
     decision_reason=str(

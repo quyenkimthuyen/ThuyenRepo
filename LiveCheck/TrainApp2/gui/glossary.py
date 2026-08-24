@@ -34,7 +34,7 @@ HELP = {
     "Không điều khiển lệnh Live/Sim."
   ),
   "bridge_roster": (
-    "**Bridge roster** — 1–5 model chọn trên MT5 Bridge cho Live/Simulate. "
+    "**Bridge roster** — 1–5 model chọn trên MT5 Bridge cho Live và test lịch sử. "
     "Archive/xóa sẽ gỡ id khỏi roster; id còn sót = *id ma* (nút Dọn roster)."
   ),
   "archive_model": (
@@ -43,7 +43,7 @@ HELP = {
   ),
   "mt5_bridge": (
     "**MT5 Bridge** — App quyết định → EA `ForgeBridge` mở/đóng lệnh trên MT5. "
-    "Live = thật/demo; Simulate = replay History Feed."
+    "Live = thật/demo; test lịch sử = replay nến trên cùng EA Live (fill giấy)."
   ),
   "grid_search": "**Grid Search** — thử nhiều combo tham số để tìm setting tốt hơn.",
   "mining_preset": (
@@ -54,7 +54,7 @@ HELP = {
   "remine": "**Remine** — mỗi tuần mine lại strategy trên cửa sổ học gần nhất (không đổi Trade Model).",
   "parity": "**Parity** — đối chiếu strategy tuần Live với weekly_log Health OOS.",
   "fp": "**fp / conditions_fp** — fingerprint điều kiện remine; Live/Sim phải khớp Trade Model.",
-  "history_feed": "**History Feed** — EA phát lại nến lịch sử theo Từ/Đến để Simulate.",
+  "history_feed": "**Test lịch sử** — cùng EA Live, App ghi from/to vào sim_control.json; EA CopyRates, fill giấy (không OrderSend).",
 }
 
 # --- Nhãn metric (hiển thị) ---
@@ -223,9 +223,8 @@ def glossary_sections() -> list[tuple[str, list[tuple[str, str]]]]:
   try:
     from mt5_bridge.protocol import INSTANCE_ID
     ea_live = f"ForgeBridge{INSTANCE_ID}"
-    ea_sim = f"{ea_live}Sim"
   except Exception:
-    ea_live, ea_sim = "ForgeBridge…", "ForgeBridge…Sim"
+    ea_live = "ForgeBridge…"
   return [
     ("Học & kiểm chứng", [
       ("OOS / Kiểm chứng", "Giai đoạn chỉ test lệnh, không tối ưu lại chiến lược."),
@@ -240,7 +239,7 @@ def glossary_sections() -> list[tuple[str, list[tuple[str, str]]]]:
     ]),
     ("Tối ưu & model", [
       ("Grid Search", "Thử nhiều combo tham số, xếp hạng để chọn Trade Model."),
-      ("Trade Model", "Snapshot cấu hình đã chọn (cửa sổ học, KB/epoch, OOS, phí) — dùng chung Live/Simulate."),
+      ("Trade Model", "Snapshot cấu hình đã chọn (cửa sổ học, KB/epoch, OOS, phí) — dùng chung Live và test lịch sử."),
       ("Active", "Model đang phân tích trong Trade Models — không điều khiển lệnh."),
       ("Archive", "Cất kệ nghiên cứu (giữ report); gỡ khỏi Bridge. Restore không tự add Bridge."),
       ("Health / Health OOS", "Báo cáo backtest OOS của model (chuẩn so sánh Live/Sim)."),
@@ -249,15 +248,15 @@ def glossary_sections() -> list[tuple[str, list[tuple[str, str]]]]:
     ]),
     ("Vận hành MT5", [
       ("MT5 Bridge", "App quyết định + EA mở/đóng lệnh trên MetaTrader 5."),
-      ("Bridge roster", "1–5 model runtime Live/Sim (multiselect). Khác Active."),
+      ("Bridge roster", "1–5 model runtime trên MT5 Bridge (Live và test lịch sử). Khác Active."),
       ("Live", "Lệnh thật/demo trên tài khoản MT5 đang gắn EA."),
-      ("Simulate", "Replay quá khứ qua App↔EA (History Feed), cùng roster với Live."),
-      ("History Feed", "EA phát lại nến lịch sử theo Từ/Đến để Simulate."),
+      ("Test lịch sử", "Replay nến quá khứ trên cùng EA Live (CopyRates from/to), fill giấy, cùng roster với Live."),
+      ("sim_control.json", "File App→EA: from/to/delay trên folder bridge Live. Đang chạy thì tick Live tạm dừng."),
       ("Parity", "Đối chiếu strategy tuần Live với weekly_log Health OOS."),
-      ("EA", f"Expert Advisor trên MT5 (`{ea_live}` / `{ea_sim}`)."),
-      ("InpMode", "Input EA: Live / History Feed (Simulate)."),
+      ("EA", f"Expert Advisor trên MT5 (`{ea_live}`). Test lịch sử dùng cùng file, không gắn EA Sim."),
+      ("InpMode", "Input EA mặc định Live. Test lịch sử bật bằng sim_control.json, không đổi EX5."),
       ("Magic", "Magic Number — tách lệnh Bridge khỏi EA khác trên cùng tài khoản."),
-      ("Sim fills / PaperBook", "Khớp lệnh mô phỏng OHLC trong Compare / HistoryFeed (module `paper_fill`). Không phải desk Paper Monitor."),
+      ("Sim fills / PaperBook", "Khớp lệnh mô phỏng OHLC trong Compare / test lịch sử (module `paper_fill`). Không phải desk Paper Monitor."),
       ("Id ma", "Id còn trong Bridge config nhưng model đã Archive/xóa — dùng Dọn roster."),
     ]),
     ("Chỉ số & lệnh", [
