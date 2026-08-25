@@ -1,0 +1,308 @@
+{
+  "desk": "g23",
+  "regime": "realistic",
+  "spread_pips": 2.0,
+  "validate_grid": {
+    "elite_or_quality|tw6|gateNone": {
+      "cell": {
+        "preset": "elite_or_quality",
+        "train_weeks": 6,
+        "cost_gate_mult": null
+      },
+      "key": "elite_or_quality|tw6|gateNone",
+      "validate": {
+        "n_trades": 35,
+        "total_r": -14.641,
+        "win_rate_pct": 17.14,
+        "avg_rr": 2.823,
+        "max_drawdown_r": 20.736,
+        "profit_factor": 0.622,
+        "robust_score": -2.599,
+        "quality_score": 27.278
+      },
+      "elapsed_s": 182.6,
+      "n_weeks": 27
+    },
+    "anti_chase_fixed_70|tw6|gateNone": {
+      "cell": {
+        "preset": "anti_chase_fixed_70",
+        "train_weeks": 6,
+        "cost_gate_mult": null
+      },
+      "key": "anti_chase_fixed_70|tw6|gateNone",
+      "validate": {
+        "n_trades": 134,
+        "total_r": 4.02,
+        "win_rate_pct": 32.09,
+        "avg_rr": 2.194,
+        "max_drawdown_r": 38.478,
+        "profit_factor": 1.074,
+        "robust_score": -1.041,
+        "quality_score": 52.889
+      },
+      "elapsed_s": 533.6,
+      "n_weeks": 27
+    },
+    "elite_or_quality|tw6|gate3.5": {
+      "cell": {
+        "preset": "elite_or_quality",
+        "train_weeks": 6,
+        "cost_gate_mult": 3.5
+      },
+      "key": "elite_or_quality|tw6|gate3.5",
+      "validate": {
+        "n_trades": 20,
+        "total_r": -4.673,
+        "win_rate_pct": 20.0,
+        "avg_rr": 2.998,
+        "max_drawdown_r": 10.555,
+        "profit_factor": 0.692,
+        "robust_score": -2.193,
+        "quality_score": 32.232
+      },
+      "elapsed_s": 178.5,
+      "n_weeks": 27
+    },
+    "elite_or_quality|tw3|gateNone": {
+      "cell": {
+        "preset": "elite_or_quality",
+        "train_weeks": 3,
+        "cost_gate_mult": null
+      },
+      "key": "elite_or_quality|tw3|gateNone",
+      "validate": {
+        "n_trades": 61,
+        "total_r": -25.692,
+        "win_rate_pct": 18.03,
+        "avg_rr": 2.589,
+        "max_drawdown_r": 29.625,
+        "profit_factor": 0.505,
+        "robust_score": -2.716,
+        "quality_score": 24.295
+      },
+      "elapsed_s": 124.9,
+      "n_weeks": 27
+    }
+  },
+  "picks": {
+    "aiedge": {
+      "policy": "aiedge",
+      "cell": {
+        "preset": "anti_chase_fixed_70",
+        "train_weeks": 6,
+        "cost_gate_mult": null
+      },
+      "key": "anti_chase_fixed_70|tw6|gateNone",
+      "validate": {
+        "n_trades": 134,
+        "total_r": 4.02,
+        "win_rate_pct": 32.09,
+        "avg_rr": 2.194,
+        "max_drawdown_r": 38.478,
+        "profit_factor": 1.074,
+        "robust_score": -1.041,
+        "quality_score": 52.889
+      },
+      "soft_fallback": true
+    },
+    "trainapp_quality": {
+      "policy": "trainapp_quality",
+      "cell": {
+        "preset": "anti_chase_fixed_70",
+        "train_weeks": 6,
+        "cost_gate_mult": null
+      },
+      "key": "anti_chase_fixed_70|tw6|gateNone",
+      "validate": {
+        "n_trades": 134,
+        "total_r": 4.02,
+        "win_rate_pct": 32.09,
+        "avg_rr": 2.194,
+        "max_drawdown_r": 38.478,
+        "profit_factor": 1.074,
+        "robust_score": -1.041,
+        "quality_score": 52.889
+      },
+      "soft_fallback": true
+    }
+  },
+  "tests": {
+    "aiedge::anti_chase_fixed_70|tw6|gateNone": {
+      "policy": "aiedge",
+      "key": "anti_chase_fixed_70|tw6|gateNone",
+      "cell": {
+        "preset": "anti_chase_fixed_70",
+        "train_weeks": 6,
+        "cost_gate_mult": null
+      },
+      "test": {
+        "n_trades": 165,
+        "total_r": 61.089,
+        "win_rate_pct": 41.82,
+        "avg_rr": 2.142,
+        "max_drawdown_r": 17.658,
+        "profit_factor": 1.494,
+        "robust_score": 2.8,
+        "quality_score": 80.157
+      },
+      "elapsed_s": 614.2
+    },
+    "trainapp_quality::anti_chase_fixed_70|tw6|gateNone": {
+      "policy": "aiedge",
+      "key": "anti_chase_fixed_70|tw6|gateNone",
+      "cell": {
+        "preset": "anti_chase_fixed_70",
+        "train_weeks": 6,
+        "cost_gate_mult": null
+      },
+      "test": {
+        "n_trades": 165,
+        "total_r": 61.089,
+        "win_rate_pct": 41.82,
+        "avg_rr": 2.142,
+        "max_drawdown_r": 17.658,
+        "profit_factor": 1.494,
+        "robust_score": 2.8,
+        "quality_score": 80.157
+      },
+      "elapsed_s": 614.2,
+      "reused_from_same_cell": true
+    }
+  },
+  "result": {
+    "desk": "g23",
+    "pair": "GBPUSD",
+    "tf": "M15",
+    "regime": "realistic",
+    "spread_pips": 2.0,
+    "picks": {
+      "aiedge": {
+        "policy": "aiedge",
+        "cell": {
+          "preset": "anti_chase_fixed_70",
+          "train_weeks": 6,
+          "cost_gate_mult": null
+        },
+        "key": "anti_chase_fixed_70|tw6|gateNone",
+        "validate": {
+          "n_trades": 134,
+          "total_r": 4.02,
+          "win_rate_pct": 32.09,
+          "avg_rr": 2.194,
+          "max_drawdown_r": 38.478,
+          "profit_factor": 1.074,
+          "robust_score": -1.041,
+          "quality_score": 52.889
+        },
+        "soft_fallback": true
+      },
+      "trainapp_quality": {
+        "policy": "trainapp_quality",
+        "cell": {
+          "preset": "anti_chase_fixed_70",
+          "train_weeks": 6,
+          "cost_gate_mult": null
+        },
+        "key": "anti_chase_fixed_70|tw6|gateNone",
+        "validate": {
+          "n_trades": 134,
+          "total_r": 4.02,
+          "win_rate_pct": 32.09,
+          "avg_rr": 2.194,
+          "max_drawdown_r": 38.478,
+          "profit_factor": 1.074,
+          "robust_score": -1.041,
+          "quality_score": 52.889
+        },
+        "soft_fallback": true
+      }
+    },
+    "validate_grid": {
+      "elite_or_quality|tw6|gateNone": {
+        "key": "elite_or_quality|tw6|gateNone",
+        "validate": {
+          "n_trades": 35,
+          "total_r": -14.641,
+          "win_rate_pct": 17.14,
+          "avg_rr": 2.823,
+          "max_drawdown_r": 20.736,
+          "profit_factor": 0.622,
+          "robust_score": -2.599,
+          "quality_score": 27.278
+        }
+      },
+      "anti_chase_fixed_70|tw6|gateNone": {
+        "key": "anti_chase_fixed_70|tw6|gateNone",
+        "validate": {
+          "n_trades": 134,
+          "total_r": 4.02,
+          "win_rate_pct": 32.09,
+          "avg_rr": 2.194,
+          "max_drawdown_r": 38.478,
+          "profit_factor": 1.074,
+          "robust_score": -1.041,
+          "quality_score": 52.889
+        }
+      },
+      "elite_or_quality|tw6|gate3.5": {
+        "key": "elite_or_quality|tw6|gate3.5",
+        "validate": {
+          "n_trades": 20,
+          "total_r": -4.673,
+          "win_rate_pct": 20.0,
+          "avg_rr": 2.998,
+          "max_drawdown_r": 10.555,
+          "profit_factor": 0.692,
+          "robust_score": -2.193,
+          "quality_score": 32.232
+        }
+      },
+      "elite_or_quality|tw3|gateNone": {
+        "key": "elite_or_quality|tw3|gateNone",
+        "validate": {
+          "n_trades": 61,
+          "total_r": -25.692,
+          "win_rate_pct": 18.03,
+          "avg_rr": 2.589,
+          "max_drawdown_r": 29.625,
+          "profit_factor": 0.505,
+          "robust_score": -2.716,
+          "quality_score": 24.295
+        }
+      }
+    },
+    "test": {
+      "aiedge": {
+        "n_trades": 165,
+        "total_r": 61.089,
+        "win_rate_pct": 41.82,
+        "avg_rr": 2.142,
+        "max_drawdown_r": 17.658,
+        "profit_factor": 1.494,
+        "robust_score": 2.8,
+        "quality_score": 80.157
+      },
+      "trainapp_quality": {
+        "n_trades": 165,
+        "total_r": 61.089,
+        "win_rate_pct": 41.82,
+        "avg_rr": 2.142,
+        "max_drawdown_r": 17.658,
+        "profit_factor": 1.494,
+        "robust_score": 2.8,
+        "quality_score": 80.157
+      }
+    },
+    "decision": {
+      "winner": "tie",
+      "reason": "|\u0394R|<5 and |\u0394DD|<5",
+      "aiedge_total_r": 61.089,
+      "trainapp_total_r": 61.089,
+      "aiedge_dd": 17.658,
+      "trainapp_dd": 17.658,
+      "aiedge_profit": true,
+      "trainapp_profit": true,
+      "both_nonpositive": false
+    }
+  }
+}
