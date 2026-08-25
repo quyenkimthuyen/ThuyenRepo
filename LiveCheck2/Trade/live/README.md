@@ -13,7 +13,7 @@ Auto-refresh trong sidebar.
 
 Modules: `gui/app.py`, `gui/theme.py`, `desk_snapshot.py`.
 
-Magic / port: base **`20263001`**, UI **`8601`**, monitor **`9601`**.
+Magic / port: base **`20283001`**, UI **`8801`**, monitor **`9801`**.
 
 ## Linux Simulate / Replay (no MT5)
 
@@ -35,7 +35,7 @@ LIVE_REPLAY_MODE=paper ../../EdgeMinerM15B5/.venv/bin/python live/scripts/run_oo
 ```
 
 Multi symbol/TF: roster bật nhiều model → mỗi book (symbol+TF) chạy worker/bridge
-riêng; nhiều model cùng book dùng magic riêng (`20263001+` live / `20264001+` sim).
+riêng; nhiều model cùng book dùng magic riêng (`20283001+` live / `20284001+` sim).
 
 **Bắt buộc cho parity / Live:** `.tmpkg` phải kèm `schedule.json` (weekly genomes).
 Thiếu schedule → **export FAIL**, **import REJECT**, roster **không cho On**.
@@ -129,7 +129,7 @@ python live/scripts/test_live_windows.py
 
 # UI
 ./live/scripts/run_app_linux.sh Start
-# http://127.0.0.1:8601
+# http://127.0.0.1:8801
 ```
 
 Windows:

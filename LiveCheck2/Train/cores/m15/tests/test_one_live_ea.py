@@ -9,8 +9,8 @@ RUNTIME = ROOT / "runtime"
 
 def _live_eas() -> list[Path]:
   return [
-    RUNTIME / "e21" / "mt5" / "Experts" / "ForgeBridgeM15E21.mq5",
-    RUNTIME / "g23" / "mt5" / "Experts" / "ForgeBridgeM15G23.mq5",
+    RUNTIME / "e21" / "mt5" / "Experts" / "ForgeBridgeLC2E21.mq5",
+    RUNTIME / "g23" / "mt5" / "Experts" / "ForgeBridgeLC2G23.mq5",
   ]
 
 

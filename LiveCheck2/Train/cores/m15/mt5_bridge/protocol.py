@@ -27,8 +27,8 @@ def _desk_bridge_defaults():
   return cfg
 
 _CFG = _desk_bridge_defaults()
-_BRIDGE = str(_CFG.get("bridge_subdir") or "bridge_m15e21")
-_BRIDGE_SIM = str(_CFG.get("bridge_sim_subdir") or "bridge_sim_m15e21")
+_BRIDGE = str(_CFG.get("bridge_subdir") or "bridge_lc2_e21")
+_BRIDGE_SIM = str(_CFG.get("bridge_sim_subdir") or "bridge_lc2_e21_sim")
 BRIDGE_DIR = ROOT / "mt5" / _BRIDGE
 # One Live EA: history test uses sim_control.json in the Live folder.
 BRIDGE_SIM_DIR = BRIDGE_DIR
@@ -56,10 +56,10 @@ REPLAY_CSV_NAME = "replay_signals.csv"
 SIM_CONTROL_NAME = "sim_control.json"
 
 DEFAULT_MODEL_ID = ""
-DEFAULT_MAGIC = int(_CFG.get("magic") or 20261021)
-DEFAULT_SIM_MAGIC = int(_CFG.get("sim_magic") or 20262021)
+DEFAULT_MAGIC = int(_CFG.get("magic") or 20281021)
+DEFAULT_SIM_MAGIC = int(_CFG.get("sim_magic") or 20282021)
 DEFAULT_TIMEFRAME = str(_CFG.get("tf") or "M15")
-INSTANCE_ID = str(_CFG.get("instance_id") or "M15E21")
+INSTANCE_ID = str(_CFG.get("instance_id") or "LC2E21")
 MAX_BRIDGE_MODELS = 5
 
 

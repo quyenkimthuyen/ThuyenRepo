@@ -22,14 +22,14 @@ OUT_DIR = TRADE / "packages_out" / "m15_from_trainapp2"
 E21_SUFFIXES = ("4a4a914b", "17f02183", "0b140e51", "aac3ed9f", "3d3a5f7a")
 G23_SUFFIXES = ("2fda252b", "0dc9024d", "3b1c042f", "af189802", "be1c40b6")
 E21_MAGICS = {
-  "17f02183": 20261021,
-  "0b140e51": 20261022,
-  "aac3ed9f": 20261023,
-  "3d3a5f7a": 20261024,
-  "4a4a914b": 20261026,
+  "17f02183": 20281021,
+  "0b140e51": 20281022,
+  "aac3ed9f": 20281023,
+  "3d3a5f7a": 20281024,
+  "4a4a914b": 20281026,
 }
 G23_MAGICS = {
-  "2fda252b": 20261042,
+  "2fda252b": 20281042,
 }
 DESK_SUFFIXES = {"e21": E21_SUFFIXES, "g23": G23_SUFFIXES}
 DESK_MAGICS = {"e21": E21_MAGICS, "g23": G23_MAGICS}

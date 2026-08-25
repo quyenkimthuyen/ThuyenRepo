@@ -103,8 +103,8 @@ ensure_streamlit() {
 }
 
 declare -A CATALOG_PORT=(
-  [e21]=8711
-  [g23]=8731
+  [e21]=8911
+  [g23]=8931
 )
 declare -A CATALOG_LABEL=(
   [e21]=E21

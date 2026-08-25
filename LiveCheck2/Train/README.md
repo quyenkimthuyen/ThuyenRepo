@@ -37,10 +37,12 @@ python run_desk.py g23 --check
 
 ## Ports
 
+LiveCheck2 isolation vs `LiveCheck\TrainApp2` (8711/8731, magic `20261xxx`):
+
 | Desk | URL |
 |------|-----|
-| E21 EURUSD M15 | http://127.0.0.1:8711 |
-| G23 GBPUSD M15 | http://127.0.0.1:8731 |
+| E21 EURUSD M15 | http://127.0.0.1:8911 |
+| G23 GBPUSD M15 | http://127.0.0.1:8931 |
 
 ## How it works
 

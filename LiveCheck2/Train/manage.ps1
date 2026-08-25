@@ -29,8 +29,8 @@ foreach ($c in @("python", "py")) {
 if (-not $Python) { throw "Python not found on PATH" }
 
 $Catalog = [ordered]@{
-  e21 = @{ Port = 8711; Label = "E21" }
-  g23 = @{ Port = 8731; Label = "G23" }
+  e21 = @{ Port = 8911; Label = "E21" }
+  g23 = @{ Port = 8931; Label = "G23" }
 }
 
 function Resolve-DeskIds([string[]]$Requested) {
@@ -69,8 +69,8 @@ function Get-DeskProcesses([string]$DeskId, [int]$Port) {
       $_.CommandLine -match "streamlit" -and
       (
         $_.CommandLine -match [regex]::Escape($Root) -or
-        $_.CommandLine -match [regex]::Escape("LiveCheck\Train\") -or
-        $_.CommandLine -match [regex]::Escape("LiveCheck/Train/")
+        $_.CommandLine -match [regex]::Escape("LiveCheck2\Train\") -or
+        $_.CommandLine -match [regex]::Escape("LiveCheck2/Train/")
       ) -and
       (
         $_.CommandLine -match "--server.port $Port" -or

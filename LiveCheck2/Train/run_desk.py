@@ -37,7 +37,7 @@ def main(argv: list[str] | None = None) -> int:
   for name in ("data", "results", "learning", "mt5"):
     (runtime / name).mkdir(parents=True, exist_ok=True)
 
-  port = int(args.port or cfg.get("port") or 8711)
+  port = int(args.port or cfg.get("port") or 8911)
   print(
     f"TrainApp desk={cfg['id']} label={cfg.get('label')} "
     f"pair={cfg.get('pair')} {cfg.get('tf')} port={port}"

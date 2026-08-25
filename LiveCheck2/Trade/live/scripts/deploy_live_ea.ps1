@@ -43,9 +43,9 @@ $BridgeSubdirLive = "bridge_live"
 $BridgeSubdirSim = "bridge_sim_live"
 $EaNameLive = "ForgeBridgeLive"
 $EaNameSim = "ForgeBridgeLiveSim"
-$EaFolder = "EdgeMinerLive"
-$EaMagicLive = 20263001
-$EaMagicSim = 20264001
+$EaFolder = "EdgeMinerLive2"
+$EaMagicLive = 20283001
+$EaMagicSim = 20284001
 $IsBoth = ($Mode -eq "Both")
 
 # Defaults: Attach + EnableTrading (like Final_app manage DeployEA)

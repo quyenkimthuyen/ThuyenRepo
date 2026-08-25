@@ -514,7 +514,7 @@ def _render_models_overview(models: list[dict], active: dict | None):
         f"Package `{pkg.name}` · {exp.get('weeks') or 0} tuần OOS · `{pkg}`"
       )
       st.caption(
-        "Trade import: [http://127.0.0.1:8601/?nav=Models](http://127.0.0.1:8601/?nav=Models) "
+        "Trade import: [http://127.0.0.1:8801/?nav=Models](http://127.0.0.1:8801/?nav=Models) "
         "(tab **Models**, không phải Live). Live chỉ chạy roster đã import."
       )
       if pkg.is_file():

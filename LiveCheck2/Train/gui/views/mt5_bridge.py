@@ -29,7 +29,7 @@ from gui.ui_preferences import preference_callback, restore_widget, set_preferen
 from mt5_bridge.history_sync import get_history_status, start_history_sync
 from mt5_bridge import background as bridge_bg
 from mt5_bridge.comm_log import append_event, clear_log, read_events
-from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT
+from mt5_bridge.live_monitor_server import desk_chart_port
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
   BRIDGE_SIM_DIR,
@@ -782,6 +782,9 @@ def _render_trader_desk(*, include_live_metrics: bool = True) -> None:
         c1.metric(ea_label, f"OFFLINE · {age_txt}")
     elif health.get("online"):
       c1.metric(ea_label, f"ONLINE · {age_txt}")
+    elif health.get("waiting"):
+      c1.metric(ea_label, f"WAIT · {age_txt}")
+      c1.caption("EA chờ App decision")
     else:
       c1.metric(ea_label, f"OFFLINE · {age_txt}")
 
@@ -932,12 +935,16 @@ def _live_chart_recover_fragment(max_bars: int) -> None:
   """After Stop→Start, chart server may lag; retry until ready then remount iframe."""
   from mt5_bridge.live_monitor_server import ensure_chart_server
 
-  ensure_chart_server(resolve_live_bridge_dir(), DEFAULT_MONITOR_PORT)
-  if _chart_server_healthy(f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"):
+  port = desk_chart_port()
+  ensure_chart_server(resolve_live_bridge_dir(), port)
+  if _chart_server_healthy(f"http://127.0.0.1:{port}"):
     # One-shot remount — do not loop st.rerun every 2s once healthy.
     if not st.session_state.get("_live_chart_recovered"):
       st.session_state["_live_chart_recovered"] = True
-      st.rerun()
+      try:
+        st.rerun(scope="fragment")
+      except TypeError:
+        st.rerun()
   else:
     st.session_state["_live_chart_recovered"] = False
     st.caption("Đang chờ Live chart server…")
@@ -947,10 +954,11 @@ def _render_live_chart(max_bars: int) -> None:
   """Live chart from the desk bridge folder (history replay writes the same folder)."""
   bridge_dir = _active_bridge_dir()
   legend = "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — overlay giống Compare/Sim."
-  monitor_url = f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"
+  port = desk_chart_port()
+  monitor_url = f"http://127.0.0.1:{port}"
 
   from mt5_bridge.live_monitor_server import ensure_chart_server
-  ensure_chart_server(resolve_live_bridge_dir(), DEFAULT_MONITOR_PORT)
+  ensure_chart_server(resolve_live_bridge_dir(), port)
   server_ready = _chart_server_healthy(monitor_url)
   if server_ready:
     components.iframe(
@@ -1057,27 +1065,32 @@ def _render_manual_test_orders(*, show_json: bool = True) -> None:
 
 
 def _render_live_deploy() -> None:
-  from gui.mt5_deploy_ui import ea_live_name, run_deploy_mode
+  from gui.mt5_deploy_ui import ea_live_name, rerun_app, start_deploy_mode_async
   st.markdown("##### Triển khai EA Live (riêng)")
   st.caption(f"Chỉ `{ea_live_name()}` · folder `{bridge_dir_display()}`.")
-  if st.button(
-    "Deploy Live only",
-    icon=":material/settings_suggest:",
-    use_container_width=True,
-    key="mt5_live_deploy",
-  ):
-    with st.spinner("Đang deploy Live…"):
-      try:
-        code, out, err = run_deploy_mode("Live", enable_trading=True)
-      except Exception as e:
-        st.error(f"Lỗi: {e}")
-        return
+  result = st.session_state.pop("_tech_deploy_result", None)
+  if result:
+    code, out, err = result
     if code == 0:
       st.success("Triển khai Live thành công!")
       st.code(out)
     else:
       st.error(f"Lỗi khi triển khai (Mã lỗi: {code}):")
       st.code(err + "\n" + out)
+  if st.button(
+    "Deploy Live only",
+    icon=":material/settings_suggest:",
+    use_container_width=True,
+    key="mt5_live_deploy",
+    disabled=bool(st.session_state.get("_deploy_job")),
+  ):
+    try:
+      job = start_deploy_mode_async("Live", enable_trading=True)
+    except Exception as e:
+      st.error(f"Lỗi: {e}")
+      return
+    st.session_state["_deploy_job"] = {**job, "start_bridge": False, "sidebar": True}
+    rerun_app()
 
 
 def _render_risk_controls() -> None:

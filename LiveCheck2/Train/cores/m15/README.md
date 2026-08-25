@@ -12,9 +12,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run_dual_edgeminer.ps1 -Actio
 powershell -ExecutionPolicy Bypass -File .\scripts\run_dual_edgeminer.ps1 -Action Restart
 ```
 
-Backtest desk E21: app `8711` · Bridge `8975` · Sim chart `9086` · Compare `9196`
+Backtest desk E21: app `8911` · Bridge `9975` · Sim chart `10086` · Compare `10196`
 (port `8976` = legacy Paper Monitor chart — desk đã gỡ, không dùng).
-Folder `bridge_m15e21`, Magic `20261021`. H1 dùng `8502/8865/8866`, folder `bridge_h1`, Magic `20260725`.
+Folder `bridge_m15e21`, Magic `20281021`. H1 dùng `8502/8865/8866`, folder `bridge_h1`, Magic `20260725`.
 
 Clone thêm instance M15 (cô lập repo + magic + port):
 
@@ -40,7 +40,7 @@ powershell -ExecutionPolicy Bypass -File scripts/run_app_windows.ps1 -Action Sta
 powershell -ExecutionPolicy Bypass -File scripts/run_app_windows.ps1 -Action Stop
 ```
 
-App mặc định mở tại `http://127.0.0.1:8711`. Có thể đổi cổng bằng `-Port 8502` (Windows) hoặc `--port 8502` (Linux).
+App mặc định mở tại `http://127.0.0.1:8911`. Có thể đổi cổng bằng `-Port 8502` (Windows) hoặc `--port 8502` (Linux).
 
 Linux/macOS:
 

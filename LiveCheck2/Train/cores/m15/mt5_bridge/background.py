@@ -932,6 +932,11 @@ def start_process_worker() -> bool:
       "--poll", str(cfg.get("poll_sec") or 2.0),
       "--bridge-dir", str(cfg.get("bridge_dir") or BRIDGE_DIR),
     ]
+    try:
+      from mt5_bridge.live_monitor_server import desk_chart_port
+      cmd.extend(["--monitor-port", str(desk_chart_port())])
+    except Exception:
+      pass
     ids = config_model_ids(cfg)
     if ids:
       cmd.extend(["--model-ids", ",".join(ids)])
@@ -947,14 +952,17 @@ def start_process_worker() -> bool:
     logf = open(SERVICE_LOG, "a", encoding="utf-8")
     logf.write(f"\n--- start {_now_iso()} ---\n")
     logf.flush()
-    proc = subprocess.Popen(
-      cmd,
+    popen_kw: dict = dict(
       cwd=str(ROOT),
       stdout=logf,
       stderr=subprocess.STDOUT,
       start_new_session=True,
       close_fds=True,
     )
+    if sys.platform == "win32":
+      # python.exe is a console app; without this a black window stays open.
+      popen_kw["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+    proc = subprocess.Popen(cmd, **popen_kw)
     PID_PATH.write_text(str(proc.pid), encoding="utf-8")
     save_config(enabled=True, mode="process", service_pid=proc.pid, last_error=None)
     append_event(

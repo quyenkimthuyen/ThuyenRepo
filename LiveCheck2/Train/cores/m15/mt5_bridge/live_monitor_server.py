@@ -18,11 +18,32 @@ from mt5_bridge.protocol import (
 )
 from mt5_bridge.trade_journal import load_trades
 
-DEFAULT_MONITOR_PORT = 8975
+DEFAULT_MONITOR_PORT = 9975
 # Dedicated Simulate chart port (avoid stale Live monitor on 8765 lacking mode=sim)
-SIM_MONITOR_PORT = 9086
+SIM_MONITOR_PORT = 10086
 # Dedicated Compare Trade chart port (iframe Plotly.react, same UX as Simulate)
-COMPARE_MONITOR_PORT = 9196
+COMPARE_MONITOR_PORT = 10196
+
+
+def desk_chart_port() -> int:
+  """Live chart HTTP port for this desk. E21/G23 must not share one bind."""
+  try:
+    import os
+    import sys
+    from pathlib import Path
+
+    root = (os.environ.get("TRAINAPP_ROOT") or "").strip()
+    if root:
+      rp = str(Path(root).resolve())
+      if rp not in sys.path:
+        sys.path.insert(0, rp)
+    from desk_context import load_desk
+
+    return int(load_desk().get("chart_port") or DEFAULT_MONITOR_PORT)
+  except Exception:
+    return DEFAULT_MONITOR_PORT
+
+
 _CHART_SERVER = None
 _CHART_SERVER_LOCK = threading.Lock()
 _SIM_CHART_SERVER = None

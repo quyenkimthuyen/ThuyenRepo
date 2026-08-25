@@ -1,0 +1,25 @@
+==> Locate XM Global MT5
+Install : C:\Program Files\XM Global MT5
+Data    : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05
+Desk    : e21 (LC2E21 EURUSD M15)
+Runtime : C:\Work\ThuyenRepo\LiveCheck2\Train\runtime\e21
+Mode    : Live
+==> Stop XM MT5 (unlock EA files / Files junction)
+==> Link MQL5 Files to app
+Live    : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05\MQL5\Files\bridge_lc2_e21 -> C:\Work\ThuyenRepo\LiveCheck2\Train\runtime\e21\mt5\bridge_lc2_e21
+==> Render ForgeBridge EA v1.26 for desk e21
+OK runtime\e21\mt5\Experts\ForgeBridgeLC2E21.mq5
+==> Copy and compile ForgeBridgeLC2E21
+EX5     : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05\MQL5\Experts\EdgeMinerLC2E21\ForgeBridgeLC2E21.ex5
+==> Attach ForgeBridgeLC2E21 Live to EURUSD M15
+Attach target: existing ForgeBridgeLC2E21 on chart05.chr
+Attached ForgeBridgeLC2E21 (mode=0, subdir=bridge_lc2_e21) -> chart05.chr
+Chart   : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05\MQL5\Profiles\Charts\Default\chart05.chr
+Trading : True
+History test: same EA + chart; App writes sim_control.json on bridge_lc2_e21
+==> Restart MT5 Bridge service
+Service : PID 20128
+==> Done
+Live EA ready. History test: App from/to writes sim_control.json on this same chart (no Sim EX5).
+Next update command:
+powershell -ExecutionPolicy Bypass -File "C:\Work\ThuyenRepo\LiveCheck2\Train\scripts\deploy_xm_forgebridge.ps1" -Desk e21

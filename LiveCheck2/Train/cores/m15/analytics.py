@@ -10,15 +10,53 @@ from genome_naming import display_name
 from strategy import Trade, max_drawdown_r
 
 
+def _parse_one_ts(value) -> pd.Timestamp:
+  """One journal/report timestamp — MT5 bar (no seconds) and broker (with seconds)."""
+  if value is None or value == "":
+    return pd.NaT
+  if isinstance(value, float) and pd.isna(value):
+    return pd.NaT
+  if isinstance(value, pd.Timestamp):
+    ts = value
+  else:
+    raw = str(value).strip()
+    ts = pd.NaT
+    if len(raw) >= 16 and raw[4:5] == ".":
+      if len(raw) >= 19:
+        ts = pd.to_datetime(raw[:19], format="%Y.%m.%d %H:%M:%S", errors="coerce")
+      if pd.isna(ts):
+        ts = pd.to_datetime(raw[:16], format="%Y.%m.%d %H:%M", errors="coerce")
+    if pd.isna(ts):
+      ts = pd.to_datetime(raw, errors="coerce")
+  if pd.isna(ts):
+    return pd.NaT
+  ts = pd.Timestamp(ts)
+  if ts.tz is not None:
+    ts = pd.Timestamp(ts.strftime("%Y-%m-%d %H:%M:%S"))
+  return ts
+
+
+def _to_datetime_series(col) -> pd.Series:
+  s = col if isinstance(col, pd.Series) else pd.Series(col)
+  if s.empty:
+    return pd.to_datetime(s, errors="coerce")
+  if pd.api.types.is_datetime64_any_dtype(s) and getattr(s.dt, "tz", None) is None:
+    return s
+  return s.map(_parse_one_ts)
+
+
 def trades_json_to_df(trades: list[dict]) -> pd.DataFrame:
   if not trades:
     return pd.DataFrame()
   df = pd.DataFrame(trades)
   if "entry" in df.columns:
-    df["entry"] = pd.to_datetime(df["entry"])
+    df["entry"] = _to_datetime_series(df["entry"])
   if "exit" in df.columns:
-    df["exit"] = pd.to_datetime(df["exit"])
-  return df.sort_values("entry").reset_index(drop=True)
+    df["exit"] = _to_datetime_series(df["exit"])
+  if "entry" in df.columns:
+    df = df.dropna(subset=["entry"])
+    return df.sort_values("entry").reset_index(drop=True)
+  return df
 
 
 def trade_objects_to_rows(trades: list[Trade]) -> list[dict]:
@@ -83,7 +121,7 @@ def monthly_breakdown(trades_df: pd.DataFrame) -> pd.DataFrame:
   df = trades_df.copy()
   if "entry" not in df.columns:
     return pd.DataFrame(columns=["month", "n_trades", "win_rate_pct", "total_r", "avg_r", "cum_r"])
-  df["entry"] = pd.to_datetime(df["entry"], errors="coerce")
+  df["entry"] = _to_datetime_series(df["entry"])
   df = df.dropna(subset=["entry"])
   if df.empty:
     return pd.DataFrame(columns=["month", "n_trades", "win_rate_pct", "total_r", "avg_r", "cum_r"])

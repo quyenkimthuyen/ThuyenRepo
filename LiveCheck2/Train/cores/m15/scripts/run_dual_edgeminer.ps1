@@ -17,10 +17,10 @@ if ($leaf -eq "EdgeMinerH1") {
   $H1Root = Join-Path $Parent "EdgeMinerH1"
   if (-not (Test-Path $H1Root)) { $H1Root = "C:\Work\ThuyenRepo\EdgeMinerH1" }
 }
-$M15AppPort = 8711
+$M15AppPort = 8911
 $H1AppPort = 8502
 $Expected = @{
-  M15 = @{ Period = "M15"; Magic = 20261021; Instance = "M15E21"; Bridge = "bridge_m15e21" }
+  M15 = @{ Period = "M15"; Magic = 20281021; Instance = "LC2E21"; Bridge = "bridge_lc2_e21" }
   H1 = @{ Period = "H1"; Magic = 20260725; Instance = "H1"; Bridge = "bridge_h1" }
 }
 
@@ -53,7 +53,7 @@ function Invoke-Python([string]$Root, [string]$Code) {
 }
 
 function Start-Services {
-  Invoke-Python $M15Root "from mt5_bridge.background import save_config,start_worker; save_config(enabled=True,model_id='tm_m15_best_2_49216b56',risk_pct=1.0,poll_sec=2.0,bridge_dir=r'$M15Root\mt5\bridge_m15e21'); assert start_worker()"
+  Invoke-Python $M15Root "from mt5_bridge.background import save_config,start_worker; save_config(enabled=True,model_id='tm_m15_best_2_49216b56',risk_pct=1.0,poll_sec=2.0,bridge_dir=r'$M15Root\mt5\bridge_lc2_e21'); assert start_worker()"
   Invoke-Python $H1Root "from mt5_bridge.background import save_config,start_worker; save_config(enabled=True,model_id='tm_mt5_best_94ef551a',risk_pct=1.0,poll_sec=2.0,bridge_dir=r'$H1Root\mt5\bridge_h1'); assert start_worker()"
 }
 
@@ -89,7 +89,7 @@ function Enable-ExpertTrading {
     -ErrorAction Stop | Select-Object -First 1
   $terminalData = Split-Path (Split-Path (Split-Path $bridgeItem.FullName))
   $chartsRoot = Join-Path $terminalData "MQL5\Profiles\Charts"
-  $names = @("ForgeBridgeM15E21", "ForgeBridgeM15E21Sim", "ForgeBridgeH1", "ForgeBridgeH1Sim")
+  $names = @("ForgeBridgeLC2E21", "ForgeBridgeLC2E21Sim", "ForgeBridgeH1", "ForgeBridgeH1Sim")
   foreach ($name in $names) {
     $chart = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
       Where-Object { (Get-Content $_.FullName -Raw) -match "(?m)^name=$name\s*$" } |
@@ -123,7 +123,7 @@ function Deploy-Dual {
   & powershell -ExecutionPolicy Bypass -File (Join-Path $H1Root "scripts\deploy_xm_forgebridge.ps1") `
     -Attach -SkipBridgeService -RiskPct 1.0
   if ($LASTEXITCODE -ne 0) { throw "H1 EA deploy failed." }
-  Read-Connection (Join-Path $M15Root "mt5\bridge_m15e21\connection.json") $Expected.M15 | Out-Null
+  Read-Connection (Join-Path $M15Root "mt5\bridge_lc2_e21\connection.json") $Expected.M15 | Out-Null
   Read-Connection (Join-Path $H1Root "mt5\bridge_h1\connection.json") $Expected.H1 | Out-Null
   Enable-ExpertTrading
   Start-Services
@@ -134,9 +134,9 @@ function Deploy-Dual {
 function Show-Status {
   $processes = Get-CimInstance Win32_Process
   foreach ($item in @(
-    @{ Name = "M15 app"; Pattern = [regex]::Escape("$M15Root\gui\app.py"); Port = 8711 },
+    @{ Name = "M15 app"; Pattern = [regex]::Escape("$M15Root\gui\app.py"); Port = 8911 },
     @{ Name = "H1 app"; Pattern = [regex]::Escape("$H1Root\gui\app.py"); Port = 8502 },
-    @{ Name = "M15 bridge"; Pattern = [regex]::Escape("$M15Root\mt5\bridge_m15e21"); Port = 8975 },
+    @{ Name = "M15 bridge"; Pattern = [regex]::Escape("$M15Root\mt5\bridge_lc2_e21"); Port = 9975 },
     @{ Name = "H1 bridge"; Pattern = [regex]::Escape("$H1Root\mt5\bridge_h1"); Port = 8865 }
   )) {
     $count = @($processes | Where-Object { $_.CommandLine -match $item.Pattern }).Count

@@ -31,6 +31,19 @@ _MANUAL_CLOSE_REASONS = {
   "manual",
 }
 _MANUAL_OPEN_MARKERS = ("manual_test", "manual_bridge", "manual_close")
+_AUTO_EXIT_REASONS = {
+  "sl",
+  "tp",
+  "trail",
+  "max_hold",
+  "ea_close",
+  "stop_out",
+  "end_range",
+  "closed",
+  "close",
+  "journal_desync",
+  "sim_end_reconcile",
+}
 
 
 def _row_symbol(*sources: dict | None) -> str:
@@ -332,10 +345,25 @@ def _restore_false_user_sl_tp(row: dict) -> bool:
     return False
   flags = [str(x) for x in (row.get("interventions") or [])]
   origin = str(row.get("origin") or "").lower()
+  reason = str(row.get("reason") or "").lower()
+  if reason in _MANUAL_CLOSE_REASONS:
+    return False
+  if any(
+    f in ("manual_test_open", "manual_close", "manual_test_close")
+    or str(f).startswith("manual_test")
+    for f in flags
+  ):
+    return False
+  sl_ok = _px_same(row.get("sl"), row.get("sl_initial")) and _px_same(
+    row.get("tp"), row.get("tp_initial")
+  )
+  status = str(row.get("status") or "").upper()
   if "user_sl_tp" in flags:
-    if not _px_same(row.get("sl"), row.get("sl_initial")) or not _px_same(
-      row.get("tp"), row.get("tp_initial")
-    ):
+    if not sl_ok:
+      return False
+  elif "intervened" in flags and sl_ok:
+    # Close inherited g_user_intervened from a no-op user_sl_tp fill.
+    if status == "CLOSED" and reason and reason not in _AUTO_EXIT_REASONS:
       return False
   elif "orphan_close" in flags and origin in ("user_edit", "strategy", ""):
     pass
@@ -631,7 +659,22 @@ def process_fill(
 
     close_reason = str(fill.get("reason") or fill.get("detail") or row.get("reason") or "")
     close_l = close_reason.lower()
-    if (
+    sl_now = fill.get("sl") if fill.get("sl") is not None else row.get("sl")
+    tp_now = fill.get("tp") if fill.get("tp") is not None else row.get("tp")
+    false_ea_manual = (
+      not _is_manual_test_row(row)
+      and close_l in _AUTO_EXIT_REASONS
+      and _px_same(sl_now, row.get("sl_initial"))
+      and _px_same(tp_now, row.get("tp_initial"))
+      and (
+        fill.get("manual") is True
+        or str(fill.get("source") or "").lower() in ("user_edit", "manual")
+        or trade_mode(row) == MODE_MANUAL
+      )
+    )
+    if false_ea_manual:
+      pass
+    elif (
       fill.get("manual") is True
       or close_l in _MANUAL_CLOSE_REASONS
       or "manual" in close_l

@@ -33,13 +33,13 @@ input bool   InpShowComment    = true;              // Chart Comment: bar + per-
 
 input group "=== Risk ==="
 input double InpRiskPct        = 1.0;
-input ulong  InpMagic          = 20263001;        // base magic; multi-model uses models.json
+input ulong  InpMagic          = 20283001;        // base magic; multi-model uses models.json
 input int    InpMaxModels      = 5;               // max concurrent trade models
 input int    InpSlipPoints     = 30;
 input int    InpMaxHoldBars    = 36;                // fallback if decision omits
 
 CTrade   trade;
-const string INSTANCE_ID = "LIVE1";
+const string INSTANCE_ID = "LIVE2";
 
 bool UsePaperFills()
 {

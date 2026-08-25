@@ -9,11 +9,11 @@ param(
   [ValidateSet("Install", "Uninstall", "Status")]
   [string]$Action = "Status",
   [int]$DelaySec = 45,
-  [int]$Port = 8601
+  [int]$Port = 8801
 )
 
 $ErrorActionPreference = "Stop"
-$TaskName = "EdgeMinerLiveBoot"
+$TaskName = "EdgeMinerLive2Boot"
 $BootScript = Join-Path $PSScriptRoot "boot_autostart_windows.ps1"
 $LiveRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 

@@ -16,6 +16,20 @@ def test_desk_symbol_m5g33_is_gbpusd(monkeypatch):
   assert paper_fill._desk_symbol() == "GBPUSD"
 
 
+def test_desk_symbol_lc2g23_is_gbpusd(monkeypatch):
+  monkeypatch.setattr(config, "DEFAULT_PAIR", "")
+  monkeypatch.setattr(protocol, "INSTANCE_ID", "LC2G23")
+  monkeypatch.setattr(protocol, "ROOT", Path("/tmp/runtime/g23"))
+  assert paper_fill._desk_symbol() == "GBPUSD"
+
+
+def test_desk_symbol_lc2e21_is_eurusd(monkeypatch):
+  monkeypatch.setattr(config, "DEFAULT_PAIR", "")
+  monkeypatch.setattr(protocol, "INSTANCE_ID", "LC2E21")
+  monkeypatch.setattr(protocol, "ROOT", Path("/tmp/runtime/e21"))
+  assert paper_fill._desk_symbol() == "EURUSD"
+
+
 def test_desk_symbol_m15g23_is_gbpusd(monkeypatch):
   monkeypatch.setattr(config, "DEFAULT_PAIR", "")
   monkeypatch.setattr(protocol, "INSTANCE_ID", "M15G23")

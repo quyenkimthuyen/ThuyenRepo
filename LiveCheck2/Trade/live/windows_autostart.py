@@ -14,11 +14,12 @@ from pathlib import Path
 from typing import Any
 
 from live_config import LIVE_ROOT, RESULTS_DIR
+from shared.constants import LIVE_APP_PORT
 
 PREFS_PATH = RESULTS_DIR / "autostart_prefs.json"
 BOOT_SCRIPT = LIVE_ROOT / "scripts" / "boot_autostart_windows.ps1"
 INSTALL_SCRIPT = LIVE_ROOT / "scripts" / "install_autostart_windows.ps1"
-TASK_NAME = "EdgeMinerLiveBoot"
+TASK_NAME = "EdgeMinerLive2Boot"
 
 DEFAULT_PREFS: dict[str, Any] = {
   "enabled": False,
@@ -26,7 +27,7 @@ DEFAULT_PREFS: dict[str, Any] = {
   "start_app": True,
   "start_bridge": False,  # trading workers — opt-in (safer after reboot)
   "delay_sec": 45,
-  "port": 8601,
+  "port": LIVE_APP_PORT,
 }
 
 
@@ -56,9 +57,9 @@ def load_prefs() -> dict[str, Any]:
   except (TypeError, ValueError):
     data["delay_sec"] = 45
   try:
-    data["port"] = int(data.get("port") or 8601)
+    data["port"] = int(data.get("port") or LIVE_APP_PORT)
   except (TypeError, ValueError):
-    data["port"] = 8601
+    data["port"] = LIVE_APP_PORT
   return data
 
 
@@ -165,7 +166,7 @@ def enable_autostart(
   start_app: bool = True,
   start_bridge: bool = False,
   delay_sec: int = 45,
-  port: int = 8601,
+  port: int = LIVE_APP_PORT,
 ) -> dict[str, Any]:
   """Save prefs + register Scheduled Task (At logon).
 
@@ -270,7 +271,7 @@ def sync_autostart_with_trading(
 
   prefs = load_prefs()
   delay = int(delay_sec if delay_sec is not None else (prefs.get("delay_sec") or 45))
-  app_port = int(port if port is not None else (prefs.get("port") or 8601))
+  app_port = int(port if port is not None else (prefs.get("port") or LIVE_APP_PORT))
 
   try:
     if active:

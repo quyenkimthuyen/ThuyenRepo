@@ -28,7 +28,7 @@ from mt5_bridge.trade_journal import load_trades, save_trades
 
 
 MODEL_ID = "tm_live_pipeline"
-MAGIC = 20261021
+MAGIC = 20281021
 
 
 # --- helpers -----------------------------------------------------------------
@@ -390,7 +390,7 @@ def test_multi_model_fill_routes_by_magic(tmp_path: Path, monkeypatch):
   monkeypatch.setattr(bridge_bg, "CONFIG_PATH", cfg_path)
   bridge_bg._stop.clear()
   mid_a, mid_b = "tm_a", "tm_b"
-  mag_a, mag_b = 20261021, 20261022
+  mag_a, mag_b = 20281021, 20281022
   bridge_bg.save_config(
     enabled=True,
     model_id=mid_a,

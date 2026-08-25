@@ -3,7 +3,7 @@ param(
   [ValidateSet("Start", "Restart", "Stop", "Status")]
   [string]$Action = "Restart",
   [ValidateRange(1, 65535)]
-  [int]$Port = 8601,
+  [int]$Port = 8801,
   [ValidateRange(5, 120)]
   [int]$TimeoutSeconds = 30
 )
@@ -169,7 +169,7 @@ function Test-PortHttpOk {
 function Find-FreeAppPort {
   param([int]$Preferred)
   $candidates = @($Preferred)
-  foreach ($p in 8601, 8602, 8603, 8604, 8605) {
+  foreach ($p in 8801, 8802, 8803, 8804, 8805) {
     if ($p -ne $Preferred) { $candidates += $p }
   }
   foreach ($p in $candidates) {
@@ -220,8 +220,8 @@ function Start-App {
 
   $script:Port = Find-FreeAppPort -Preferred $Port
   $script:AppUrl = "http://127.0.0.1:$Port"
-  if ($Port -ne 8601) {
-    Write-Host "Using fallback port $Port (8601 blocked by stale/ghost socket)."
+  if ($Port -ne 8801) {
+    Write-Host "Using fallback port $Port (8801 blocked by stale/ghost socket)."
   }
 
   $python = (Get-Command python -ErrorAction Stop).Source

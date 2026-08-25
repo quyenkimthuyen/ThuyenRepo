@@ -211,3 +211,103 @@ def test_restore_false_manual_edits(tmp_path: Path) -> None:
   by_id = {t["id"]: t for t in trades}
   assert trade_mode(by_id["bt_1"]) == "auto"
   assert trade_mode(by_id["bt_2"]) == "manual"
+
+
+def test_close_false_user_sl_tp_stays_auto(tmp_path: Path) -> None:
+  """EA false user_sl_tp then SL hit must not land in Lệnh sửa."""
+  from mt5_bridge.trade_journal import trade_mode
+
+  process_fill(
+    {
+      "ok": True,
+      "event": "open",
+      "action": "SELL",
+      "ticket": 960901207,
+      "signal_id": "19c5294d89435322",
+      "price": 1.16697,
+      "sl": 1.1673,
+      "tp": 1.16598,
+      "lots": 0.17,
+      "source": "strategy",
+    },
+    bridge_dir=tmp_path,
+    model_id="m1",
+  )
+  process_fill(
+    {
+      "ok": True,
+      "event": "modify",
+      "action": "SELL",
+      "ticket": 960901207,
+      "sl": 1.1673,
+      "tp": 1.16598,
+      "detail": "user_sl_tp",
+      "reason": "user_sl_tp",
+      "manual": True,
+      "source": "user_edit",
+    },
+    bridge_dir=tmp_path,
+  )
+  process_fill(
+    {
+      "ok": True,
+      "event": "close",
+      "action": "SELL",
+      "ticket": 960901207,
+      "price": 1.1673,
+      "sl": 1.1673,
+      "tp": 1.16598,
+      "lots": 0.17,
+      "profit": -5.61,
+      "reason": "sl",
+      "manual": True,
+      "source": "user_edit",
+    },
+    bridge_dir=tmp_path,
+  )
+  row = load_trades(tmp_path)[0]
+  assert trade_mode(row) == "auto"
+  assert row["origin"] == "strategy"
+
+
+def test_restore_intervened_auto_sl_close(tmp_path: Path) -> None:
+  from mt5_bridge.trade_journal import restore_false_manual_edits, save_trades, trade_mode
+
+  save_trades(
+    [
+      {
+        "id": "bt_today",
+        "signal_id": "abc",
+        "status": "CLOSED",
+        "mode": "manual",
+        "origin": "strategy",
+        "intervened": True,
+        "interventions": ["intervened"],
+        "reason": "sl",
+        "sl": 1.1673,
+        "tp": 1.16598,
+        "sl_initial": 1.1673,
+        "tp_initial": 1.16598,
+      },
+      {
+        "id": "bt_import",
+        "signal_id": "ea_sync_1",
+        "status": "CLOSED",
+        "mode": "manual",
+        "origin": "ea_sync_import",
+        "intervened": True,
+        "interventions": ["ea_sync_import", "intervened"],
+        "reason": "sl",
+        "sl": 1.16755,
+        "tp": 1.16623,
+        "sl_initial": 1.16755,
+        "tp_initial": 1.16623,
+      },
+    ],
+    tmp_path,
+  )
+  assert restore_false_manual_edits(tmp_path) == 2
+  trades = {t["id"]: t for t in load_trades(tmp_path)}
+  assert trade_mode(trades["bt_today"]) == "auto"
+  assert trade_mode(trades["bt_import"]) == "auto"
+  assert trades["bt_import"]["origin"] == "ea_sync_import"

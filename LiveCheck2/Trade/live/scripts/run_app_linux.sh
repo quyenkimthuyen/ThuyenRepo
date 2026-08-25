@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ACTION="Restart"
-PORT=8601
+PORT=8801
 TIMEOUT_SECONDS=30
 
 usage() {

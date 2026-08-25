@@ -1,5 +1,5 @@
 ﻿# Boot sequence after Windows logon: XM MT5 -> Live Streamlit app -> optional bridge.
-# Invoked by Scheduled Task "EdgeMinerLiveBoot" (see install_autostart_windows.ps1).
+# Invoked by Scheduled Task "EdgeMinerLive2Boot" (see install_autostart_windows.ps1).
 #
 # IMPORTANT: Keep this file ASCII-only (or UTF-8 WITH BOM). Windows PowerShell 5.1
 # reads BOM-less UTF-8 as system ANSI; UTF-8 em-dash bytes then become a stray
@@ -40,7 +40,7 @@ function Get-Prefs {
     start_app = $true
     start_bridge = $false
     delay_sec = 45
-    port = 8601
+    port = 8801
   }
   if (-not (Test-Path $PrefsPath)) { return $defaults }
   try {

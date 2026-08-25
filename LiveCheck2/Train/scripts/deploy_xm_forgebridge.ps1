@@ -63,14 +63,19 @@ if ($yaml.ContainsKey("bar_minutes") -and $yaml["bar_minutes"]) {
   $PeriodSize = [int]$Matches[1]
 }
 $ChartBars = if ($PeriodSize -le 5) { 4032 } else { 1344 }
-$MonitorPort = if ($PeriodSize -le 5) { 9075 } else { 8975 }
+$MonitorPort = 9975
+if ($yaml["chart_port"]) {
+  $MonitorPort = [int]$yaml["chart_port"]
+} elseif ($PeriodSize -le 5) {
+  $MonitorPort = 10075
+}
 
 function Test-PathUnder([string]$Child, [string]$Parent) {
   if (-not $Child -or -not $Parent) { return $false }
-  $c = [System.IO.Path]::GetFullPath($Child).TrimEnd("\")
-  $p = [System.IO.Path]::GetFullPath($Parent).TrimEnd("\")
+  $c = [System.IO.Path]::GetFullPath($Child).TrimEnd('\')
+  $p = [System.IO.Path]::GetFullPath($Parent).TrimEnd('\')
   return $c.Equals($p, [System.StringComparison]::OrdinalIgnoreCase) -or
-    $c.StartsWith($p + "\", [System.StringComparison]::OrdinalIgnoreCase)
+    $c.StartsWith($p + '\', [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 $RepoRoot = [string]$env:TRAINAPP_RUNTIME
@@ -225,7 +230,16 @@ function Compile-OneEa(
   Remove-Item $compileLog -Force -ErrorAction SilentlyContinue
   $proc = Start-Process -FilePath $editor `
     -ArgumentList "/compile:$targetMq5", "/log:$compileLog" `
-    -PassThru -Wait
+    -WindowStyle Hidden `
+    -PassThru
+  if (-not $proc) {
+    throw "Cannot start MetaEditor: $editor"
+  }
+  # -Wait can hang forever if MetaEditor stays open (file lock / UI).
+  if (-not $proc.WaitForExit(90000)) {
+    Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+    throw "$Name compile timed out after 90s (MetaEditor hung). Close MT5/MetaEditor and retry."
+  }
 
   $logText = if (Test-Path $compileLog) {
     Get-Content $compileLog -Raw -Encoding Unicode
@@ -245,15 +259,26 @@ function Compile-Ea([string]$DataPath, [string]$XmInstallPath) {
 }
 
 function Stop-XmTerminal([string]$XmInstallPath) {
-  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-    Where-Object {
-      $_.Name -eq "terminal64.exe" -and
-      $_.ExecutablePath -and
-      $_.ExecutablePath.StartsWith($XmInstallPath, [System.StringComparison]::OrdinalIgnoreCase)
-    } |
-    ForEach-Object {
-      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+  $install = [System.IO.Path]::GetFullPath($XmInstallPath).TrimEnd('\')
+  $killed = $false
+  Get-Process -Name "terminal64" -ErrorAction SilentlyContinue | ForEach-Object {
+    $exe = $null
+    try { $exe = $_.Path } catch { $exe = $null }
+    if ($exe -and $exe.StartsWith($install, [System.StringComparison]::OrdinalIgnoreCase)) {
+      Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+      $killed = $true
     }
+  }
+  if (-not $killed) {
+    Get-CimInstance Win32_Process -Filter "Name='terminal64.exe'" -ErrorAction SilentlyContinue |
+      Where-Object {
+        $_.ExecutablePath -and
+        $_.ExecutablePath.StartsWith($install, [System.StringComparison]::OrdinalIgnoreCase)
+      } |
+      ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+      }
+  }
   Start-Sleep -Seconds 2
 }
 
@@ -465,7 +490,7 @@ function New-ForgeBridgeExpertBlock(
 
 function Get-ForgeFamilyPattern {
   # Charts owned by ANY ForgeBridge instance (including sibling clones) are not free.
-  # ForgeBridgeM15E21\b does not match ForgeBridgeM15E21B4 — must use the open suffix.
+  # ForgeBridgeM15E21\b does not match ForgeBridgeM15E21B4 - must use the open suffix.
   return 'name=ForgeBridge[A-Za-z0-9]*\b'
 }
 
@@ -498,7 +523,7 @@ function Select-AttachChart(
     return $free[0]
   }
 
-  # 3) All charts already have a ForgeBridge* EA — create a new chart.
+  # 3) All charts already have a ForgeBridge* EA - create a new chart.
   Write-Host "No free $Symbol $TfLabel chart for $wantedName; creating a new chart."
   $created = @(New-EurusdM15Chart $DataPath)
   if ($created.Count -eq 0) {
@@ -605,6 +630,24 @@ function ConvertTo-QuotedArgumentLine([string[]]$Parts) {
   }) -join ' '
 }
 
+function Start-HiddenPython([string]$FilePath, [string]$ArgumentLine, [string]$WorkingDirectory) {
+  # python.exe is a console app. Start-Process (even with -Redirect*) still
+  # opens a black window that never closes because the Bridge service stays up.
+  # UseShellExecute=false inherits TRAINAPP_* / PYTHONPATH. CreateNoWindow
+  # hides the console. Do not RedirectStandard* here: PS 5.1 ignores
+  # -WindowStyle Hidden when redirecting, and a full pipe can hang the child.
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = $FilePath
+  $psi.Arguments = $ArgumentLine
+  $psi.WorkingDirectory = $WorkingDirectory
+  $psi.UseShellExecute = $false
+  $psi.CreateNoWindow = $true
+  $p = New-Object System.Diagnostics.Process
+  $p.StartInfo = $psi
+  if (-not $p.Start()) { return $null }
+  return $p
+}
+
 function Restart-BridgeService {
   $pidFile = Join-Path $RepoRoot "results\mt5_bridge_service.pid"
   $configFile = Join-Path $RepoRoot "results\mt5_bridge_config.json"
@@ -616,7 +659,7 @@ function Restart-BridgeService {
   # A stale PID file can leave an older service writing to the same bridge.
   $escapedRepo = [regex]::Escape($RepoRoot)
   $escapedBridge = [regex]::Escape($ProjectBridge)
-  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+  Get-CimInstance Win32_Process -Filter "Name='python.exe'" -ErrorAction SilentlyContinue |
     Where-Object {
       $_.CommandLine -match "mt5_bridge_service\.py" -and
       ($_.CommandLine -match $escapedRepo -or $_.CommandLine -match $escapedBridge)
@@ -656,8 +699,6 @@ function Restart-BridgeService {
     Add-Content -Path $logFile -Value "`n--- start $(Get-Date -Format o) (deploy) ---"
   } catch {}
 
-  # Start-Process + Redirect inherits $env:PYTHONPATH / TRAINAPP_*.
-  # CIM process Create does not — that is why the PID died with no log line.
   $argLine = ConvertTo-QuotedArgumentLine @(
     "-u"
     $servicePy
@@ -668,15 +709,14 @@ function Restart-BridgeService {
     "--monitor-port", "$MonitorPort"
     "--bridge-dir", "$ProjectBridge"
   )
-  $proc = Start-Process -FilePath $python -ArgumentList $argLine `
-    -WorkingDirectory $RepoRoot `
-    -PassThru `
-    -RedirectStandardOutput $outFile `
-    -RedirectStandardError $errFile
+  $proc = Start-HiddenPython $python $argLine $RepoRoot
   if (-not $proc) {
-    throw "Cannot start Bridge service (Start-Process returned no process)."
+    throw "Cannot start Bridge service (hidden python returned no process)."
   }
   [System.IO.File]::WriteAllText($pidFile, [string]$proc.Id)
+  try {
+    Add-Content -Path $logFile -Value "hidden pid=$($proc.Id) port=$MonitorPort"
+  } catch {}
 
   Start-Sleep -Seconds 8
   if (-not (Get-Process -Id $proc.Id -ErrorAction SilentlyContinue)) {
@@ -714,22 +754,27 @@ Write-Host "Desk    : $Desk ($InstanceId $Symbol $TfLabel)"
 Write-Host "Runtime : $RepoRoot"
 Write-Host "Mode    : $Mode"
 
+if ($Attach -or -not $NoRestartTerminal) {
+  Write-Step "Stop XM MT5 (unlock EA files / Files junction)"
+  Stop-XmTerminal $InstallPath
+}
+
 Write-Step "Link MQL5 Files to app"
 $bridgeLink = Ensure-BridgeJunction $TerminalDataPath
 Write-Host "Live    : $bridgeLink -> $ProjectBridge"
 
-Write-Step "Render ForgeBridge EA v1.25 for desk $Desk"
+Write-Step "Render ForgeBridge EA v1.27 for desk $Desk"
 $renderScript = Join-Path $AppRoot "scripts\render_forgebridge_ea.py"
 if (Test-Path -LiteralPath $renderScript) {
   $py = (Get-Command python -ErrorAction SilentlyContinue).Source
   if ($py) {
     & $py $renderScript --desk $Desk
     if ($LASTEXITCODE -ne 0) {
-      Write-Warning "render_forgebridge_ea.py failed (exit=$LASTEXITCODE) — using existing .mq5"
+      Write-Warning "render_forgebridge_ea.py failed (exit=$LASTEXITCODE) - using existing .mq5"
     }
   }
 } else {
-  Write-Warning "Missing $renderScript — skip EA render"
+  Write-Warning "Missing $renderScript - skip EA render"
 }
 
 Write-Step "Copy and compile $EaName"

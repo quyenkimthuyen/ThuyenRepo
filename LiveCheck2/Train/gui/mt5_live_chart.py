@@ -189,8 +189,19 @@ def connection_health(
   terminal_connected = bool(connection.get("connected", True if connection else False))
   if connection and "connected" not in connection and age is not None:
     terminal_connected = fresh
+  # Live EA Sleep()s up to 120s waiting for App decisions (blocks OnTimer).
+  # That is not a dead EA — show WAIT instead of OFFLINE so G23 is not
+  # Deployed again while E21 still looks ONLINE.
+  waiting = (
+    (not fresh)
+    and age is not None
+    and age <= 120.0
+    and bool(connection)
+    and terminal_connected
+  )
   return {
     "online": fresh and terminal_connected,
+    "waiting": waiting,
     "fresh": fresh,
     "age_seconds": age,
     "terminal_connected": terminal_connected,

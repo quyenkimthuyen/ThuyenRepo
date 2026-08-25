@@ -12,7 +12,7 @@ from gui.page_chrome import render_page_header
 from gui.trade_model import format_model_label, get_active_trade_model, get_model_by_id
 from mt5_bridge import background as bridge_bg
 from mt5_bridge.loss_guard import loss_guard_status
-from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT, ensure_chart_server
+from mt5_bridge.live_monitor_server import desk_chart_port, ensure_chart_server
 from mt5_bridge.protocol import normalize_model_ids, resolve_live_bridge_dir
 from gui.live_autostart import (
   autostart_is_marked,
@@ -29,19 +29,16 @@ from gui.views.mt5_bridge import (
   render_tab_tech,
 )
 
-_CSS_KEY = "_live_trade_dash_css_v5"  # bump when CSS changes (debug/cache only)
+_CSS_KEY = "_live_trade_dash_css_v6"  # bump when CSS changes (debug/cache only)
 
 _SCOPED_CSS = """
 <style>
 .ltd-wrap { font-family: "IBM Plex Sans", "Segoe UI", sans-serif; color: #1a1d23; }
 .ltd-title { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
   color: #6b7280; margin: 0 0 0.15rem 0; }
+.ltd-sec { font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #6b7280; font-weight: 700; margin: 0.85rem 0 0.4rem 0; }
 .ltd-model { font-size: 1.05rem; font-weight: 600; margin: 0 0 0.65rem 0; line-height: 1.3; }
-.ltd-ready { font-size: 0.82rem; margin: 0 0 0.85rem 0; padding: 0.35rem 0.55rem;
-  border-radius: 4px; display: inline-block; }
-.ltd-ready.ok { background: #e8f5f1; color: #0d6b56; }
-.ltd-ready.warn { background: #fff6e5; color: #9a5b00; }
-.ltd-ready.bad { background: #fdecea; color: #b42318; }
 .ltd-pulse { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1rem 0; }
 .ltd-chip { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.02em;
   padding: 0.28rem 0.55rem; border-radius: 999px; border: 1px solid #e5e7eb;
@@ -50,6 +47,9 @@ _SCOPED_CSS = """
 .ltd-chip.off { border-color: #fecaca; background: #fef2f2; color: #b91c1c; }
 .ltd-chip.warn { border-color: #fde68a; background: #fffbeb; color: #92400e; }
 .ltd-chip.muted { color: #6b7280; font-weight: 500; }
+.ltd-chip.buy { border-color: #99f6e4; background: #ccfbf1; color: #0f766e; }
+.ltd-chip.sell { border-color: #fecaca; background: #fee2e2; color: #b91c1c; }
+.ltd-chip.open { border-color: #5eead4; background: #ccfbf1; color: #0f766e; }
 .ltd-hero { border: 1px solid #e5e7eb; border-radius: 10px; padding: 1rem 1.15rem;
   margin: 0 0 1rem 0; background: #fafbfc; }
 .ltd-hero.open-long { border-color: #99f6e4; background: linear-gradient(180deg,#f0fdfa 0%,#fafbfc 70%); }
@@ -81,6 +81,41 @@ _SCOPED_CSS = """
   color: #6b7280; margin: 0 0.25rem 0 0; font-weight: 600; }
 .ltd-trust-detail { font-size: 0.8rem; color: #4b5563; margin: 0.4rem 0 0 0; line-height: 1.35; }
 .ltd-trust-detail b { color: #1f2937; font-weight: 600; }
+.ltd-legend { font-size: 0.72rem; color: #6b7280; margin: 0.35rem 0 0.55rem 0; line-height: 1.4; }
+.ltd-legend b { color: #374151; }
+.ltd-score { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem;
+  margin: 0 0 1rem 0; }
+@media (max-width: 720px) { .ltd-score { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ltd-score-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.65rem 0.75rem;
+  background: #fff; }
+.ltd-score-card.pos { border-color: #99f6e4; background: #f0fdfa; }
+.ltd-score-card.neg { border-color: #fecaca; background: #fef2f2; }
+.ltd-score-k { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #6b7280; font-weight: 700; margin: 0 0 0.2rem 0; }
+.ltd-score-v { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.03em; margin: 0; line-height: 1.15; }
+.ltd-score-v.pos { color: #0f766e; }
+.ltd-score-v.neg { color: #b91c1c; }
+.ltd-score-v.zero { color: #374151; }
+.ltd-scroll { overflow-x: auto; margin: 0 0 0.85rem 0; }
+.ltd-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin: 0; }
+.ltd-table th { text-align: left; font-size: 0.65rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: #6b7280; font-weight: 700; padding: 0.4rem 0.5rem; border-bottom: 1px solid #e5e7eb;
+  background: #f8fafc; white-space: nowrap; }
+.ltd-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle;
+  white-space: nowrap; }
+.ltd-table tr.row-open { background: #f0fdfa; }
+.ltd-table tr.row-bad { background: #fef2f2; }
+.ltd-table tr.row-buy td:first-child { box-shadow: inset 3px 0 0 #0d9488; }
+.ltd-table tr.row-sell td:first-child { box-shadow: inset 3px 0 0 #dc2626; }
+.ltd-table tr.row-wait td:first-child { box-shadow: inset 3px 0 0 #d97706; }
+.ltd-r.pos { color: #0f766e; font-weight: 700; }
+.ltd-r.neg { color: #b91c1c; font-weight: 700; }
+.ltd-r.zero { color: #6b7280; }
+.ltd-ok { color: #047857; font-weight: 700; }
+.ltd-wait { color: #b45309; font-weight: 600; }
+.ltd-muted { color: #9ca3af; }
+.ltd-dir.buy { color: #0f766e; font-weight: 700; }
+.ltd-dir.sell { color: #b91c1c; font-weight: 700; }
 </style>
 """
 
@@ -97,7 +132,7 @@ def _live_dir():
   return resolve_live_bridge_dir()
 
 
-def _start_live_bridge(model_ids: list[str]) -> bool:
+def _start_live_bridge(model_ids: list[str], *, notify: bool = True) -> bool:
   """Start Live Bridge from desk using roster đã chọn ở Trade Models."""
   ids = normalize_model_ids(model_ids)
   if not ids:
@@ -134,33 +169,143 @@ def _start_live_bridge(model_ids: list[str]) -> bool:
   )
   ok = bridge_bg.start_worker(detached=True)
   if ok:
-    ensure_chart_server(bdir, DEFAULT_MONITOR_PORT)
+    ensure_chart_server(bdir, desk_chart_port())
     as_ok, as_msg = enable_live_autostart()
-    if as_ok:
-      st.toast("Windows logon: tự chạy App + MT5 + Bridge")
-    else:
-      st.warning(as_msg)
+    if notify:
+      if as_ok:
+        st.toast("Windows logon: tự chạy App + MT5 + Bridge")
+      else:
+        st.warning(as_msg)
+    elif not as_ok:
+      st.session_state["_live_dash_autostart_warn"] = as_msg
   return ok
+
+
+_LIVE_START_KEY = "_live_dash_start"
+_LIVE_FLASH_KEY = "_live_dash_flash"
+
+
+def _rerun_app() -> None:
+  from gui.mt5_deploy_ui import rerun_app
+  rerun_app()
+
+
+def _consume_live_start_request() -> None:
+  """Finish a background Deploy / Start Bridge after the watch fragment sees done.
+
+  Deploy itself must not run inside Streamlit: a 90s block kills the websocket
+  and leaves the page stuck on the spinner until a manual refresh.
+  """
+  st.session_state.pop(_LIVE_START_KEY, None)
+  done = st.session_state.pop("_deploy_done", None)
+  if not done:
+    return
+  code = int(done.get("code") or 0)
+  out = str(done.get("out") or "")
+  err = str(done.get("err") or "")
+  if code != 0:
+    log = (err + "\n" + out).strip() or "(empty)"
+    st.session_state[_LIVE_FLASH_KEY] = ("err", f"Deploy thất bại (code {code})\n{log}")
+    return
+  ids = list(done.get("model_ids") or [])
+  if done.get("start_bridge"):
+    if _start_live_bridge(ids, notify=False):
+      from gui.mt5_deploy_ui import ea_live_name
+      st.session_state[_LIVE_FLASH_KEY] = (
+        "ok",
+        f"Đã deploy `{ea_live_name()}` · Start Bridge · {len(ids)} model",
+      )
+    else:
+      st.session_state[_LIVE_FLASH_KEY] = (
+        "err",
+        "Deploy xong nhưng không Start được Bridge — xem tab **Kỹ thuật** / log.",
+      )
+    return
+  from gui.mt5_deploy_ui import ea_live_name
+  st.session_state[_LIVE_FLASH_KEY] = ("ok", f"Đã deploy `{ea_live_name()}`")
+
+
+def _show_live_flash() -> None:
+  flash = st.session_state.pop(_LIVE_FLASH_KEY, None)
+  if flash:
+    kind, msg = flash
+    if kind == "ok":
+      st.toast(str(msg))
+    elif kind == "warn":
+      st.warning(str(msg))
+    else:
+      text = str(msg)
+      st.error(text.split("\n", 1)[0])
+      if "\n" in text:
+        st.code(text.split("\n", 1)[1])
+  warn = st.session_state.pop("_live_dash_autostart_warn", None)
+  if warn:
+    st.warning(str(warn))
 
 
 def _chip(label: str, *, kind: str = "muted") -> str:
   return f'<span class="ltd-chip {kind}">{escape(label)}</span>'
 
 
+def _r_kind(val) -> str:
+  try:
+    x = float(val)
+  except (TypeError, ValueError):
+    return "zero"
+  if x > 0.005:
+    return "pos"
+  if x < -0.005:
+    return "neg"
+  return "zero"
+
+
+def _fmt_r(val) -> str:
+  try:
+    return f"{float(val):+.2f}"
+  except (TypeError, ValueError):
+    return "—"
+
+
+def _wait_cell(caption: str) -> str:
+  cap = caption or "—"
+  if cap == "sẵn sàng":
+    cls = "ltd-ok"
+  elif str(cap).startswith("chờ"):
+    cls = "ltd-wait"
+  else:
+    cls = "ltd-muted"
+  return f'<span class="{cls}">{escape(cap)}</span>'
+
+
+def _dir_span(direction: str) -> str:
+  d = str(direction or "").upper()
+  if d in ("BUY", "LONG"):
+    return f'<span class="ltd-dir buy">{escape(d)}</span>'
+  if d in ("SELL", "SHORT"):
+    return f'<span class="ltd-dir sell">{escape(d)}</span>'
+  if not d or d == "—":
+    return '<span class="ltd-muted">FLAT</span>'
+  return f'<span class="ltd-muted">{escape(d)}</span>'
+
+
 def _pulse_html(
   *,
   ea_online: bool,
+  ea_waiting: bool = False,
   age_txt: str,
   bridge_running: bool,
   algo_on: bool | None,
   quote_txt: str,
   risk_txt: str | None = None,
 ) -> str:
+  if ea_online:
+    ea_chip = _chip(f"EA ONLINE · {age_txt}", kind="on")
+  elif ea_waiting:
+    ea_chip = _chip(f"EA WAIT · {age_txt}", kind="warn")
+  else:
+    ea_chip = _chip(f"EA OFFLINE · {age_txt}", kind="off")
   chips = [
-    _chip(
-      f"EA {'ONLINE' if ea_online else 'OFFLINE'} · {age_txt}",
-      kind="on" if ea_online else "off",
-    ),
+    ea_chip,
     _chip(
       f"BRIDGE {'RUN' if bridge_running else 'STOP'}",
       kind="on" if bridge_running else "off",
@@ -268,7 +413,12 @@ def _sync_html(sync: dict) -> str:
   mt5_n = sync.get("mt5_positions")
   j_n = sync.get("journal_open_all")
   if mt5_n is not None and j_n is not None:
-    match_kind = "on" if sync.get("positions_match") else "warn"
+    if not sync.get("positions_match"):
+      match_kind = "off"
+    elif int(mt5_n or 0) > 0:
+      match_kind = "open"
+    else:
+      match_kind = "on"
     chips.append(_chip(f"MT5 {mt5_n} · App {j_n}", kind=match_kind))
 
   if sync.get("ea_sync_timeout"):
@@ -283,18 +433,25 @@ def _sync_html(sync: dict) -> str:
     for pm in per_model:
       mid = str(pm.get("model_id") or "?")
       short = mid[:14] + "…" if len(mid) > 15 else mid
+      mt5_o = int(pm.get("mt5_open") or 0)
+      j_o = int(pm.get("journal_open") or 0)
       st_pm = pm.get("state") or "ok"
-      pk = "on" if st_pm == "ok" else ("off" if st_pm == "bad" else "warn")
-      chips.append(_chip(
-        f"{short} EA {pm.get('ea_status', '—')} · M{pm.get('mt5_open', 0)}/A{pm.get('journal_open', 0)}",
-        kind=pk,
-      ))
+      if st_pm == "bad" or mt5_o != j_o:
+        pk = "off"
+      elif mt5_o > 0:
+        pk = "open"
+      else:
+        pk = "muted"
+      status = str(pm.get("ea_status") or "—")
+      chips.append(_chip(f"{short} {status} · M{mt5_o}/A{j_o}", kind=pk))
 
   detail = str(sync.get("detail") or "").strip()
   issues = [str(x) for x in (sync.get("issues") or []) if x]
   detail_html = ""
   if issues:
-    detail_html = f'<p class="ltd-trust-detail"><b>MT5 (EA) là chuẩn:</b> {escape(issues[0])}</p>'
+    detail_html = (
+      f'<p class="ltd-trust-detail"><b>MT5 (EA) là chuẩn:</b> {escape(issues[0])}</p>'
+    )
   elif detail:
     detail_html = f'<p class="ltd-trust-detail">{escape(detail)}</p>'
 
@@ -335,6 +492,142 @@ def _guard_html(
   )
 
 
+def _score_html(*, today_r: float, week_r: float, wr, n_today: int) -> str:
+  def card(label: str, value: str, kind: str) -> str:
+    return (
+      f'<div class="ltd-score-card {kind}">'
+      f'<p class="ltd-score-k">{escape(label)}</p>'
+      f'<p class="ltd-score-v {kind}">{escape(value)}</p>'
+      f"</div>"
+    )
+
+  wr_s = f"{float(wr):.0f}%" if wr is not None else "—"
+  if wr is None or n_today <= 0:
+    wr_kind = "zero"
+  elif float(wr) >= 50:
+    wr_kind = "pos"
+  else:
+    wr_kind = "neg"
+  n_kind = "zero" if n_today <= 0 else "pos"
+  return (
+    '<div class="ltd-wrap">'
+    '<p class="ltd-sec">Kết quả</p>'
+    '<div class="ltd-score">'
+    f'{card("Today R", _fmt_r(today_r), _r_kind(today_r))}'
+    f'{card("Week R", _fmt_r(week_r), _r_kind(week_r))}'
+    f'{card("WR hôm nay", wr_s, wr_kind)}'
+    f'{card("Closed hôm nay", str(n_today), n_kind)}'
+    "</div></div>"
+  )
+
+
+def _per_model_table_html(per_model: list, sync_by_id: dict) -> str:
+  from gui.signal_wait_ui import wait_side_caption
+  from gui.trade_model import format_model_short
+
+  head = (
+    "<tr><th>Model</th><th>Magic</th><th>EA</th><th>M/A</th>"
+    "<th>Open</th><th>BUY</th><th>SELL</th>"
+    "<th>Today R</th><th>Week R</th><th>N</th><th>Last</th></tr>"
+  )
+  body = []
+  for pm in per_model:
+    mid = pm.get("model_id")
+    m = get_model_by_id(mid) if mid else None
+    ts = pm.get("today_stats") or {}
+    ws = pm.get("week_stats") or {}
+    ot_m = pm.get("open_trade")
+    ur_m = pm.get("unrealized_r")
+    wait = pm.get("signal_wait") if isinstance(pm.get("signal_wait"), dict) else {}
+    sm = sync_by_id.get(str(mid)) or {}
+    label = format_model_short(m, max_len=28) if m else (str(mid or "?")[:28])
+    magic = pm.get("magic")
+    magic_s = "—" if magic is None else str(magic)
+
+    mt5_o = sm.get("mt5_open")
+    j_o = sm.get("journal_open")
+    try:
+      mismatch = mt5_o is not None and j_o is not None and int(mt5_o) != int(j_o)
+      mt5_n = int(mt5_o) if mt5_o is not None else None
+    except (TypeError, ValueError):
+      mismatch = False
+      mt5_n = None
+    ma_txt = f"{mt5_o if mt5_o is not None else '—'}/{j_o if j_o is not None else '—'}"
+    if mismatch:
+      ma_html = f'<span class="ltd-r neg">{escape(ma_txt)}</span>'
+    elif mt5_n and mt5_n > 0:
+      ma_html = f'<span class="ltd-ok">{escape(ma_txt)}</span>'
+    else:
+      ma_html = f'<span class="ltd-muted">{escape(ma_txt)}</span>'
+
+    ea = str(sm.get("ea_status") or "—")
+    ea_u = ea.upper()
+    if ea_u in ("BUY", "SELL"):
+      ea_html = _dir_span(ea_u)
+    elif ea_u in ("OPEN", "ENTERED"):
+      ea_html = f'<span class="ltd-ok">{escape(ea_u)}</span>'
+    elif ea_u == "TIMEOUT":
+      ea_html = '<span class="ltd-r neg">TIMEOUT</span>'
+    elif ea_u in ("", "—", "FLAT", "HOLD", "OK"):
+      ea_html = f'<span class="ltd-muted">{escape(ea_u if ea_u not in ("", "—") else "FLAT")}</span>'
+    else:
+      ea_html = f'<span class="ltd-muted">{escape(ea)}</span>'
+
+    if ot_m:
+      d = str(ot_m.get("direction") or "").upper()
+      if ur_m is not None:
+        open_html = f'{_dir_span(d)} <span class="ltd-r {_r_kind(ur_m)}">{ur_m:+.2f}R</span>'
+      else:
+        open_html = _dir_span(d)
+    else:
+      open_html = '<span class="ltd-muted">FLAT</span>'
+
+    last = str(pm.get("last_action") or "—")
+    last_html = _dir_span(last) if last.upper() in ("BUY", "SELL", "LONG", "SHORT") else (
+      f'<span class="ltd-muted">{escape(last)}</span>'
+    )
+
+    row_cls = []
+    if mismatch:
+      row_cls.append("row-bad")
+    elif ot_m:
+      row_cls.append("row-open")
+    dir_u = str((ot_m or {}).get("direction") or last or "").upper()
+    if dir_u in ("BUY", "LONG"):
+      row_cls.append("row-buy")
+    elif dir_u in ("SELL", "SHORT"):
+      row_cls.append("row-sell")
+    cls_attr = f' class="{" ".join(row_cls)}"' if row_cls else ""
+
+    today_v = ts.get("total_r")
+    week_v = ws.get("total_r")
+    n_today = ts.get("n_trades") or 0
+    body.append(
+      f"<tr{cls_attr}>"
+      f"<td>{escape(label)}</td>"
+      f'<td class="ltd-muted">{escape(magic_s)}</td>'
+      f"<td>{ea_html}</td>"
+      f"<td>{ma_html}</td>"
+      f"<td>{open_html}</td>"
+      f"<td>{_wait_cell(wait_side_caption(wait.get('buy')))}</td>"
+      f"<td>{_wait_cell(wait_side_caption(wait.get('sell')))}</td>"
+      f'<td><span class="ltd-r {_r_kind(today_v)}">{escape(_fmt_r(today_v))}</span></td>'
+      f'<td><span class="ltd-r {_r_kind(week_v)}">{escape(_fmt_r(week_v))}</span></td>'
+      f"<td>{escape(str(n_today))}</td>"
+      f"<td>{last_html}</td>"
+      "</tr>"
+    )
+
+  return (
+    '<div class="ltd-wrap">'
+    '<p class="ltd-sec">Theo từng model</p>'
+    '<p class="ltd-legend">Vạch trái xanh = BUY · đỏ = SELL. Hàng nền teal = đang OPEN. '
+    "Hàng nền đỏ = lệch M/A. Chờ tín hiệu = cam.</p>"
+    f'<div class="ltd-scroll"><table class="ltd-table"><thead>{head}</thead>'
+    f"<tbody>{''.join(body)}</tbody></table></div></div>"
+  )
+
+
 def _render_dashboard_body() -> None:
   _inject_css()
   active = get_active_trade_model()
@@ -371,6 +664,8 @@ def _render_dashboard_body() -> None:
 
   bridge_running = bool(service_status.get("running"))
   ea_online = bool(health.get("online"))
+  ea_waiting = bool(health.get("waiting"))
+  ea_present = ea_online or ea_waiting
   try:
     cfg_risk = bridge_bg.load_config()
     risk_pct = float(cfg_risk.get("risk_pct") or 1.0)
@@ -407,6 +702,7 @@ def _render_dashboard_body() -> None:
   st.markdown(
     _pulse_html(
       ea_online=ea_online,
+      ea_waiting=ea_waiting,
       age_txt=age_txt,
       bridge_running=bridge_running,
       algo_on=bool(health.get("trade_allowed")),
@@ -432,53 +728,51 @@ def _render_dashboard_body() -> None:
       else:
         st.toast("Đã Stop Bridge")
         st.warning(as_msg)
-      st.rerun()
+      _rerun_app()
   else:
     start_label = (
-      "Start Bridge Live" if ea_online else "Deploy EA Live + Start Bridge"
+      "Start Bridge Live" if ea_present else "Deploy EA Live + Start Bridge"
     )
     if st.button(
       start_label,
       type="primary",
       use_container_width=True,
       key="live_dash_start_bridge",
-      disabled=not model_ids,
+      disabled=not model_ids or bool(st.session_state.get("_deploy_job")),
       help=(
         "Bật Bridge với roster đang chọn. Đồng thời đăng ký tự chạy App + MT5 "
         "sau khi Windows đăng nhập (phòng restart)."
-        if ea_online else
+        if ea_present else
         "Live EA offline — Deploy Live rồi Start Bridge trong một bước. "
         "Start cũng đăng ký tự chạy App + MT5 sau Windows logon."
       ),
     ):
-      ea_ready = ea_online
-      if not ea_ready:
-        from gui.mt5_deploy_ui import deploy_ea_and_wait_online, ea_live_name
+      if not ea_present:
+        from gui.mt5_deploy_ui import start_deploy_mode_async
         if bridge_bg.is_running():
           st.warning("Live Bridge đang chạy — không Deploy lại.")
         else:
-          with st.spinner(f"Đang deploy `{ea_live_name()}` (tối đa ~90s)…"):
-            ok_dep, detail = deploy_ea_and_wait_online(
-              "Live",
-              _live_dir(),
-              enable_trading=True,
-              wait_sec=20.0,
-              deploy_timeout_sec=90.0,
-            )
-          if not ok_dep:
-            st.error(detail.split("\n", 1)[0])
-            if "\n" in detail:
-              st.code(detail.split("\n", 1)[1])
-          else:
-            st.toast(f"Đã deploy `{ea_live_name()}` · EA online")
-            ea_ready = True
-      if ea_ready:
-        if _start_live_bridge(model_ids):
-          st.toast(f"Đã Start Bridge · {len(model_ids)} model")
-          st.rerun()
-        else:
-          st.error("Không Start được Bridge — xem tab **Kỹ thuật** / log.")
-    if ea_online:
+          job = start_deploy_mode_async(
+            "Live", enable_trading=True, skip_bridge_service=True,
+          )
+          st.session_state["_deploy_job"] = {
+            **job,
+            "start_bridge": True,
+            "model_ids": list(model_ids),
+            "sidebar": False,
+          }
+          _rerun_app()
+      elif _start_live_bridge(model_ids):
+        st.toast(f"Đã Start Bridge · {len(model_ids)} model")
+        _rerun_app()
+      else:
+        st.error("Không Start được Bridge — xem tab **Kỹ thuật** / log.")
+    if ea_waiting and not ea_online:
+      st.caption(
+        "EA đang chờ App ghi decision (tối đa ~120s mỗi nến) — không phải EA chết. "
+        "Không Deploy lại lúc này."
+      )
+    elif ea_online:
       st.caption(
         "EA online · Bridge tắt — bấm Start để trade với roster đã chọn."
       )
@@ -582,10 +876,21 @@ def _render_dashboard_body() -> None:
     if len(opens) == 1:
       st.markdown(_hero_open_html(opens[0], ur), unsafe_allow_html=True)
     else:
+      bits = []
+      mixed_short = False
+      for t in opens:
+        d = str(t.get("direction") or "?").upper()
+        if d in ("SELL", "SHORT"):
+          mixed_short = True
+        bits.append(_dir_span(d))
+      hero_cls = "open-short" if mixed_short and not any(
+        str(t.get("direction") or "").upper() in ("BUY", "LONG") for t in opens
+      ) else "open-long"
       st.markdown(
-        f'<div class="ltd-hero open-long"><p class="ltd-hero-kicker">Open</p>'
-        f'<p class="ltd-hero-dir buy">{len(opens)} lệnh mở</p>'
-        f'<p class="ltd-hero-meta">Tổng unrealized xem từng model bên dưới</p></div>',
+        f'<div class="ltd-hero {hero_cls}"><p class="ltd-hero-kicker">Open</p>'
+        f'<p class="ltd-hero-dir {"sell" if hero_cls == "open-short" else "buy"}">'
+        f'{len(opens)} lệnh mở</p>'
+        f'<p class="ltd-hero-meta">{" · ".join(bits)}</p></div>',
         unsafe_allow_html=True,
       )
   else:
@@ -594,19 +899,15 @@ def _render_dashboard_body() -> None:
       unsafe_allow_html=True,
     )
 
-  from gui.signal_wait_ui import wait_side_caption
-
   # D. Scoreboard — aggregate (all models)
   today_r = float(today_stats.get("total_r") or 0.0) if today_stats.get("n_trades") else 0.0
   week_r = float(week_stats.get("total_r") or 0.0) if week_stats.get("n_trades") else 0.0
   wr = today_stats.get("win_rate_pct")
   n_today = int(today_stats.get("n_trades") or 0)
-
-  c1, c2, c3, c4 = st.columns(4)
-  c1.metric("Today R (tổng)", f"{today_r:+.2f}")
-  c2.metric("Week R (tổng)", f"{week_r:+.2f}")
-  c3.metric("WR hôm nay", f"{float(wr):.0f}%" if wr is not None else "—")
-  c4.metric("Closed hôm nay", n_today)
+  st.markdown(
+    _score_html(today_r=today_r, week_r=week_r, wr=wr, n_today=n_today),
+    unsafe_allow_html=True,
+  )
   if snap.get("open_manual"):
     st.caption(
       f"Có **{snap['open_manual']}** lệnh mở mode sửa — không tính vào R auto."
@@ -614,42 +915,17 @@ def _render_dashboard_body() -> None:
   if snap.get("open_auto"):
     st.caption(f"Lệnh auto đang mở: **{snap['open_auto']}**")
 
-  # D2. Per-model breakdown
+  # D2. Per-model breakdown — always visible for monitoring
   sync_by_id = {
     str(p.get("model_id")): p
     for p in (sync.get("per_model") or [])
     if p.get("model_id")
   }
   if len(per_model) >= 1:
-    with st.expander(f"Theo từng model ({len(per_model)})", expanded=len(per_model) > 1):
-      rows = []
-      for pm in per_model:
-        mid = pm.get("model_id")
-        m = get_model_by_id(mid) if mid else None
-        ts = pm.get("today_stats") or {}
-        ws = pm.get("week_stats") or {}
-        ot_m = pm.get("open_trade")
-        ur_m = pm.get("unrealized_r")
-        wait = pm.get("signal_wait") if isinstance(pm.get("signal_wait"), dict) else {}
-        sm = sync_by_id.get(str(mid)) or {}
-        rows.append({
-          "Model": format_model_label(m) if m else (mid or "?")[:28],
-          "Magic": pm.get("magic"),
-          "EA sync": sm.get("ea_status") or "—",
-          "M/A open": f"{sm.get('mt5_open', '—')}/{sm.get('journal_open', '—')}",
-          "Open": (
-            f"{ot_m.get('direction')} uR={ur_m:+.2f}" if ot_m and ur_m is not None
-            else (str(ot_m.get("direction")) if ot_m else "—")
-          ),
-          "BUY": wait_side_caption(wait.get("buy")),
-          "SELL": wait_side_caption(wait.get("sell")),
-          "Today R": ts.get("total_r"),
-          "Week R": ws.get("total_r"),
-          "N today": ts.get("n_trades") or 0,
-          "Last": pm.get("last_action") or "—",
-        })
-      import pandas as pd
-      st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+    st.markdown(
+      _per_model_table_html(per_model, sync_by_id),
+      unsafe_allow_html=True,
+    )
 
   # E. Guard only — Live là giai đoạn sau OOS, không so Parity tuần
   guard_day = guard_week = "—"
@@ -686,6 +962,7 @@ def _live_trade_fragment() -> None:
 
 
 def render():
+  _consume_live_start_request()
   render_page_header(ALL_ITEMS["live_trade"], show_workspace=False)
 
   (
@@ -710,6 +987,7 @@ def render():
 
   with tab_now:
     _inject_css()
+    _show_live_flash()
     _live_trade_fragment()
 
   with tab_models:

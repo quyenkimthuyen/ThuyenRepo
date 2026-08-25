@@ -55,7 +55,7 @@ def test_live_buy_schema_only_matches_exact_bar_time():
     "entry": 1.1000,
     "sl": 1.0990,
     "tp": 1.1020,
-    "magic": 20261021,
+    "magic": 20281021,
     "model_id": "tm_live_pipeline",
   }
   assert str(decision["action"]).upper() == "BUY"

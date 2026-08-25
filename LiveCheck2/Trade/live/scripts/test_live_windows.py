@@ -83,11 +83,11 @@ def check_constants() -> str:
     LIVE_MAGIC_BASE,
     LIVE_SIM_MAGIC_BASE,
   )
-  assert LIVE_APP_PORT == 8601, LIVE_APP_PORT
-  assert LIVE_BRIDGE_PORT == 9601, LIVE_BRIDGE_PORT
-  assert LIVE_MAGIC_BASE == 20263001, LIVE_MAGIC_BASE
-  assert LIVE_SIM_MAGIC_BASE == 20264001, LIVE_SIM_MAGIC_BASE
-  assert LIVE_INSTANCE_ID == "LIVE1"
+  assert LIVE_APP_PORT == 8801, LIVE_APP_PORT
+  assert LIVE_BRIDGE_PORT == 9801, LIVE_BRIDGE_PORT
+  assert LIVE_MAGIC_BASE == 20283001, LIVE_MAGIC_BASE
+  assert LIVE_SIM_MAGIC_BASE == 20284001, LIVE_SIM_MAGIC_BASE
+  assert LIVE_INSTANCE_ID == "LIVE2"
   return f"port={LIVE_APP_PORT} magic={LIVE_MAGIC_BASE}"
 
 
@@ -204,7 +204,7 @@ def check_deploy_ps1_parse() -> str:
     raise AssertionError(out or r.stderr or f"exit={r.returncode}")
   # Spot-check identity needles
   txt = script.read_text(encoding="utf-8-sig")
-  for needle in ("ForgeBridgeLive", "FromRoster", "20263001", "SkipBridgeService"):
+  for needle in ("ForgeBridgeLive", "FromRoster", "20283001", "SkipBridgeService"):
     assert needle in txt, needle
   return "PARSE_OK"
 

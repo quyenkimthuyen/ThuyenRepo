@@ -18,7 +18,7 @@ def test_sync_open_updates_sl_tp_from_mt5(tmp_path: Path):
   save_trades([
     {
       "id": "t1", "signal_id": "s1", "status": "OPEN", "mode": "auto",
-      "model_id": "tm_a", "magic": 20261021, "ticket": 1001,
+      "model_id": "tm_a", "magic": 20281021, "ticket": 1001,
       "direction": "BUY", "entry_px": 1.1000, "sl": 1.0990, "tp": 1.1020,
     },
   ], tmp_path)
@@ -27,7 +27,7 @@ def test_sync_open_updates_sl_tp_from_mt5(tmp_path: Path):
     "n": 1,
     "positions": [{
       "ticket": 1001,
-      "magic": 20261021,
+      "magic": 20281021,
       "model_id": "tm_a",
       "type": "BUY",
       "price_open": 1.1000,

@@ -1,18 +1,18 @@
 {
-  "signal_id": "1fcc28fe90ab9061",
+  "signal_id": "e5b43eee2717c6e0",
   "action": "FLAT",
   "entry": null,
   "sl": null,
   "tp": null,
   "risk_pct": 1.0,
   "magic": 20261044,
-  "bar_time": "2026.08.25 02:15",
+  "bar_time": "2026.08.25 19:15",
   "model_id": "tm_m15r_edge_gentle_wr40_rr2_24_af189802",
-  "expires_bar_time": "2026.08.25 02:30",
+  "expires_bar_time": "2026.08.25 19:30",
   "week_start": "2026-08-24",
   "strategy_name": "Forge RR3 full 4L3S price+ema #AA3D|surg:h8,12,14",
-  "slots_remaining": 2,
-  "updated_at": "2026-08-25T06:31:24+07:00",
+  "slots_remaining": 0,
+  "updated_at": "2026-08-25T23:30:59+07:00",
   "reason": "no_signal",
   "conditions_fp": "93ead2deaadd",
   "run_conditions": {
@@ -103,19 +103,23 @@
     }
   },
   "signal_wait": {
-    "bar_time": "2026-08-24 23:15:00",
-    "hour": 2,
+    "bar_time": "2026-08-25 16:15:00",
+    "hour": 19,
     "buy": {
       "side": "BUY",
       "ready": false,
-      "passed": 8,
+      "passed": 4,
       "total": 12,
-      "waiting_n": 4,
+      "waiting_n": 8,
       "waiting": [
-        "Session hour",
         "structure_break_up",
         "macd_cross_up",
-        "Combined score"
+        "atr_pct",
+        "macd_hist",
+        "Rules matched (≥1)",
+        "ML prob",
+        "Combined score",
+        "Day slots left"
       ],
       "gates": [
         {
@@ -129,8 +133,8 @@
         {
           "id": "session",
           "label": "Session hour",
-          "ok": false,
-          "current": 2.0,
+          "ok": true,
+          "current": 19.0,
           "expect": "7–20h",
           "side": "BUY"
         },
@@ -138,7 +142,7 @@
           "id": "blocked_hour",
           "label": "Hour not blocked",
           "ok": true,
-          "current": 2.0,
+          "current": 19.0,
           "expect": "not in 8,12,14",
           "side": "BUY"
         },
@@ -161,32 +165,32 @@
         {
           "id": "rule:atr_pct:lt",
           "label": "atr_pct",
-          "ok": true,
-          "current": 0.0,
+          "ok": false,
+          "current": 0.8314,
           "expect": "< 0.0478216",
           "side": "BUY"
         },
         {
           "id": "rule:macd_hist:gt",
           "label": "macd_hist",
-          "ok": true,
-          "current": 0.2308,
+          "ok": false,
+          "current": -0.0402,
           "expect": "> 0.192769",
           "side": "BUY"
         },
         {
           "id": "rules_count",
           "label": "Rules matched (≥1)",
-          "ok": true,
-          "current": 2.0,
+          "ok": false,
+          "current": 0.0,
           "expect": ">= 1 / 4",
           "side": "BUY"
         },
         {
           "id": "ml",
           "label": "ML prob",
-          "ok": true,
-          "current": 0.4752,
+          "ok": false,
+          "current": 0.3433,
           "expect": ">= 0.36",
           "side": "BUY"
         },
@@ -194,7 +198,7 @@
           "id": "score",
           "label": "Combined score",
           "ok": false,
-          "current": 0.3554,
+          "current": 0.0875,
           "expect": ">= 0.6",
           "side": "BUY"
         },
@@ -202,15 +206,15 @@
           "id": "score_lead",
           "label": "Leads opposite side",
           "ok": true,
-          "current": 0.3554,
-          "expect": "> 0.175",
+          "current": 0.0875,
+          "expect": "> 0.0",
           "side": "BUY"
         },
         {
           "id": "slots",
           "label": "Day slots left",
-          "ok": true,
-          "current": 2,
+          "ok": false,
+          "current": 0,
           "expect": ">= 1",
           "side": "BUY"
         }
@@ -223,13 +227,13 @@
       "total": 11,
       "waiting_n": 7,
       "waiting": [
-        "Session hour",
         "price_vs_ema21",
         "ema_slope_21",
         "price_vs_ema50",
         "Rules matched (≥1)",
         "Combined score",
-        "Leads opposite side"
+        "Leads opposite side",
+        "Day slots left"
       ],
       "gates": [
         {
@@ -243,8 +247,8 @@
         {
           "id": "session",
           "label": "Session hour",
-          "ok": false,
-          "current": 2.0,
+          "ok": true,
+          "current": 19.0,
           "expect": "7–20h",
           "side": "SELL"
         },
@@ -252,7 +256,7 @@
           "id": "blocked_hour",
           "label": "Hour not blocked",
           "ok": true,
-          "current": 2.0,
+          "current": 19.0,
           "expect": "not in 8,12,14",
           "side": "SELL"
         },
@@ -260,7 +264,7 @@
           "id": "rule:price_vs_ema21:gt",
           "label": "price_vs_ema21",
           "ok": false,
-          "current": 0.689,
+          "current": -0.1199,
           "expect": "> 1.06136",
           "side": "SELL"
         },
@@ -268,7 +272,7 @@
           "id": "rule:ema_slope_21:gt",
           "label": "ema_slope_21",
           "ok": false,
-          "current": 0.0689,
+          "current": -0.012,
           "expect": "> 0.100842",
           "side": "SELL"
         },
@@ -276,7 +280,7 @@
           "id": "rule:price_vs_ema50:gt",
           "label": "price_vs_ema50",
           "ok": false,
-          "current": 0.25,
+          "current": -0.0128,
           "expect": "> 0.531292",
           "side": "SELL"
         },
@@ -292,7 +296,7 @@
           "id": "ml",
           "label": "ML prob",
           "ok": true,
-          "current": 0.3685,
+          "current": 0.539,
           "expect": ">= 0.36",
           "side": "SELL"
         },
@@ -300,7 +304,7 @@
           "id": "score",
           "label": "Combined score",
           "ok": false,
-          "current": 0.175,
+          "current": 0.0,
           "expect": ">= 0.6",
           "side": "SELL"
         },
@@ -308,15 +312,15 @@
           "id": "score_lead",
           "label": "Leads opposite side",
           "ok": false,
-          "current": 0.175,
-          "expect": "> 0.3554",
+          "current": 0.0,
+          "expect": "> 0.0875",
           "side": "SELL"
         },
         {
           "id": "slots",
           "label": "Day slots left",
-          "ok": true,
-          "current": 2,
+          "ok": false,
+          "current": 0,
           "expect": ">= 1",
           "side": "SELL"
         }

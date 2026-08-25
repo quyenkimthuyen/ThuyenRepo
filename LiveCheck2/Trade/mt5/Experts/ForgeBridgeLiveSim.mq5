@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| ForgeBridgeLiveSim.mq5 — EdgeMiner M15 SIM (magic 20264001, bridge_sim_live) |
+//| ForgeBridgeLiveSim.mq5 — EdgeMiner M15 SIM (magic 20284001, bridge_sim_live) |
 //| Thin execution EA — App (Best 3m) decides via mt5/bridge_live files.  |
 //| Modes:                                                           |
 //|   Live         — write bar.json, read decision.json (App)        |
@@ -33,13 +33,13 @@ input bool   InpShowComment    = true;              // Chart Comment: bar + per-
 
 input group "=== Risk ==="
 input double InpRiskPct        = 1.0;
-input ulong  InpMagic          = 20264001;        // base magic; multi-model uses models.json
+input ulong  InpMagic          = 20284001;        // base magic; multi-model uses models.json
 input int    InpMaxModels      = 5;               // max concurrent trade models
 input int    InpSlipPoints     = 30;
 input int    InpMaxHoldBars    = 36;                // fallback if decision omits
 
 CTrade   trade;
-const string INSTANCE_ID = "LIVE1";
+const string INSTANCE_ID = "LIVE2";
 
 bool UsePaperFills()
 {

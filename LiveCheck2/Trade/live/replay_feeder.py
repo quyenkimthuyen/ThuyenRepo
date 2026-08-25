@@ -313,7 +313,7 @@ def run_replay(
 
   books: dict[str, ReplayPaperBook] = {}
   model_ids: list[str] = []
-  primary_magic = int(roster[0].get("magic") or 20264001)
+  primary_magic = int(roster[0].get("magic") or 20284001)
   for m in roster:
     mid = str(m.get("id") or "")
     if not mid:

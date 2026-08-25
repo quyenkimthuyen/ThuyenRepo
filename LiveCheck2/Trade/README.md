@@ -30,7 +30,7 @@ Chỉ export package mới khi lab promote model / đổi KB / đổi space.
 2. Host code = Final_app desk khớp symbol/TF  
 3. `mt5_bridge_service_live.py` → BridgeEngine quyết định / remine  
 4. `chart_validate` trước Start; flatten + kill-switch trong UI  
-5. Windows: `deploy_live_ea.ps1` (ForgeBridgeLive, magic 20263001)
+5. Windows: `deploy_live_ea.ps1` (ForgeBridgeLive, magic 20283001)
 
 ```bash
 # Smoke
@@ -51,7 +51,7 @@ cd /home/thuyenng/work/ThuyenRepo/Final_app/split_app
 python live/import_trade_package.py packages_out/xxx.tmpkg
 
 # 3) Chạy Live UI
-./live/scripts/run_app_linux.sh Start   # port 8601
+./live/scripts/run_app_linux.sh Start   # port 8801
 ```
 
 Windows DeployEA: `live/scripts/deploy_live_ea.ps1` (Attach + EnableTrading mặc định).

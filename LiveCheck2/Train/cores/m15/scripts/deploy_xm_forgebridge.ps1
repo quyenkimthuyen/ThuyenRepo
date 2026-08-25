@@ -17,17 +17,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$SourceEaLive = Join-Path $RepoRoot "mt5\Experts\ForgeBridgeM15E21.mq5"
-$SourceEaSim = Join-Path $RepoRoot "mt5\Experts\ForgeBridgeM15E21Sim.mq5"
-$ProjectBridge = Join-Path $RepoRoot "mt5\bridge_m15e21"
-$ProjectBridgeSim = Join-Path $RepoRoot "mt5\bridge_sim_m15e21"
-$BridgeSubdirLive = "bridge_m15e21"
-$BridgeSubdirSim = "bridge_sim_m15e21"
-$EaNameLive = "ForgeBridgeM15E21"
-$EaNameSim = "ForgeBridgeM15E21Sim"
-$EaFolder = "EdgeMinerM15E21"
-$EaMagicLive = 20261021
-$EaMagicSim = 20262021
+$SourceEaLive = Join-Path $RepoRoot "mt5\Experts\ForgeBridgeLC2E21.mq5"
+$SourceEaSim = Join-Path $RepoRoot "mt5\Experts\ForgeBridgeLC2E21Sim.mq5"
+$ProjectBridge = Join-Path $RepoRoot "mt5\bridge_lc2_e21"
+$ProjectBridgeSim = Join-Path $RepoRoot "mt5\bridge_lc2_e21_sim"
+$BridgeSubdirLive = "bridge_lc2_e21"
+$BridgeSubdirSim = "bridge_lc2_e21_sim"
+$EaNameLive = "ForgeBridgeLC2E21"
+$EaNameSim = "ForgeBridgeLC2E21Sim"
+$EaFolder = "EdgeMinerLC2E21"
+$EaMagicLive = 20281021
+$EaMagicSim = 20282021
 $IsBoth = ($Mode -eq "Both")
 $IsHistoryFeed = ($Mode -eq "HistoryFeed")
 $EaName = if ($IsHistoryFeed) { $EaNameSim } else { $EaNameLive }
@@ -560,7 +560,7 @@ function Restart-BridgeService {
   $commandLine = (
     "`"$pythonw`" scripts/mt5_bridge_service.py " +
     "--model-id `"$ModelId`" --risk-pct $RiskPct --poll $PollSeconds " +
-    "--monitor-port 8975 --bridge-dir `"$ProjectBridge`""
+    "--monitor-port 9975 --bridge-dir `"$ProjectBridge`""
   )
   $created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create `
     -Arguments @{ CommandLine = $commandLine; CurrentDirectory = $RepoRoot }

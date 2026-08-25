@@ -26,7 +26,7 @@ def test_dual_runtime_resources_are_unique():
   h1_live_monitor = module_from_spec(bridge_spec)
   bridge_spec.loader.exec_module(h1_live_monitor)
 
-  assert M15_MAGIC == 20261021
+  assert M15_MAGIC == 20281021
   assert h1_protocol.DEFAULT_MAGIC == 20260725
   assert h1_protocol.DEFAULT_TIMEFRAME == "H1"
   assert h1_protocol.INSTANCE_ID == "H1"
@@ -68,24 +68,24 @@ def test_eas_use_magic_and_hedging_guards():
   m15_sim = (M15_ROOT / "mt5" / "Experts" / "ForgeBridgeM15E21Sim.mq5").read_text(encoding="utf-8")
   h1 = (H1_ROOT / "mt5" / "Experts" / "ForgeBridgeH1.mq5").read_text(encoding="utf-8")
   h1_sim = (H1_ROOT / "mt5" / "Experts" / "ForgeBridgeH1Sim.mq5").read_text(encoding="utf-8")
-  assert 'const string INSTANCE_ID = "M15E21"' in m15
-  assert 'const string INSTANCE_ID = "M15E21"' in m15_sim
+  assert 'const string INSTANCE_ID = "LC2E21"' in m15
+  assert 'const string INSTANCE_ID = "LC2E21"' in m15_sim
   assert 'const string INSTANCE_ID = "H1"' in h1
   assert 'const string INSTANCE_ID = "H1"' in h1_sim
   assert "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING" in m15
   assert "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING" in h1
-  assert 'InpBridgeSubdir   = "bridge_m15e21"' in m15
-  assert "InpMagic          = 20261021" in m15
+  assert 'InpBridgeSubdir   = "bridge_lc2_e21"' in m15
+  assert "InpMagic          = 20281021" in m15
   assert 'InpMode = BRIDGE_HISTORY_FEED' in m15_sim
   assert 'InpBridgeSubdir   = "bridge_sim_m15e21"' in m15_sim
-  assert "InpMagic          = 20262021" in m15_sim
+  assert "InpMagic          = 20282021" in m15_sim
   assert 'InpBridgeSubdir   = "bridge_h1"' in h1
   assert "InpMagic          = 20260725" in h1
   assert 'InpMode = BRIDGE_HISTORY_FEED' in h1_sim
   assert 'InpBridgeSubdir   = "bridge_sim_h1"' in h1_sim
   assert "InpMagic          = 20260727" in h1_sim
   for root, live, sim in (
-    (M15_ROOT, "ForgeBridgeM15E21", "ForgeBridgeM15E21Sim"),
+    (M15_ROOT, "ForgeBridgeLC2E21", "ForgeBridgeLC2E21Sim"),
     (H1_ROOT, "ForgeBridgeH1", "ForgeBridgeH1Sim"),
   ):
     deploy = (root / "scripts" / "deploy_xm_forgebridge.ps1").read_text(encoding="utf-8-sig")

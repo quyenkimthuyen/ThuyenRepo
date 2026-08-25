@@ -178,8 +178,10 @@ def main():
   _sidebar_status()
 
   st.sidebar.divider()
-  from gui.mt5_deploy_ui import render_sidebar_deploy_eas
+  from gui.mt5_deploy_ui import mount_deploy_watch, render_sidebar_deploy_eas
   render_sidebar_deploy_eas()
+  if st.session_state.get("_deploy_job"):
+    mount_deploy_watch()
 
   item = ALL_ITEMS[page_key]
   module = VIEW_MODULES[item.module]
