@@ -24,7 +24,10 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Live MT5 bridge runtime (can exceed GitHub 100MB)
+# Accidental Windows absolute-path copies (C:\... as a git path).
+# These break `git checkout` / `git pull` on Windows (colon is illegal).
+**/C:*/
+
 **/comm_log.jsonl
 Final_app/split_app/mt5/bridge_live_*/comm_log.jsonl
 Final_app/split_app/mt5/bridge_live_*/connection.json
