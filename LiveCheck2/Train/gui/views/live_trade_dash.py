@@ -15,7 +15,6 @@ from mt5_bridge.loss_guard import loss_guard_status
 from mt5_bridge.live_monitor_server import desk_chart_port, ensure_chart_server
 from mt5_bridge.protocol import normalize_model_ids, resolve_live_bridge_dir
 from gui.live_autostart import (
-  autostart_is_marked,
   disable_live_autostart,
   enable_live_autostart,
 )
@@ -83,8 +82,9 @@ _SCOPED_CSS = """
 .ltd-trust-detail b { color: #1f2937; font-weight: 600; }
 .ltd-legend { font-size: 0.72rem; color: #6b7280; margin: 0.35rem 0 0.55rem 0; line-height: 1.4; }
 .ltd-legend b { color: #374151; }
-.ltd-score { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem;
+.ltd-score { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem;
   margin: 0 0 1rem 0; }
+@media (max-width: 900px) { .ltd-score { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .ltd-score { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .ltd-score-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 0.65rem 0.75rem;
   background: #fff; }
@@ -445,15 +445,12 @@ def _sync_html(sync: dict) -> str:
       status = str(pm.get("ea_status") or "—")
       chips.append(_chip(f"{short} {status} · M{mt5_o}/A{j_o}", kind=pk))
 
-  detail = str(sync.get("detail") or "").strip()
   issues = [str(x) for x in (sync.get("issues") or []) if x]
   detail_html = ""
   if issues:
     detail_html = (
       f'<p class="ltd-trust-detail"><b>MT5 (EA) là chuẩn:</b> {escape(issues[0])}</p>'
     )
-  elif detail:
-    detail_html = f'<p class="ltd-trust-detail">{escape(detail)}</p>'
 
   return (
     f'<div class="ltd-trust {box_kind}">'
@@ -492,7 +489,17 @@ def _guard_html(
   )
 
 
-def _score_html(*, today_r: float, week_r: float, wr, n_today: int) -> str:
+def _score_html(
+  *,
+  today_r: float,
+  week_r: float,
+  wr,
+  n_today: int,
+  open_n: int = 0,
+  positions_match: bool = True,
+  mt5_n=None,
+  app_n=None,
+) -> str:
   def card(label: str, value: str, kind: str) -> str:
     return (
       f'<div class="ltd-score-card {kind}">'
@@ -509,10 +516,25 @@ def _score_html(*, today_r: float, week_r: float, wr, n_today: int) -> str:
   else:
     wr_kind = "neg"
   n_kind = "zero" if n_today <= 0 else "pos"
+  try:
+    mt5_i = int(mt5_n) if mt5_n is not None else int(open_n or 0)
+  except (TypeError, ValueError):
+    mt5_i = int(open_n or 0)
+  try:
+    app_i = int(app_n) if app_n is not None else mt5_i
+  except (TypeError, ValueError):
+    app_i = mt5_i
+  if positions_match:
+    open_s = str(mt5_i)
+    open_kind = "pos" if mt5_i > 0 else "zero"
+  else:
+    open_s = f"MT5 {mt5_i} · App {app_i}"
+    open_kind = "neg"
   return (
     '<div class="ltd-wrap">'
     '<p class="ltd-sec">Kết quả</p>'
     '<div class="ltd-score">'
+    f'{card("Lệnh đang mở", open_s, open_kind)}'
     f'{card("Today R", _fmt_r(today_r), _r_kind(today_r))}'
     f'{card("Week R", _fmt_r(week_r), _r_kind(week_r))}'
     f'{card("WR hôm nay", wr_s, wr_kind)}'
@@ -779,9 +801,6 @@ def _render_dashboard_body() -> None:
     if not model_ids:
       st.warning("Chưa có Trade Model trong roster — mở tab **Trade Models**.")
 
-  if bridge_running and autostart_is_marked():
-    st.caption("Windows restart: tự mở App + XM MT5 + Bridge cho desk này. Stop sẽ gỡ auto-start.")
-
   sync = snap.get("sync_status") or {}
   if sync:
     st.markdown(_sync_html(sync), unsafe_allow_html=True)
@@ -905,15 +924,19 @@ def _render_dashboard_body() -> None:
   wr = today_stats.get("win_rate_pct")
   n_today = int(today_stats.get("n_trades") or 0)
   st.markdown(
-    _score_html(today_r=today_r, week_r=week_r, wr=wr, n_today=n_today),
+    _score_html(
+      today_r=today_r, week_r=week_r, wr=wr, n_today=n_today,
+      open_n=int(snap.get("open_auto") or 0),
+      positions_match=bool(sync.get("positions_match", True)),
+      mt5_n=sync.get("mt5_positions"),
+      app_n=sync.get("journal_open_all"),
+    ),
     unsafe_allow_html=True,
   )
   if snap.get("open_manual"):
     st.caption(
       f"Có **{snap['open_manual']}** lệnh mở mode sửa — không tính vào R auto."
     )
-  if snap.get("open_auto"):
-    st.caption(f"Lệnh auto đang mở: **{snap['open_auto']}**")
 
   # D2. Per-model breakdown — always visible for monitoring
   sync_by_id = {

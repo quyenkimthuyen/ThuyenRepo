@@ -88,6 +88,33 @@ def test_lookup_prefers_oos_schedule_over_live(tmp_models_dir):
   assert model_live_weeks_path(mid).exists()
 
 
+def test_lookup_prefers_forced_live_over_schedule(tmp_models_dir):
+  from trade_model_schedule import lookup_week_strategy_with_source
+
+  mid = "tm_test_forced"
+  save_model_schedule(mid, {
+    "meta": {"model_id": mid},
+    "weekly": [
+      week_entry_from_strategy(
+        week_start="2026-08-24",
+        strat=_sample_strat("oos #old"),
+        train_start_idx=100,
+        train_end_idx=600,
+      ),
+    ],
+  })
+  append_live_week(mid, week_entry_from_strategy(
+    week_start="2026-08-24",
+    strat=_sample_strat("manual #new"),
+    train_start_idx=100,
+    train_end_idx=600,
+    forced=True,
+  ))
+  hit, src = lookup_week_strategy_with_source(mid, "2026-08-24")
+  assert src == "manual_remine"
+  assert hit["strategy"]["name"] == "manual #new"
+
+
 def test_bridge_uses_schedule_without_remine(tmp_models_dir, monkeypatch):
   from mt5_bridge import engine as eng_mod
   from mt5_bridge.engine import BridgeEngine
@@ -275,3 +302,82 @@ def test_bridge_freeze_first_skips_second_remine(tmp_models_dir, monkeypatch):
   assert out2.name == strat.name
   assert calls["n"] == 1
   assert engine._last_remine_source == "frozen"
+
+
+def test_force_remine_skips_schedule_and_writes_live_weeks(tmp_models_dir, monkeypatch):
+  from mt5_bridge import engine as eng_mod
+  from mt5_bridge.engine import BridgeEngine
+  from trade_model_schedule import lookup_week_strategy_with_source
+
+  mid = "tm_test_force_remine"
+  scheduled = _sample_strat("scheduled #OLD")
+  fresh = _sample_strat("forced #NEW")
+  save_model_schedule(mid, {
+    "meta": {"model_id": mid},
+    "weekly": [
+      week_entry_from_strategy(
+        week_start="2026-08-24",
+        strat=scheduled,
+        train_start_idx=10,
+        train_end_idx=600,
+      ),
+    ],
+  })
+  monkeypatch.setattr(eng_mod, "optimize_on_window", lambda *_a, **_k: fresh)
+  from mt5_bridge.background import invalidate_config_cache
+  invalidate_config_cache()
+  monkeypatch.setattr(
+    "mt5_bridge.background.load_config_cached",
+    lambda **_: {"remine_each_week": True},
+  )
+
+  idx = pd.date_range("2025-01-01", periods=800, freq="15min")
+  df = pd.DataFrame(
+    {"Open": 1.1, "High": 1.11, "Low": 1.09, "Close": 1.1, "Volume": 100.0},
+    index=idx,
+  )
+
+  class _FakeFM:
+    def __init__(self, frame):
+      self.n = len(frame)
+      self.index = frame.index
+
+  engine = BridgeEngine(model_id=mid)
+  engine._df = df
+  engine.model_id = mid
+  monkeypatch.setattr(engine, "_canonical_frame", lambda: df)
+  monkeypatch.setattr(engine, "_sync_working_frame_from_canonical", lambda c: df)
+  monkeypatch.setattr(engine, "_feature_matrix", lambda d, p: _FakeFM(d))
+  monkeypatch.setattr(eng_mod, "attach_ml_scorer", lambda strat_obj, *_a, **_k: strat_obj)
+  monkeypatch.setattr(eng_mod, "get_train_window_indices", lambda *_a, **_k: (10, 600))
+
+  kept = engine._remine_week_strategy(
+    week_start=pd.Timestamp("2026-08-24"),
+    cache_key="sched",
+    train_weeks=3,
+    use_learning=False,
+    kb_profile=None,
+    kb_snapshot=None,
+    feature_profile="current",
+    search_space=None,
+  )
+  assert kept.name.startswith("scheduled")
+
+  out = engine._remine_week_strategy(
+    week_start=pd.Timestamp("2026-08-24"),
+    cache_key="force",
+    train_weeks=3,
+    use_learning=False,
+    kb_profile=None,
+    kb_snapshot=None,
+    feature_profile="current",
+    search_space=None,
+    force=True,
+  )
+  assert out.name.startswith("forced")
+  assert engine._last_remine_source == "manual_remine"
+  hit, src = lookup_week_strategy_with_source(mid, "2026-08-24")
+  assert src == "manual_remine"
+  assert hit["forced"] is True
+  assert hit["strategy"]["name"] == fresh.name
+

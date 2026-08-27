@@ -9,7 +9,10 @@ import threading
 import numpy as np
 import pandas as pd
 
-from config import BARS_PER_WEEK, MAX_TRADES_PER_DAY, TARGET_TRADES_PER_WEEK
+from config import (
+  BARS_PER_WEEK, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS,
+  MAX_TRADES_PER_DAY, TARGET_TRADES_PER_WEEK,
+)
 from feature_engine import FeatureMatrix
 from ml_scorer import MLScorer
 from strategy import Trade, compute_metrics
@@ -230,9 +233,19 @@ SESSION_REGIME_BINARY = [
 ]
 
 
-def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36):
+def _exec_cost_kwargs() -> dict:
+  return {
+    "spread_pips": float(DEFAULT_SPREAD_PIPS),
+    "slippage_pips": float(DEFAULT_SLIPPAGE_PIPS),
+  }
+
+
+def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
+                    spread_pips: float | None = None):
   ensure_label_cache_for_df(fm.n)
-  key = (fm.n, start, end, rr, atr_mult, max_hold_bars)
+  from execution import atr_stop_distance, spread_price
+  spr = float(DEFAULT_SPREAD_PIPS if spread_pips is None else spread_pips)
+  key = (fm.n, start, end, rr, atr_mult, max_hold_bars, round(spr, 4))
   with _LABEL_LOCK:
     cached = LABEL_CACHE.get(key)
     if cached is not None:
@@ -252,21 +265,23 @@ def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36):
     if np.isnan(av) or av <= 0:
       continue
     entry = o[i + 1]
-    sl_d = atr_mult * av
+    sl_d = atr_stop_distance(av, atr_mult, spr)
+    spr_px = spread_price(spr)
     lsl, ltp = entry - sl_d, entry + sl_d * rr
     ssl, stp = entry + sl_d, entry - sl_d * rr
-    j_end = min(i + 2 + max_hold, end)
+    j_end = min(i + 1 + max_hold, end)
 
-    for j in range(i + 2, j_end):
+    # Include the entry bar (i+1) — live SL is active from the fill tick.
+    for j in range(i + 1, j_end):
       if l[j] <= lsl:
         break
       if h[j] >= ltp:
         long_win[i] = 1
         break
-    for j in range(i + 2, j_end):
-      if h[j] >= ssl:
+    for j in range(i + 1, j_end):
+      if h[j] + spr_px >= ssl:
         break
-      if l[j] <= stp:
+      if l[j] + spr_px <= stp:
         short_win[i] = 1
         break
 
@@ -702,12 +717,15 @@ def backtest_mined(
   spread_pips: float = 0.0, slippage_pips: float = 0.0,
   return_open: bool = False,
 ):
-  from execution import adjust_entry_price, adjust_exit_price
+  from execution import (
+    adjust_entry_price, adjust_exit_price, atr_stop_distance, spread_price,
+  )
   from mt5_bridge.history_sync import utc_to_broker_time
 
   if end_idx is None:
     end_idx = fm.n
   o, h, l, c, atr_v = fm.open, fm.high, fm.low, fm.close, fm.atr
+  spr_px = spread_price(spread_pips)
   trades = []
   i = max(start_idx, fm.warmup)
   in_trade = False
@@ -745,9 +763,10 @@ def backtest_mined(
         elif h[i] >= tp:
           hit_tp, exit_price = True, tp
       else:
-        if h[i] >= sl:
+        # SELL closes on Ask (OHLC is Bid).
+        if h[i] + spr_px >= sl:
           hit_sl, exit_price = True, sl
-        elif l[i] <= tp:
+        elif l[i] + spr_px <= tp:
           hit_tp, exit_price = True, tp
 
       if hit_sl or hit_tp or (i - entry_idx) >= strat.max_hold_bars:
@@ -793,7 +812,7 @@ def backtest_mined(
         i += 1
         continue
       entry_price = adjust_entry_price(o[entry_idx], int(sig), spread_pips, slippage_pips)
-      sl_d = strat.atr_mult_sl * av
+      sl_d = atr_stop_distance(av, strat.atr_mult_sl, spread_pips)
       direction = float(sig)
       risk = sl_d
       partial_done = trail_active = 0.0
@@ -803,7 +822,7 @@ def backtest_mined(
         sl, tp = entry_price + sl_d, entry_price - sl_d * strat.rr_ratio
       in_trade = True
       entries_by_broker_day[broker_day] = entries_by_broker_day.get(broker_day, 0) + 1
-      i = entry_idx + 1
+      i = entry_idx
       continue
     i += 1
 
@@ -978,7 +997,7 @@ def calibrate_edge_surgery(
   strat.allow_short = True
 
   signals = generate_signals_mined(fm, strat, train_start, train_end)
-  trades = backtest_mined(fm, strat, signals, train_start, train_end)
+  trades = backtest_mined(fm, strat, signals, train_start, train_end, **_exec_cost_kwargs())
   if len(trades) < 5:
     return strat
 
@@ -1089,7 +1108,7 @@ def calibrate_anti_chase(
   probe.anti_chase_vwap_short_max = 99.0
 
   signals = generate_signals_mined(fm, probe, train_start, train_end)
-  trades = backtest_mined(fm, probe, signals, train_start, train_end)
+  trades = backtest_mined(fm, probe, signals, train_start, train_end, **_exec_cost_kwargs())
   weeks = _weeks_in_window(train_start, train_end)
   if len(trades) < 5:
     strat.anti_chase = True
@@ -1317,8 +1336,8 @@ def mine_strategy(
                         **exit_kw,
                       )
                       sig = generate_signals_mined(fm, strat, train_start, train_end)
-                      fit_trades = backtest_mined(fm, strat, sig, train_start, split)
-                      val_trades = backtest_mined(fm, strat, sig, split, train_end)
+                      fit_trades = backtest_mined(fm, strat, sig, train_start, split, **_exec_cost_kwargs())
+                      val_trades = backtest_mined(fm, strat, sig, split, train_end, **_exec_cost_kwargs())
                       comb = compute_metrics(fit_trades + val_trades)
                       val_m = compute_metrics(val_trades)
 

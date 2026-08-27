@@ -482,6 +482,10 @@ def reconcile_bridge_positions(
       detail = "mt5_flat"
 
     if not ghost:
+      interventions = list(t.get("interventions") or [])
+      if "awaiting_mt5_deal" in interventions:
+        t["interventions"] = [x for x in interventions if x != "awaiting_mt5_deal"]
+        dirty = True
       continue
 
     fill = None

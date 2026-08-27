@@ -39,7 +39,7 @@ def test_paper_fill_open_next_bar_and_tp(tmp_path: Path):
     "max_hold_bars": 96,
     "model_id": "tm_a",
   }
-  # Decision queued → open at next bar open; manage on same bar skips (held=1)
+  # Decision queued → open at next bar open; SL/TP active on the fill bar
   book.queue_decision(decision)
   assert book.pending is not None
   fills0 = book.on_bar(open_=1.1005, high=1.1008, low=1.1002, close=1.1006, bar_time="2026.01.02 08:00")
@@ -73,7 +73,7 @@ def test_paper_fill_sl_sell(tmp_path: Path):
     "model_id": "tm_b",
   })
   book.on_bar(open_=1.2000, high=1.2002, low=1.1998, close=1.1999, bar_time="2026.02.01 10:00")
-  book.on_bar(open_=1.1999, high=1.2001, low=1.1995, close=1.1998, bar_time="2026.02.01 10:15")  # skip
+  book.on_bar(open_=1.1999, high=1.2001, low=1.1995, close=1.1998, bar_time="2026.02.01 10:15")
   fills = book.on_bar(open_=1.2002, high=1.2015, low=1.1990, close=1.2012, bar_time="2026.02.01 10:30")
   assert len(fills) == 1
   assert fills[0]["reason"] == "sl"
@@ -216,8 +216,8 @@ def test_two_paper_books_do_not_block_each_other(tmp_path: Path):
   }
   a.queue_decision({**decision, "signal_id": "a1", "model_id": "tm_a"})
   b.queue_decision({**decision, "signal_id": "b1", "model_id": "tm_b"})
-  a.on_bar(open_=1.10, high=1.11, low=1.09, close=1.105, bar_time="2026.03.01 08:00")
-  b.on_bar(open_=1.10, high=1.11, low=1.09, close=1.105, bar_time="2026.03.01 08:00")
+  a.on_bar(open_=1.10, high=1.11, low=1.095, close=1.105, bar_time="2026.03.01 08:00")
+  b.on_bar(open_=1.10, high=1.11, low=1.095, close=1.105, bar_time="2026.03.01 08:00")
   assert a.open and b.open
   assert len(load_trades(dir_a)) == 1
   assert len(load_trades(dir_b)) == 1
@@ -257,6 +257,49 @@ def test_multi_model_equity_figure_has_two_series():
   assert fig is not None
   # equity + dd per model
   assert len(fig.data) >= 2
+
+
+def test_multi_model_weekly_figure():
+  from gui.bridge_model_monitor import build_multi_model_weekly_figure
+
+  w_a = pd.DataFrame({
+    "week": ["2026-08-17", "2026-08-24"],
+    "total_r": [1.0, -0.5],
+    "cum_r": [1.0, 0.5],
+  })
+  w_b = pd.DataFrame({
+    "week": ["2026-08-17", "2026-08-24"],
+    "total_r": [0.5, 2.0],
+    "cum_r": [0.5, 2.5],
+  })
+  fig = build_multi_model_weekly_figure({"A": w_a, "B": w_b})
+  assert fig is not None
+  assert len(fig.data) >= 2
+
+
+def test_prepare_live_chart_trades_filters_and_colors():
+  from mt5_bridge.live_monitor_server import prepare_live_chart_trades
+
+  trades = [
+    {"status": "CLOSED", "model_id": "tm_a", "ticket": 1},
+    {"status": "OPEN", "model_id": "tm_b", "ticket": 2},
+    {"status": "CLOSED", "model_id": "tm_a", "ticket": 3},
+  ]
+  ids = ["tm_a", "tm_b"]
+  labels = {"tm_a": "Alpha", "tm_b": "Beta"}
+  all_rows = prepare_live_chart_trades(
+    trades, model_ids=ids, model_filter=None, labels=labels,
+  )
+  assert len(all_rows) == 3
+  assert all_rows[0]["model_label"] == "Alpha"
+  assert all_rows[0].get("model_color")
+  assert all_rows[1]["model_label"] == "Beta"
+  one = prepare_live_chart_trades(
+    trades, model_ids=ids, model_filter="tm_a", labels=labels,
+  )
+  assert len(one) == 2
+  assert all(t["model_id"] == "tm_a" for t in one)
+  assert "model_color" not in one[0]
 
 
 def test_multi_model_monthly_figure():

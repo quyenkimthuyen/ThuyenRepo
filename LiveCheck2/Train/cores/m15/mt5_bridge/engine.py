@@ -350,11 +350,19 @@ class BridgeEngine:
     kb_snapshot,
     feature_profile: str,
     search_space,
+    force: bool = False,
   ):
-    """Prefer frozen Trade Model schedule; remine only for unseen weeks."""
+    """Prefer frozen Trade Model schedule; remine only for unseen weeks.
+
+    ``force=True`` (Live Trade → Remine tuần này) skips cache / OOS schedule /
+    freeze and mines again, then writes ``live_weeks`` with ``forced=True``.
+    """
     from mt5_bridge.background import load_config_cached
 
-    cached = self._strat_cache.get(cache_key)
+    if force:
+      self._strat_cache.pop(cache_key, None)
+      self._remine_source_cache.pop(cache_key, None)
+    cached = None if force else self._strat_cache.get(cache_key)
     if cached is not None:
       self._last_remine_source = self._remine_source_cache.get(cache_key)
       return cached
@@ -380,7 +388,9 @@ class BridgeEngine:
     remine_each_week = bool(load_config_cached().get("remine_each_week", True))
 
     # 1) Frozen OOS / previously live-frozen week — before train-window gate
-    scheduled, sched_source = lookup_week_strategy_with_source(self.model_id, week_start)
+    scheduled, sched_source = (None, None) if force else lookup_week_strategy_with_source(
+      self.model_id, week_start,
+    )
     if scheduled and isinstance(scheduled.get("strategy"), dict):
       strat = strategy_from_dict(scheduled["strategy"])
       ts_use = int(scheduled.get("train_start_idx", -1))
@@ -406,7 +416,7 @@ class BridgeEngine:
       return strat
 
     # 2) Remine OFF — reuse in-process frozen strategy (freeze_first)
-    if not remine_each_week and self._frozen_strat is not None:
+    if not force and not remine_each_week and self._frozen_strat is not None:
       strat = self._frozen_strat
       ts_use, te_use = self._frozen_train or (None, None)
       if ts_use is None or te_use is None:
@@ -440,8 +450,9 @@ class BridgeEngine:
     if strat is None:
       return None
     self._strat_cache[cache_key] = strat
-    if remine_each_week:
-      remine_source = "live_remine"
+    persist_live = bool(force or remine_each_week)
+    if persist_live:
+      remine_source = "manual_remine" if force else "live_remine"
       try:
         append_live_week(
           self.model_id,
@@ -450,6 +461,7 @@ class BridgeEngine:
             strat=strat,
             train_start_idx=ts,
             train_end_idx=te,
+            forced=bool(force),
           ),
         )
       except Exception as exc:
@@ -458,19 +470,84 @@ class BridgeEngine:
       remine_source = "frozen_first"
       self._frozen_strat = strat
       self._frozen_train = (ts, te)
+    if force:
+      self._frozen_strat = strat
+      self._frozen_train = (ts, te)
     self._remine_source_cache[cache_key] = remine_source
     self._last_remine_source = remine_source
     try:
       name = getattr(strat, "name", None) or str(strat)
     except Exception:
       name = "?"
-    tag = "remine" if remine_each_week else "freeze_first"
+    tag = "manual_remine" if force else ("remine" if remine_each_week else "freeze_first")
     print(
       f"[bridge] {tag} week={week_start.date()} strategy={name} "
       f"fm_len={len(df_mine)} train_bars={te - ts} fp={self.conditions_fp}",
       flush=True,
     )
     return strat
+
+  def _week_cache_key(self, week_start: pd.Timestamp) -> tuple:
+    """(cache_key, train_weeks, use_learning, kb_profile, kb_snapshot, feature_profile, search_space)."""
+    params = self._params or {}
+    train_weeks = int(params.get("train_weeks") or TRAIN_WEEKS)
+    use_learning = bool(params.get("use_learning", True))
+    kb_profile = params.get("kb_profile")
+    kb_snapshot = params.get("kb_snapshot")
+    feature_profile = params.get("feature_profile") or "current"
+    search_payload = params.get("mining_search_space")
+    search_space = (
+      mining_search_space_from_dict(search_payload) if search_payload else None
+    )
+    model_id = params.get("trade_model_id") or self.model_id
+    cache_key = (
+      f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_weeks}w|"
+      f"{feature_profile}|{search_space!r}"
+    )
+    return (
+      cache_key, train_weeks, use_learning, kb_profile, kb_snapshot,
+      feature_profile, search_space,
+    )
+
+  def force_remine_week(self, week_start: pd.Timestamp | None = None) -> dict:
+    """Mine again for ``week_start`` (default: week of the latest cached bar)."""
+    df = self.load()
+    if week_start is None:
+      if df is None or df.empty:
+        from mt5_bridge.weekend_preremine import this_week_start
+        week_start = this_week_start()
+      else:
+        week_start, _ = _week_bounds_for_ts(df.index[-1])
+    week_start = pd.Timestamp(week_start).normalize()
+    prefix = f"{week_start.date()}|"
+    for key in list(self._strat_cache):
+      if str(key).startswith(prefix):
+        self._strat_cache.pop(key, None)
+        self._remine_source_cache.pop(key, None)
+    self._last_bar_key = None
+    self._last_decision = None
+    (
+      cache_key, train_weeks, use_learning, kb_profile, kb_snapshot,
+      feature_profile, search_space,
+    ) = self._week_cache_key(week_start)
+    strat = self._remine_week_strategy(
+      week_start=week_start,
+      cache_key=cache_key,
+      train_weeks=train_weeks,
+      use_learning=use_learning,
+      kb_profile=kb_profile,
+      kb_snapshot=kb_snapshot,
+      feature_profile=feature_profile,
+      search_space=search_space,
+      force=True,
+    )
+    return {
+      "ok": strat is not None,
+      "week_start": str(week_start.date()),
+      "model_id": self.model_id,
+      "name": (getattr(strat, "name", None) or None) if strat is not None else None,
+      "source": self._last_remine_source,
+    }
 
   def _save_mt5_cache(self) -> None:
     if self._df is None or self._df.empty:

@@ -62,6 +62,63 @@ _COMPARE_PALETTE = (
 )
 
 
+def _normalize_chart_model_filter(value: str | None) -> str | None:
+  raw = str(value or "").strip()
+  if not raw or raw.lower() in ("all", "*", "__all__"):
+    return None
+  return raw
+
+
+def prepare_live_chart_trades(
+  trades: list[dict],
+  *,
+  model_ids: list[str] | None = None,
+  model_filter: str | None = None,
+  labels: dict[str, str] | None = None,
+) -> list[dict]:
+  """Filter journal rows by model; color/label when showing all models."""
+  ids = [str(x) for x in (model_ids or []) if x]
+  if not ids:
+    ids = []
+    for t in trades or []:
+      mid = str(t.get("model_id") or "").strip()
+      if mid and mid not in ids:
+        ids.append(mid)
+  color_by = {
+    mid: _COMPARE_PALETTE[i % len(_COMPARE_PALETTE)] for i, mid in enumerate(ids)
+  }
+  want = _normalize_chart_model_filter(model_filter)
+  color_all = want is None and len(ids) > 1
+  out: list[dict] = []
+  for t in trades or []:
+    if not isinstance(t, dict):
+      continue
+    mid = str(t.get("model_id") or "").strip()
+    if want and mid != want:
+      continue
+    row = dict(t)
+    if color_all and mid:
+      row["model_label"] = (labels or {}).get(mid) or mid[:22]
+      row["model_color"] = color_by.get(mid) or _COMPARE_PALETTE[0]
+    out.append(row)
+  return out
+
+
+def _live_chart_model_labels(bridge_dir) -> tuple[list[str], dict[str, str]]:
+  from mt5_bridge.protocol import read_models_roster
+
+  roster = read_models_roster(bridge_dir) or {}
+  ids: list[str] = []
+  labels: dict[str, str] = {}
+  for m in roster.get("models") or []:
+    if not isinstance(m, dict) or not m.get("id"):
+      continue
+    mid = str(m["id"])
+    ids.append(mid)
+    labels[mid] = str(m.get("label") or mid)
+  return ids, labels
+
+
 def _desk_chart_label() -> tuple[str, str]:
   """(symbol, timeframe) for monitor chart titles — desk-aware."""
   try:
@@ -525,7 +582,13 @@ def build_compare_snapshot(*, max_bars: int | None = None) -> dict:
   }
 
 
-def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str:
+def _chart_html(
+  max_bars: int,
+  *,
+  mode: str = "mt5",
+  poll_ms: int = 2000,
+  model_filter: str = "all",
+) -> str:
   paper_mode = mode == "paper"
   sim_mode = mode == "sim"
   compare_mode = mode == "compare"
@@ -602,6 +665,10 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     ui_rev = "mt5-live"
     snap_url = "/snapshot"
     note0 = "Đang kết nối ForgeBridge EA…"
+  model_q = _normalize_chart_model_filter(model_filter)
+  if not paper_mode and not sim_mode and not compare_mode:
+    from urllib.parse import quote
+    snap_url = "/snapshot?model=" + quote(model_q or "all", safe="")
   return f"""<!doctype html>
 <html>
 <head>
@@ -800,6 +867,11 @@ async function refresh() {{
     const response=await fetch(SNAP_URL,{{cache:"no-store"}});
     if (!response.ok) throw new Error("HTTP "+response.status);
     const snap=await response.json(), conn=snap.connection || {{}};
+    let trades=(snap.trades || []);
+    const wantModel = (new URLSearchParams(SNAP_URL.split("?")[1] || "")).get("model");
+    if (wantModel && wantModel !== "all") {{
+      trades = trades.filter(t => String(t.model_id || "") === wantModel);
+    }}
     let rows=((snap.history || {{}}).bars || []).slice();
     if (conn.bar) rows.push(conn.bar);
     const byTime=new Map();
@@ -906,7 +978,8 @@ async function refresh() {{
     const volume={{type:"bar",x,y:rows.map(r=>r.tick_volume || 0),
       marker:{{color:rows.map(r=>Number(r.close)>=Number(r.open)?COLORS.up:COLORS.down)}},
       opacity:.45,showlegend:false,xaxis:"x2",yaxis:"y2"}};
-    const trade=tradeLayers(snap.trades,x[0],x[x.length-1]);
+    const multiModel = COMPARE_MODE || trades.some(t => t && t.model_color);
+    const trade=tradeLayers(trades,x[0],x[x.length-1]);
     const traces=[candle,volume,...trade.traces];
     const mid=(Number(conn.bid)+Number(conn.ask))/2;
     const shapes=[...trade.shapes];
@@ -921,9 +994,9 @@ async function refresh() {{
     const layout={{
       title:{{text:"{chart_title}",font:{{size:14,color:COLORS.text}},x:.01}},
       paper_bgcolor:COLORS.bg,plot_bgcolor:COLORS.bg,font:{{color:COLORS.text,size:11}},
-      margin:{{l:8,r:96,t:42,b:COMPARE_MODE?72:28}},
-      showlegend:COMPARE_MODE,hovermode:"x unified",
-      legend:COMPARE_MODE?{{orientation:"h",y:-0.08,x:0,font:{{size:11}}}}:undefined,
+      margin:{{l:8,r:96,t:42,b:multiModel?72:28}},
+      showlegend:multiModel,hovermode:"x unified",
+      legend:multiModel?{{orientation:"h",y:-0.08,x:0,font:{{size:11}}}}:undefined,
       uirevision:UI_REV,dragmode:"pan",shapes,annotations,
       xaxis:{{domain:[0,1],anchor:"y",rangeslider:{{visible:false}},showticklabels:false,
         gridcolor:COLORS.grid,rangebreaks:[{{bounds:["sat","mon"]}}]}},
@@ -1010,6 +1083,7 @@ def start_live_monitor_server(
           trades.append({
             "status": "SIGNAL",
             "signal_id": signal_id,
+            "model_id": decision.get("model_id"),
             "direction": action,
             "entry_time": decision.get("entry_time") or decision.get("bar_time"),
             "entry_px": decision.get("entry"),
@@ -1017,6 +1091,14 @@ def start_live_monitor_server(
             "tp": decision.get("tp"),
             "strategy_name": decision.get("strategy_name"),
           })
+        model_q = (query.get("model") or ["all"])[0]
+        roster_ids, roster_labels = _live_chart_model_labels(bridge_dir)
+        trades = prepare_live_chart_trades(
+          trades,
+          model_ids=roster_ids,
+          model_filter=model_q,
+          labels=roster_labels,
+        )
         payload = {
           "history": read_json(bars_path(bridge_dir)) or {},
           "connection": read_json(conn_file) or {},
@@ -1042,9 +1124,12 @@ def start_live_monitor_server(
         except (TypeError, ValueError):
           max_bars = 672
         poll_ms = 1500 if mode == "compare" else 2000
+        model_q = (query.get("model") or ["all"])[0]
         self._send(
           200,
-          _chart_html(max_bars, mode=mode, poll_ms=poll_ms).encode("utf-8"),
+          _chart_html(
+            max_bars, mode=mode, poll_ms=poll_ms, model_filter=model_q,
+          ).encode("utf-8"),
           "text/html; charset=utf-8",
         )
         return

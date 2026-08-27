@@ -214,6 +214,7 @@ def week_entry_from_strategy(
   oos_trades: int | None = None,
   oos_r: float | None = None,
   oos_wr: float | None = None,
+  forced: bool = False,
 ) -> dict:
   ws = str(pd.Timestamp(week_start).date())
   entry: dict[str, Any] = {
@@ -222,6 +223,8 @@ def week_entry_from_strategy(
     "train_start_idx": int(train_start_idx),
     "train_end_idx": int(train_end_idx),
   }
+  if forced:
+    entry["forced"] = True
   if week_end is not None:
     entry["week_end"] = str(pd.Timestamp(week_end).date())
   if oos_trades is not None:
@@ -286,12 +289,18 @@ def _index_weekly(payload: dict | None) -> dict[str, dict]:
 def lookup_week_strategy_with_source(
   model_id: str, week_start,
 ) -> tuple[dict | None, str | None]:
-  """Return (week entry, source) — OOS schedule first, then live_weeks."""
+  """Return (week entry, source) — OOS schedule first, then live_weeks.
+
+  A live_weeks row with ``forced=True`` (manual Remine tuần này) wins over
+  the OOS schedule so a mid-week remine actually sticks after restart.
+  """
   key = str(pd.Timestamp(week_start).date())
+  live = _index_weekly(load_live_weeks(model_id))
+  if key in live and bool(live[key].get("forced")):
+    return live[key], "manual_remine"
   sched = _index_weekly(load_model_schedule(model_id))
   if key in sched:
     return sched[key], "schedule"
-  live = _index_weekly(load_live_weeks(model_id))
   if key in live:
     return live[key], "live_weeks"
   return None, None

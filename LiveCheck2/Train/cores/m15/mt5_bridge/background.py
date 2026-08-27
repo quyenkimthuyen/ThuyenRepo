@@ -870,6 +870,15 @@ def _worker():
               "system", "weekend_preremine_skip", bridge_dir=bridge_dir,
               summary=str(pre_exc)[:200],
             )
+        try:
+          from mt5_bridge.manual_remine import apply_manual_remine_request
+          if apply_manual_remine_request(_engines, bridge_dir):
+            last_bar_fp = None
+        except Exception as rem_exc:
+          append_event(
+            "system", "manual_remine_skip", bridge_dir=bridge_dir,
+            summary=str(rem_exc)[:200],
+          )
       last_bar_fp, last_fill_fp = _cycle(_engines, bridge_dir, last_bar_fp, last_fill_fp)
       if _stop.is_set() or not load_config().get("enabled"):
         break

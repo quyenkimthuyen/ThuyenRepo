@@ -123,6 +123,36 @@ def test_history_paper_ticket_range():
   assert not is_history_paper_ticket(956252722)
 
 
+def test_reconcile_clears_stale_awaiting_when_mt5_has_position(tmp_path: Path):
+  (tmp_path / "models.json").write_text(
+    json.dumps({"models": [{"magic": 20281044}]}), encoding="utf-8",
+  )
+  atomic_write_json(positions_path(tmp_path), {
+    "positions": [{
+      "ticket": 964538664,
+      "magic": 20281044,
+      "model_id": "tm_edge",
+    }],
+    "n": 1,
+  })
+  atomic_write_json(deals_path(tmp_path), {"deals": []})
+  save_trades([{
+    "status": "OPEN",
+    "ticket": 964538664,
+    "magic": 20281044,
+    "direction": "SELL",
+    "entry_px": 1.35973,
+    "sl": 1.36042,
+    "interventions": ["awaiting_mt5_deal"],
+  }], tmp_path)
+  out = reconcile_bridge_positions(tmp_path, reason="ea_reconnect_reconcile")
+  assert out["closed"] == 0
+  assert out["awaiting"] == 0
+  t = load_trades(tmp_path)[0]
+  assert t["status"] == "OPEN"
+  assert "awaiting_mt5_deal" not in (t.get("interventions") or [])
+
+
 def test_reconcile_leaves_history_paper_open(tmp_path: Path):
   (tmp_path / "models.json").write_text(
     json.dumps({"models": [{"magic": 20263010}]}), encoding="utf-8",

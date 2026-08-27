@@ -143,6 +143,39 @@ def monthly_breakdown(trades_df: pd.DataFrame) -> pd.DataFrame:
   return out
 
 
+def weekly_breakdown(trades_df: pd.DataFrame) -> pd.DataFrame:
+  """Aggregate trades by Monday week_start (same bucket as remine)."""
+  empty = pd.DataFrame(
+    columns=["week", "n_trades", "win_rate_pct", "total_r", "avg_r", "cum_r"]
+  )
+  if trades_df is None or trades_df.empty or "r" not in trades_df.columns:
+    return empty
+  df = trades_df.copy()
+  if "entry" not in df.columns:
+    return empty
+  df["entry"] = _to_datetime_series(df["entry"])
+  df = df.dropna(subset=["entry"])
+  if df.empty:
+    return empty
+  monday = df["entry"] - pd.to_timedelta(df["entry"].dt.weekday, unit="D")
+  df["week"] = monday.dt.strftime("%Y-%m-%d")
+  rows = []
+  for week, g in df.groupby("week", sort=True):
+    wins = (g["r"] > 0).sum()
+    rows.append({
+      "week": week,
+      "n_trades": int(len(g)),
+      "win_rate_pct": round(float(wins / len(g) * 100), 1) if len(g) else None,
+      "total_r": round(float(g["r"].sum()), 3),
+      "avg_r": round(float(g["r"].mean()), 3) if len(g) else None,
+    })
+  out = pd.DataFrame(rows)
+  if out.empty:
+    return out
+  out["cum_r"] = out["total_r"].cumsum().round(3)
+  return out
+
+
 def monthly_from_weekly_log(weekly_log: list[dict] | None) -> pd.DataFrame:
   """Sum weekly OOS R into calendar months (week_start)."""
   rows = []

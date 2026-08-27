@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMinerM15 bridge"
-#property version   "1.26"
+#property version   "1.28"
 
 #include <Trade/Trade.mqh>
 
@@ -85,6 +85,7 @@ bool     g_ea_modifying = false;    // next SL/TP change is from EA trail
 string   g_open_source = "strategy"; // strategy | manual_test
 ulong    g_active_magic = 0;        // magic for current open/fill context
 string   g_active_model_id = "";
+int      g_active_slot = -1;        // roster slot owning g_sync_* / g_user_intervened
 int      g_exit_mode = 0;
 double   g_trail_act = 1.0;
 double   g_trail_dist = 0.5;
@@ -130,6 +131,9 @@ int      g_slot_exit_mode[MAX_MODELS];
 double   g_slot_trail_act[MAX_MODELS];
 double   g_slot_trail_dist[MAX_MODELS];
 int      g_slot_max_hold[MAX_MODELS];
+double   g_slot_sync_sl[MAX_MODELS];
+double   g_slot_sync_tp[MAX_MODELS];
+bool     g_slot_user_intervened[MAX_MODELS];
 
 // Replay table
 string   g_rep_time[];
@@ -330,15 +334,26 @@ int FindModelSlotById(const string model_id)
 
 void SetActiveSlot(const int slot)
 {
+   if(g_active_slot >= 0 && g_active_slot < MAX_MODELS)
+   {
+      g_slot_sync_sl[g_active_slot] = g_sync_sl;
+      g_slot_sync_tp[g_active_slot] = g_sync_tp;
+      g_slot_user_intervened[g_active_slot] = g_user_intervened;
+   }
    if(slot < 0 || slot >= g_model_n)
    {
       g_active_magic = InpMagic;
       g_active_model_id = "";
+      g_active_slot = -1;
       return;
    }
    g_active_magic = g_model_magics[slot];
    g_active_model_id = g_model_ids[slot];
    trade.SetExpertMagicNumber((int)g_active_magic);
+   g_active_slot = slot;
+   g_sync_sl = g_slot_sync_sl[slot];
+   g_sync_tp = g_slot_sync_tp[slot];
+   g_user_intervened = g_slot_user_intervened[slot];
 }
 
 double EffectiveRiskPct()
@@ -360,10 +375,16 @@ int OnInit()
    trade.SetTypeFillingBySymbol(_Symbol);
    g_max_hold = InpMaxHoldBars;
    g_active_magic = InpMagic;
+   g_active_slot = -1;
    ArrayInitialize(g_slot_paper_open, false);
    ArrayInitialize(g_slot_paper_held, 0);
+   ArrayInitialize(g_slot_sync_sl, 0.0);
+   ArrayInitialize(g_slot_sync_tp, 0.0);
    for(int i = 0; i < MAX_MODELS; i++)
+   {
       g_slot_pending[i] = "";
+      g_slot_user_intervened[i] = false;
+   }
 
    FolderCreate(InpBridgeSubdir);
    FolderCreate(InpBridgeSubdir + "\\decisions");
@@ -1035,7 +1056,7 @@ bool WriteConnectionJson()
    json += "\"symbol\":\"" + _Symbol + "\",";
    json += "\"period\":\"" + PeriodTag() + "\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
-   json += "\"ea_version\":\"1.26\",";
+   json += "\"ea_version\":\"1.28\",";
    json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"account_margin_mode\":" + IntegerToString(AccountInfoInteger(ACCOUNT_MARGIN_MODE)) + ",";
@@ -1556,6 +1577,20 @@ void SyncPositionLevels(const ulong ticket)
    // Detect user SL/TP edits vs EA trail; push modify fill to App.
    double cur_sl = PositionGetDouble(POSITION_SL);
    double cur_tp = PositionGetDouble(POSITION_TP);
+   // Restart / other-slot close zeros the global baseline — seed, do not tag user edit.
+   if(g_sync_sl == 0.0 && g_sync_tp == 0.0)
+   {
+      g_sync_sl = cur_sl;
+      g_sync_tp = cur_tp;
+      g_open_sl = cur_sl;
+      g_open_tp = cur_tp;
+      if(g_active_slot >= 0 && g_active_slot < MAX_MODELS)
+      {
+         g_slot_sync_sl[g_active_slot] = cur_sl;
+         g_slot_sync_tp[g_active_slot] = cur_tp;
+      }
+      return;
+   }
    if(!PriceChanged(cur_sl, g_sync_sl) && !PriceChanged(cur_tp, g_sync_tp))
    {
       g_open_sl = cur_sl;
@@ -1570,6 +1605,11 @@ void SyncPositionLevels(const ulong ticket)
       g_open_sl = cur_sl;
       g_open_tp = cur_tp;
       g_ea_modifying = false;
+      if(g_active_slot >= 0 && g_active_slot < MAX_MODELS)
+      {
+         g_slot_sync_sl[g_active_slot] = g_sync_sl;
+         g_slot_sync_tp[g_active_slot] = g_sync_tp;
+      }
       WriteFillJsonEx(
          "modify", g_open_signal_id, g_open_action, true, "ea_trail",
          ticket, g_open_entry, cur_sl, cur_tp, g_open_lots, 0, "ea_trail",
@@ -1584,6 +1624,12 @@ void SyncPositionLevels(const ulong ticket)
    g_sync_tp = cur_tp;
    g_open_sl = cur_sl;
    g_open_tp = cur_tp;
+   if(g_active_slot >= 0 && g_active_slot < MAX_MODELS)
+   {
+      g_slot_sync_sl[g_active_slot] = g_sync_sl;
+      g_slot_sync_tp[g_active_slot] = g_sync_tp;
+      g_slot_user_intervened[g_active_slot] = true;
+   }
    WriteFillJsonEx(
       "modify", g_open_signal_id, g_open_action, true, "user_sl_tp",
       ticket, g_open_entry, cur_sl, cur_tp, g_open_lots, 0, "user_sl_tp",
@@ -1749,6 +1795,9 @@ bool OpenFromDecision(const string json)
          g_slot_sl[save_slot] = sl;
          g_slot_sl_init[save_slot] = sl;
          g_slot_lots[save_slot] = lots;
+         g_slot_sync_sl[save_slot] = sl;
+         g_slot_sync_tp[save_slot] = tp;
+         g_slot_user_intervened[save_slot] = g_user_intervened;
          // BUG-11: per-slot exit/trail/risk so ManageOpen does not use last-open globals
          g_slot_risk[save_slot] = g_risk;
          g_slot_exit_mode[save_slot] = g_exit_mode;
@@ -1814,6 +1863,12 @@ void ReportCloseIfNeeded(const string reason)
    g_ea_modifying = false;
    g_sync_sl = 0;
    g_sync_tp = 0;
+   if(g_active_slot >= 0 && g_active_slot < MAX_MODELS)
+   {
+      g_slot_sync_sl[g_active_slot] = 0;
+      g_slot_sync_tp[g_active_slot] = 0;
+      g_slot_user_intervened[g_active_slot] = false;
+   }
    g_had_position = false;
    WritePositionsJson();
    WriteDealsJson();
@@ -2236,11 +2291,6 @@ void ManagePaperHistory(const MqlRates &r)
    if(!g_paper_open)
       return;
    g_paper_held++;
-
-   // Python backtest_mined enters at open then starts SL/TP/trail on the *next* bar
-   // (i = entry_idx + 1). Checking the entry bar here caused same-bar SL and R drift.
-   if(g_paper_held <= 1)
-      return;
 
    const double spr = HistSpreadPrice(r);
    const double bid_h = r.high;

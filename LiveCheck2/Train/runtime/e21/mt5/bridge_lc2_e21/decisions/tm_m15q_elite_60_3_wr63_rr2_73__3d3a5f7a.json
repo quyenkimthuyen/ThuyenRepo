@@ -1,18 +1,18 @@
 {
-  "signal_id": "a06dfdd93109f2dd",
+  "signal_id": "b33619ab8d895a4a",
   "action": "FLAT",
   "entry": null,
   "sl": null,
   "tp": null,
   "risk_pct": 1.0,
   "magic": 20281024,
-  "bar_time": "2026.08.25 19:15",
+  "bar_time": "2026.08.27 18:45",
   "model_id": "tm_m15q_elite_60_3_wr63_rr2_73__3d3a5f7a",
-  "expires_bar_time": "2026.08.25 19:30",
+  "expires_bar_time": "2026.08.27 19:00",
   "week_start": "2026-08-24",
   "strategy_name": "Forge RR3 full 2L5S price+session #3702|chase:fixed_or_rsi<58+vwap<99",
-  "slots_remaining": 2,
-  "updated_at": "2026-08-25T23:31:15+07:00",
+  "slots_remaining": 1,
+  "updated_at": "2026-08-27T23:01:41+07:00",
   "reason": "no_signal",
   "conditions_fp": "bee666b64c4a",
   "run_conditions": {
@@ -102,8 +102,8 @@
     }
   },
   "signal_wait": {
-    "bar_time": "2026-08-25 16:15:00",
-    "hour": 19,
+    "bar_time": "2026-08-27 15:45:00",
+    "hour": 18,
     "buy": {
       "side": "BUY",
       "ready": false,
@@ -130,7 +130,7 @@
           "id": "session",
           "label": "Session hour",
           "ok": true,
-          "current": 19.0,
+          "current": 18.0,
           "expect": "7–20h",
           "side": "BUY"
         },
@@ -138,7 +138,7 @@
           "id": "blocked_hour",
           "label": "Hour not blocked",
           "ok": true,
-          "current": 19.0,
+          "current": 18.0,
           "expect": "any hour",
           "side": "BUY"
         },
@@ -154,7 +154,7 @@
           "id": "rule:session_vwap_dist:lt",
           "label": "session_vwap_dist",
           "ok": false,
-          "current": 1.163,
+          "current": 0.3492,
           "expect": "< -1.41471",
           "side": "BUY"
         },
@@ -170,7 +170,7 @@
           "id": "ml",
           "label": "ML prob",
           "ok": true,
-          "current": 0.6268,
+          "current": 0.6173,
           "expect": ">= 0.36",
           "side": "BUY"
         },
@@ -178,7 +178,7 @@
           "id": "score",
           "label": "Combined score",
           "ok": false,
-          "current": 0.2625,
+          "current": 0.175,
           "expect": ">= 0.6",
           "side": "BUY"
         },
@@ -186,15 +186,15 @@
           "id": "score_lead",
           "label": "Leads opposite side",
           "ok": false,
-          "current": 0.2625,
-          "expect": "> 5.0444",
+          "current": 0.175,
+          "expect": "> 5.2586",
           "side": "BUY"
         },
         {
           "id": "anti_chase",
           "label": "Anti-chase",
           "ok": true,
-          "current": 53.1291,
+          "current": 56.3372,
           "expect": "RSI > 42",
           "side": "BUY"
         },
@@ -202,7 +202,7 @@
           "id": "slots",
           "label": "Day slots left",
           "ok": true,
-          "current": 2,
+          "current": 1,
           "expect": ">= 1",
           "side": "BUY"
         }
@@ -233,7 +233,7 @@
           "id": "session",
           "label": "Session hour",
           "ok": true,
-          "current": 19.0,
+          "current": 18.0,
           "expect": "7–20h",
           "side": "SELL"
         },
@@ -241,7 +241,7 @@
           "id": "blocked_hour",
           "label": "Hour not blocked",
           "ok": true,
-          "current": 19.0,
+          "current": 18.0,
           "expect": "any hour",
           "side": "SELL"
         },
@@ -257,7 +257,7 @@
           "id": "rule:session_vwap_dist:gt",
           "label": "session_vwap_dist",
           "ok": true,
-          "current": 1.163,
+          "current": 0.3492,
           "expect": "> 0.10847",
           "side": "SELL"
         },
@@ -265,7 +265,7 @@
           "id": "rule:swing_strength:gt",
           "label": "swing_strength",
           "ok": false,
-          "current": 0.3608,
+          "current": 0.5677,
           "expect": "> 0.606615",
           "side": "SELL"
         },
@@ -273,7 +273,7 @@
           "id": "rule:price_vs_ema50:gt",
           "label": "price_vs_ema50",
           "ok": true,
-          "current": 0.6741,
+          "current": 0.6532,
           "expect": "> -0.962319",
           "side": "SELL"
         },
@@ -281,7 +281,7 @@
           "id": "rule:price_vs_ema50:gt",
           "label": "price_vs_ema50",
           "ok": false,
-          "current": 0.6741,
+          "current": 0.6532,
           "expect": "> 0.898763",
           "side": "SELL"
         },
@@ -297,7 +297,7 @@
           "id": "ml",
           "label": "ML prob",
           "ok": false,
-          "current": 0.2658,
+          "current": 0.2983,
           "expect": ">= 0.36",
           "side": "SELL"
         },
@@ -305,7 +305,7 @@
           "id": "score",
           "label": "Combined score",
           "ok": true,
-          "current": 5.0444,
+          "current": 5.2586,
           "expect": ">= 0.6",
           "side": "SELL"
         },
@@ -313,15 +313,15 @@
           "id": "score_lead",
           "label": "Leads opposite side",
           "ok": true,
-          "current": 5.0444,
-          "expect": "> 0.2625",
+          "current": 5.2586,
+          "expect": "> 0.175",
           "side": "SELL"
         },
         {
           "id": "anti_chase",
           "label": "Anti-chase",
           "ok": true,
-          "current": 53.1291,
+          "current": 56.3372,
           "expect": "RSI < 58",
           "side": "SELL"
         },
@@ -329,7 +329,7 @@
           "id": "slots",
           "label": "Day slots left",
           "ok": true,
-          "current": 2,
+          "current": 1,
           "expect": ">= 1",
           "side": "SELL"
         }

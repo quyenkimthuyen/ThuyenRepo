@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render per-desk ForgeBridge EA from mt5/template (ForgeBridgeLive v1.27 base).
+"""Render per-desk ForgeBridge EA from mt5/template (ForgeBridgeLive v1.28 base).
 
   python scripts/render_forgebridge_ea.py
   python scripts/render_forgebridge_ea.py --desk e21

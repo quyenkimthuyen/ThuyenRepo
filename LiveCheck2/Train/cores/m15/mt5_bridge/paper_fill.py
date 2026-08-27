@@ -3,8 +3,8 @@
 Legacy name ``paper_fill`` / ``PaperBook`` matches EA ``ManagePaperHistory`` /
 ``InpHistoryPaperFills`` — **not** the retired Paper Monitor GUI desk.
 
-Entry at next bar open after BUY/SELL decision; SL/TP/trail/max_hold start on the
-bar after entry (held <= 1 skipped).
+Entry at next bar open after BUY/SELL decision; SL/TP/trail/max_hold run on
+the entry bar (same as live OrderSend). SELL SL/TP use Ask = Bid + spread.
 """
 from __future__ import annotations
 
@@ -17,6 +17,14 @@ from mt5_bridge.trade_journal import process_fill
 # FX majors 5-digit: Point≈0.00001, pip=0.0001
 _POINT = 1e-5
 _PIP = 1e-4
+
+
+def _spread_px() -> float:
+  try:
+    from config import DEFAULT_SPREAD_PIPS
+    return max(0.0, float(DEFAULT_SPREAD_PIPS)) * _PIP
+  except Exception:
+    return 0.0
 
 
 def _desk_symbol() -> str:
@@ -217,18 +225,20 @@ class PaperBook:
     if not self.open:
       return None
     self.held += 1
-    if self.held <= 1:
-      return None
+
+    spr = _spread_px()
+    bid_h, bid_l = high, low
+    ask_h, ask_l = high + spr, low + spr
 
     if self.exit_mode in (1, 2):
       if self.action == "BUY":
-        if high >= self.entry + self.risk * self.trail_act:
-          nsl = high - self.risk * self.trail_dist
+        if bid_h >= self.entry + self.risk * self.trail_act:
+          nsl = bid_h - self.risk * self.trail_dist
           if nsl > self.sl:
             self.sl = nsl
       else:
-        if low <= self.entry - self.risk * self.trail_act:
-          nsl = low + self.risk * self.trail_dist
+        if ask_l <= self.entry - self.risk * self.trail_act:
+          nsl = ask_l + self.risk * self.trail_dist
           if self.sl == 0 or nsl < self.sl:
             self.sl = nsl
 
@@ -238,14 +248,14 @@ class PaperBook:
     )
 
     if self.action == "BUY":
-      if self.sl > 0 and low <= self.sl:
+      if self.sl > 0 and bid_l <= self.sl:
         return self._close("trail" if trail_moved else "sl", self.sl, bar_time)
-      if self.tp > 0 and high >= self.tp:
+      if self.tp > 0 and bid_h >= self.tp:
         return self._close("tp", self.tp, bar_time)
     else:
-      if self.sl > 0 and high >= self.sl:
+      if self.sl > 0 and ask_h >= self.sl:
         return self._close("trail" if trail_moved else "sl", self.sl, bar_time)
-      if self.tp > 0 and low <= self.tp:
+      if self.tp > 0 and ask_l <= self.tp:
         return self._close("tp", self.tp, bar_time)
 
     if self.held - 1 >= self.max_hold:

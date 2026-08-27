@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from analytics import equity_series, monthly_breakdown, trades_json_to_df
+from analytics import equity_series, monthly_breakdown, trades_json_to_df, weekly_breakdown
 from gui.model_health import assess_monthly_degradation, monthly_oos_from_report
 from gui.navigation import LABEL_TAB_OOS
 from gui.trade_model import format_model_label, load_model_report
@@ -140,6 +140,7 @@ def load_live_auto_trades(
   closed = [t for t in trades if str(t.get("status") or "").upper() == "CLOSED"]
   trades_df = live_trades_to_analytics_df(closed)
   monthly = monthly_breakdown(trades_df)
+  weekly = weekly_breakdown(trades_df)
   stats = compute_stats(
     trades, bridge_dir=bridge_dir, mode=MODE_AUTO,
     date_from=date_from, date_to=date_to,
@@ -167,6 +168,7 @@ def load_live_auto_trades(
     "trades": closed,
     "trades_df": trades_df,
     "monthly": monthly,
+    "weekly": weekly,
     "stats": stats,
     "equity": equity_series(trades_df),
     "n_auto_all": len([t for t in auto if str(t.get("status") or "").upper() == "CLOSED"]),
@@ -456,6 +458,48 @@ def build_equity_overlay_figure(
   return fig
 
 
+def build_period_series_figure(
+  frame: pd.DataFrame,
+  *,
+  title: str,
+  series_name: str,
+  color: str | None = None,
+  period_col: str = "month",
+  bar_subtitle: str = "R từng tháng",
+  y_bar: str = "R / tháng",
+  x_title: str = "Tháng",
+) -> go.Figure | None:
+  """Single-source R chart by calendar period (week or month)."""
+  if frame is None or frame.empty or period_col not in frame.columns:
+    return None
+  color = color or _OOS_COLOR
+  xs = list(frame[period_col])
+  fig = make_subplots(
+    rows=2, cols=1, shared_xaxes=True,
+    row_heights=[0.55, 0.45], vertical_spacing=0.12,
+    subplot_titles=(bar_subtitle, "R tích lũy"),
+  )
+  fig.add_trace(go.Bar(
+    x=xs, y=list(frame["total_r"]), name=series_name,
+    marker_color=color, opacity=0.9,
+  ), row=1, col=1)
+  fig.add_trace(go.Scatter(
+    x=xs, y=list(frame["cum_r"]), name=f"Cum {series_name}",
+    line=dict(color=color, width=2.5),
+  ), row=2, col=1)
+  fig.update_layout(
+    **_title_and_model_legend(title),
+    height=500,
+    hovermode="x unified",
+  )
+  fig.update_yaxes(title_text=y_bar, row=1, col=1)
+  fig.update_yaxes(title_text="Cum R", row=2, col=1)
+  fig.update_xaxes(title_text=x_title, row=2, col=1)
+  if len(xs) > 10:
+    fig.update_xaxes(tickangle=-45, row=2, col=1)
+  return fig
+
+
 def build_monthly_series_figure(
   monthly: pd.DataFrame,
   *,
@@ -464,34 +508,36 @@ def build_monthly_series_figure(
   color: str | None = None,
 ) -> go.Figure | None:
   """Single-source monthly R chart (own time axis — no OOS/Live overlay)."""
-  if monthly is None or monthly.empty:
-    return None
-  color = color or _OOS_COLOR
-  months = list(monthly["month"])
-  fig = make_subplots(
-    rows=2, cols=1, shared_xaxes=True,
-    row_heights=[0.55, 0.45], vertical_spacing=0.12,
-    subplot_titles=("R từng tháng", "R tích lũy"),
+  return build_period_series_figure(
+    monthly,
+    title=title,
+    series_name=series_name,
+    color=color,
+    period_col="month",
+    bar_subtitle="R từng tháng",
+    y_bar="R / tháng",
+    x_title="Tháng",
   )
-  fig.add_trace(go.Bar(
-    x=months, y=list(monthly["total_r"]), name=series_name,
-    marker_color=color, opacity=0.9,
-  ), row=1, col=1)
-  fig.add_trace(go.Scatter(
-    x=months, y=list(monthly["cum_r"]), name=f"Cum {series_name}",
-    line=dict(color=color, width=2.5),
-  ), row=2, col=1)
-  fig.update_layout(
-    title=dict(text=title, font=dict(size=13)),
-    height=480,
-    margin=dict(l=48, r=24, t=64, b=48),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-    hovermode="x unified",
+
+
+def build_weekly_series_figure(
+  weekly: pd.DataFrame,
+  *,
+  title: str,
+  series_name: str,
+  color: str | None = None,
+) -> go.Figure | None:
+  """Single-source weekly R chart (Monday week_start)."""
+  return build_period_series_figure(
+    weekly,
+    title=title,
+    series_name=series_name,
+    color=color,
+    period_col="week",
+    bar_subtitle="R từng tuần",
+    y_bar="R / tuần",
+    x_title="Tuần (thứ Hai)",
   )
-  fig.update_yaxes(title_text="R / tháng", row=1, col=1)
-  fig.update_yaxes(title_text="Cum R", row=2, col=1)
-  fig.update_xaxes(title_text="Tháng", row=2, col=1)
-  return fig
 
 
 def build_equity_series_figure(
@@ -520,10 +566,8 @@ def build_equity_series_figure(
     ),
   ))
   fig.update_layout(
-    title=dict(text=title, font=dict(size=13)),
-    height=380,
-    margin=dict(l=40, r=20, t=48, b=48),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+    **_title_and_model_legend(title),
+    height=400,
     hovermode="x unified",
     yaxis_title="R",
   )
@@ -719,6 +763,30 @@ _COMPARE_PALETTE = (
 )
 
 
+def _title_and_model_legend(title: str) -> dict:
+  """Title, small gap, then model legend — all above the plot (not on x-axis)."""
+  return dict(
+    title=dict(
+      text=title,
+      font=dict(size=13),
+      y=0.99,
+      yanchor="top",
+      pad=dict(b=10),
+    ),
+    legend=dict(
+      orientation="h",
+      yanchor="bottom",
+      y=1.08,
+      x=0,
+      xanchor="left",
+      font=dict(size=11),
+      bgcolor="rgba(255,255,255,0.9)",
+      tracegroupgap=8,
+    ),
+    margin=dict(l=48, r=24, t=86, b=52),
+  )
+
+
 def build_multi_model_equity_figure(
   series_by_model: dict[str, pd.DataFrame],
   *,
@@ -746,40 +814,43 @@ def build_multi_model_equity_figure(
         name=f"DD {name}",
         line=dict(color=color, width=1.4, dash="dot"),
         legendgroup=f"m_{i}",
+        showlegend=False,
         opacity=0.75,
       ))
   fig.update_layout(
-    title=dict(text=title, font=dict(size=13)),
-    height=440,
-    margin=dict(l=40, r=20, t=48, b=110),
-    legend=dict(orientation="h", yanchor="top", y=-0.22, x=0),
+    **_title_and_model_legend(title),
+    height=500,
     hovermode="x unified",
     yaxis_title="R",
   )
   return fig
 
 
-def build_multi_model_monthly_figure(
-  monthly_by_model: dict[str, pd.DataFrame],
+def build_multi_model_period_figure(
+  series_by_model: dict[str, pd.DataFrame],
   *,
-  title: str = "R theo tháng · Compare Trade",
+  title: str = "R theo kỳ · Compare Trade",
+  period_col: str = "month",
+  bar_subtitle: str = "R từng tháng",
+  y_bar: str = "R / tháng",
+  x_title: str = "Tháng",
 ) -> go.Figure | None:
-  """Grouped monthly total_r bars + multi-line cum R."""
+  """Grouped period total_r bars + multi-line cum R."""
   items = [
-    (name, mo) for name, mo in (monthly_by_model or {}).items()
-    if mo is not None and not mo.empty and "month" in mo.columns
+    (name, mo) for name, mo in (series_by_model or {}).items()
+    if mo is not None and not mo.empty and period_col in mo.columns
   ]
   if not items:
     return None
   fig = make_subplots(
     rows=2, cols=1, shared_xaxes=True,
     row_heights=[0.55, 0.45], vertical_spacing=0.12,
-    subplot_titles=("R từng tháng", "R tích lũy"),
+    subplot_titles=(bar_subtitle, "R tích lũy"),
   )
   for i, (name, mo) in enumerate(items):
     color = _COMPARE_PALETTE[i % len(_COMPARE_PALETTE)]
-    months = list(mo["month"])
-    totals = list(mo["total_r"]) if "total_r" in mo.columns else [0] * len(months)
+    xs = list(mo[period_col])
+    totals = list(mo["total_r"]) if "total_r" in mo.columns else [0] * len(xs)
     if "cum_r" in mo.columns:
       cum = list(mo["cum_r"])
     else:
@@ -789,28 +860,62 @@ def build_multi_model_monthly_figure(
         running += float(v or 0)
         cum.append(running)
     fig.add_trace(go.Bar(
-      x=months, y=totals, name=name,
+      x=xs, y=totals, name=name,
       marker_color=color, opacity=0.85,
       legendgroup=f"m_{i}",
     ), row=1, col=1)
     fig.add_trace(go.Scatter(
-      x=months, y=cum, name=f"Cum {name}",
+      x=xs, y=cum, name=f"Cum {name}",
       line=dict(color=color, width=2),
       legendgroup=f"m_{i}",
       showlegend=False,
     ), row=2, col=1)
   fig.update_layout(
-    title=dict(text=title, font=dict(size=13)),
+    **_title_and_model_legend(title),
     barmode="group",
     bargap=0.18,
-    height=520,
-    margin=dict(l=48, r=24, t=72, b=80),
-    legend=dict(orientation="h", yanchor="top", y=-0.12, x=0),
+    height=580,
     hovermode="x unified",
   )
-  fig.update_yaxes(title_text="R / tháng", row=1, col=1)
+  fig.update_yaxes(title_text=y_bar, row=1, col=1)
   fig.update_yaxes(title_text="Cum R", row=2, col=1)
+  fig.update_xaxes(title_text=x_title, row=2, col=1)
+  n_ticks = max((len(mo[period_col]) for _, mo in items), default=0)
+  if n_ticks > 6:
+    fig.update_xaxes(tickangle=-35, row=2, col=1)
   return fig
+
+
+def build_multi_model_monthly_figure(
+  monthly_by_model: dict[str, pd.DataFrame],
+  *,
+  title: str = "R theo tháng · Compare Trade",
+) -> go.Figure | None:
+  """Grouped monthly total_r bars + multi-line cum R."""
+  return build_multi_model_period_figure(
+    monthly_by_model,
+    title=title,
+    period_col="month",
+    bar_subtitle="R từng tháng",
+    y_bar="R / tháng",
+    x_title="Tháng",
+  )
+
+
+def build_multi_model_weekly_figure(
+  weekly_by_model: dict[str, pd.DataFrame],
+  *,
+  title: str = "R theo tuần · Live",
+) -> go.Figure | None:
+  """Grouped weekly total_r bars + multi-line cum R (Monday week_start)."""
+  return build_multi_model_period_figure(
+    weekly_by_model,
+    title=title,
+    period_col="week",
+    bar_subtitle="R từng tuần",
+    y_bar="R / tuần",
+    x_title="Tuần (thứ Hai)",
+  )
 
 
 def _parse_compare_trade_time(value) -> pd.Timestamp | None:

@@ -182,6 +182,8 @@ def _remine_source_label(source: str | None, *, remine_each_week: bool = True) -
     return "Đã remine live"
   if source == "live_remine":
     return "Remine tuần này"
+  if source == "manual_remine":
+    return "Remine tay"
   if source == "frozen":
     return "Freeze (OFF)"
   if source == "frozen_first":

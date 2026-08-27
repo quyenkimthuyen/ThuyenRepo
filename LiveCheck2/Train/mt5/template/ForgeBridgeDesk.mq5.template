@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMinerM15 bridge"
-#property version   "1.27"
+#property version   "1.28"
 
 #include <Trade/Trade.mqh>
 
@@ -1056,7 +1056,7 @@ bool WriteConnectionJson()
    json += "\"symbol\":\"" + _Symbol + "\",";
    json += "\"period\":\"" + PeriodTag() + "\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
-   json += "\"ea_version\":\"1.27\",";
+   json += "\"ea_version\":\"1.28\",";
    json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"account_margin_mode\":" + IntegerToString(AccountInfoInteger(ACCOUNT_MARGIN_MODE)) + ",";
@@ -2291,11 +2291,6 @@ void ManagePaperHistory(const MqlRates &r)
    if(!g_paper_open)
       return;
    g_paper_held++;
-
-   // Python backtest_mined enters at open then starts SL/TP/trail on the *next* bar
-   // (i = entry_idx + 1). Checking the entry bar here caused same-bar SL and R drift.
-   if(g_paper_held <= 1)
-      return;
 
    const double spr = HistSpreadPrice(r);
    const double bid_h = r.high;

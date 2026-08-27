@@ -212,7 +212,11 @@ def connection_health(
   }
 
 
-def _add_trade(fig: go.Figure, trade: dict, chart_start, chart_end) -> None:
+def _add_trade(
+  fig: go.Figure, trade: dict, chart_start, chart_end,
+  *,
+  legend_seen: set[str] | None = None,
+) -> None:
   """Draw entry / SL / TP / exit like Paper Trade `_add_order_overlays`."""
   entry_time = _parse_mt5_time(
     trade.get("entry_time") or trade.get("entry") or trade.get("signal_time")
@@ -234,6 +238,9 @@ def _add_trade(fig: go.Figure, trade: dict, chart_start, chart_end) -> None:
   line_start = max(entry_time, chart_start)
   direction = str(trade.get("direction") or trade.get("dir") or "").upper()
   is_long = direction in ("BUY", "LONG")
+  model_label = str(trade.get("model_label") or "").strip()
+  model_color = str(trade.get("model_color") or "").strip()
+  multi = bool(model_color)
 
   try:
     sl = float(trade["sl"]) if trade.get("sl") is not None else None
@@ -250,7 +257,7 @@ def _add_trade(fig: go.Figure, trade: dict, chart_start, chart_end) -> None:
   sl_color = "#ffc107" if signal else TV_SL
   tp_color = "#ffc107" if signal else TV_TP
 
-  if sl is not None and tp is not None:
+  if not multi and sl is not None and tp is not None:
     risk_y0, risk_y1 = (sl, entry) if is_long else (entry, sl)
     rew_y0, rew_y1 = (entry, tp) if is_long else (tp, entry)
     fig.add_shape(
@@ -308,18 +315,27 @@ def _add_trade(fig: go.Figure, trade: dict, chart_start, chart_end) -> None:
       ), row=1, col=1)
   elif entry_time >= chart_start:
     marker_symbol = "triangle-up" if is_long else "triangle-down"
-    marker_color = TV_UP if is_long else TV_DOWN
+    marker_color = model_color or (TV_UP if is_long else TV_DOWN)
+    show_leg = bool(multi and model_label and legend_seen is not None and model_label not in legend_seen)
+    if show_leg and legend_seen is not None:
+      legend_seen.add(model_label)
     fig.add_trace(go.Scatter(
       x=[entry_time], y=[entry],
-      mode="markers+text",
-      marker=dict(symbol=marker_symbol, size=14, color=marker_color, line=dict(width=1, color="white")),
-      text=[f"ENTRY {entry:.5f}"],
+      mode="markers" if multi else "markers+text",
+      marker=dict(
+        symbol=marker_symbol, size=11 if multi else 14,
+        color=marker_color, line=dict(width=1, color="white"),
+      ),
+      text=None if multi else [f"ENTRY {entry:.5f}"],
       textposition="top center" if is_long else "bottom center",
       textfont=dict(size=9, color=TV_ENTRY),
-      showlegend=False,
+      name=model_label or "Entry",
+      legendgroup=model_label or None,
+      showlegend=show_leg,
       hovertemplate=(
-        f"Entry<br>%{{x}}<br>{direction} @ %{{y:.5f}}<br>"
-        f"SL: {sl}<br>TP: {tp}<extra></extra>"
+        (f"<b>{model_label}</b><br>" if model_label else "")
+        + f"Entry<br>%{{x}}<br>{direction} @ %{{y:.5f}}<br>"
+        + f"SL: {sl}<br>TP: {tp}<extra></extra>"
       ),
     ), row=1, col=1)
 
@@ -396,8 +412,9 @@ def build_ea_chart(
     fig.update_yaxes(title_text="Vol", row=2, col=1)
 
   chart_start, chart_end = frame.index[0], frame.index[-1]
+  legend_seen: set[str] = set()
   for trade in trades:
-    _add_trade(fig, trade, chart_start, chart_end)
+    _add_trade(fig, trade, chart_start, chart_end, legend_seen=legend_seen)
 
   bid = connection.get("bid")
   ask = connection.get("ask")
@@ -416,10 +433,12 @@ def build_ea_chart(
     plot_bgcolor=TV_BG,
     font=dict(color=TV_TEXT, size=11),
     height=620 if has_volume else 560,
-    margin=dict(l=8, r=96, t=48, b=32),
+    margin=dict(l=8, r=96, t=48, b=72 if legend_seen else 32),
     hovermode="x unified",
     xaxis_rangeslider_visible=False,
     uirevision="mt5-live-chart",
+    showlegend=bool(legend_seen),
+    legend=dict(orientation="h", yanchor="top", y=-0.12, x=0) if legend_seen else None,
   )
   fig.update_xaxes(
     gridcolor=TV_GRID, showgrid=True, zeroline=False,

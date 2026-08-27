@@ -307,11 +307,28 @@ def build_ea_app_sync_status(
       "journal_trade": j_opens[0] if len(j_opens) == 1 else None,
     })
 
-  awaiting_n = sum(
-    1 for t in trades
-    if str(t.get("status") or "").upper() == "OPEN"
-    and "awaiting_mt5_deal" in (t.get("interventions") or [])
-  )
+  mt5_tickets: set[int] = set()
+  for p in mt5_rows:
+    try:
+      tk = int(p.get("ticket") or 0)
+    except (TypeError, ValueError):
+      tk = 0
+    if tk:
+      mt5_tickets.add(tk)
+
+  awaiting_n = 0
+  for t in trades:
+    if str(t.get("status") or "").upper() != "OPEN":
+      continue
+    if "awaiting_mt5_deal" not in (t.get("interventions") or []):
+      continue
+    try:
+      tk = int(t.get("ticket") or 0)
+    except (TypeError, ValueError):
+      tk = 0
+    if tk and tk in mt5_tickets:
+      continue
+    awaiting_n += 1
   if awaiting_n > 0:
     issues.append(
       f"{awaiting_n} lệnh OPEN chờ deal MT5 — App không đóng bừa (giống Trade)."

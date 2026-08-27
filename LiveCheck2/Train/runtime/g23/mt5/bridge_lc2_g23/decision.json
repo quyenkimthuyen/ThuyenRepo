@@ -1,18 +1,18 @@
 {
-  "signal_id": "1c61d94c2c34b318",
+  "signal_id": "afd11c3e5628d973",
   "action": "FLAT",
   "entry": null,
   "sl": null,
   "tp": null,
   "risk_pct": 1.0,
   "magic": 20281042,
-  "bar_time": "2026.08.25 19:15",
+  "bar_time": "2026.08.27 19:00",
   "model_id": "tm_fine_wr52_rr2_66_54r_2fda252b",
-  "expires_bar_time": "2026.08.25 19:30",
+  "expires_bar_time": "2026.08.27 19:15",
   "week_start": "2026-08-24",
   "strategy_name": "Forge RR3.2 full 3L2S bb+zscore #AE1C|chase:fixed_or_rsi<58+vwap<1.5",
-  "slots_remaining": 2,
-  "updated_at": "2026-08-25T23:30:16+07:00",
+  "slots_remaining": 1,
+  "updated_at": "2026-08-27T23:15:22+07:00",
   "reason": "no_signal",
   "conditions_fp": "ce1b7426fbf1",
   "run_conditions": {
@@ -103,7 +103,7 @@
     }
   },
   "signal_wait": {
-    "bar_time": "2026-08-25 16:15:00",
+    "bar_time": "2026-08-27 16:00:00",
     "hour": 19,
     "buy": {
       "side": "BUY",
@@ -148,7 +148,7 @@
           "id": "rule:bb_width_pct:lt",
           "label": "bb_width_pct",
           "ok": false,
-          "current": 0.352,
+          "current": 1.0,
           "expect": "< 0.0604151",
           "side": "BUY"
         },
@@ -156,7 +156,7 @@
           "id": "rule:bb_pos:lt",
           "label": "bb_pos",
           "ok": false,
-          "current": 0.4503,
+          "current": 0.8143,
           "expect": "< 0.201798",
           "side": "BUY"
         },
@@ -164,7 +164,7 @@
           "id": "rule:zscore_20:lt",
           "label": "zscore_20",
           "ok": false,
-          "current": -0.1989,
+          "current": 1.2571,
           "expect": "< -1.19281",
           "side": "BUY"
         },
@@ -180,7 +180,7 @@
           "id": "ml",
           "label": "ML prob",
           "ok": false,
-          "current": 0.304,
+          "current": 0.3346,
           "expect": ">= 0.4",
           "side": "BUY"
         },
@@ -188,7 +188,7 @@
           "id": "score",
           "label": "Combined score",
           "ok": false,
-          "current": 0.0875,
+          "current": 0.175,
           "expect": ">= 1",
           "side": "BUY"
         },
@@ -196,7 +196,7 @@
           "id": "score_lead",
           "label": "Leads opposite side",
           "ok": true,
-          "current": 0.0875,
+          "current": 0.175,
           "expect": "> 0.0",
           "side": "BUY"
         },
@@ -204,7 +204,7 @@
           "id": "anti_chase",
           "label": "Anti-chase",
           "ok": true,
-          "current": 49.0729,
+          "current": 58.1379,
           "expect": "RSI > 42",
           "side": "BUY"
         },
@@ -212,7 +212,7 @@
           "id": "slots",
           "label": "Day slots left",
           "ok": true,
-          "current": 2,
+          "current": 1,
           "expect": ">= 1",
           "side": "BUY"
         }
@@ -221,15 +221,16 @@
     "sell": {
       "side": "SELL",
       "ready": false,
-      "passed": 6,
+      "passed": 5,
       "total": 11,
-      "waiting_n": 5,
+      "waiting_n": 6,
       "waiting": [
         "sweep_high_fade",
         "pullback_short",
         "Rules matched (≥1)",
         "Combined score",
-        "Leads opposite side"
+        "Leads opposite side",
+        "Anti-chase"
       ],
       "gates": [
         {
@@ -284,7 +285,7 @@
           "id": "ml",
           "label": "ML prob",
           "ok": true,
-          "current": 0.6298,
+          "current": 0.4528,
           "expect": ">= 0.4",
           "side": "SELL"
         },
@@ -301,14 +302,14 @@
           "label": "Leads opposite side",
           "ok": false,
           "current": 0.0,
-          "expect": "> 0.0875",
+          "expect": "> 0.175",
           "side": "SELL"
         },
         {
           "id": "anti_chase",
           "label": "Anti-chase",
-          "ok": true,
-          "current": 49.0729,
+          "ok": false,
+          "current": 58.1379,
           "expect": "RSI < 58",
           "side": "SELL"
         },
@@ -316,7 +317,7 @@
           "id": "slots",
           "label": "Day slots left",
           "ok": true,
-          "current": 2,
+          "current": 1,
           "expect": ">= 1",
           "side": "SELL"
         }

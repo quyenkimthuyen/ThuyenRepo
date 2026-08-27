@@ -8,6 +8,20 @@ def round_trip_cost_pips(spread_pips: float, slippage_pips: float) -> float:
   return spread_pips + 2.0 * slippage_pips
 
 
+def spread_price(spread_pips: float) -> float:
+  """One spread in price units (5-digit FX)."""
+  return max(0.0, float(spread_pips)) * PIP
+
+
+def atr_stop_distance(atr: float, atr_mult: float, spread_pips: float = 0.0) -> float:
+  """Stop distance that still leaves ATR room after the broker hits the opposite quote.
+
+  Live SELL SL fills on Ask, BUY SL on Bid. OHLC is Bid. Adding one spread to the
+  ATR stop keeps the intended ATR adverse room instead of dying inside the spread.
+  """
+  return float(atr_mult) * float(atr) + spread_price(spread_pips)
+
+
 def cost_r_from_pips(cost_pips: float, risk_price: float) -> float:
   if risk_price <= 0:
     return 0.0

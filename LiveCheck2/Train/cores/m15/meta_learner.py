@@ -20,7 +20,7 @@ from strategy_miner import (
   score_strategy_metrics, _label_outcomes, _mine_threshold_rules, _mine_binary_rules,
   _count_matching_rules, CONTINUOUS_FEATURES, BINARY_LONG, BINARY_SHORT,
   _weeks_in_window, MiningSearchSpace, constrain_strategy_to_space,
-  apply_breakthrough_filters,
+  apply_breakthrough_filters, _exec_cost_kwargs,
 )
 
 _DETERMINISM_LOCK = threading.RLock()
@@ -108,8 +108,8 @@ def _evaluate_genome(
   span = train_end - train_start
   split = train_start + int(span * 0.65)
   sig = generate_signals_mined(fm, strat, train_start, train_end)
-  fit_trades = backtest_mined(fm, strat, sig, train_start, split)
-  val_trades = backtest_mined(fm, strat, sig, split, train_end)
+  fit_trades = backtest_mined(fm, strat, sig, train_start, split, **_exec_cost_kwargs())
+  val_trades = backtest_mined(fm, strat, sig, split, train_end, **_exec_cost_kwargs())
   comb = compute_metrics(fit_trades + val_trades)
   val_m = compute_metrics(val_trades)
 

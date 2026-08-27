@@ -16,6 +16,7 @@ from gui.navigation import (
   ALL_ITEMS,
   LABEL_CHART_EQUITY,
   LABEL_CHART_MONTHLY,
+  LABEL_CHART_WEEKLY,
   LABEL_TAB_OOS,
   LABEL_TAB_REWARD,
 )
@@ -76,6 +77,135 @@ from gui.views.mt5_bridge_helpers import (
 def _bridge_any_service_running() -> bool:
   return bool(bridge_bg.get_status().get("running")) or bool(
     bridge_bg.get_sim_status().get("running")
+  )
+
+
+LIVE_VIEW_ALL = "__all__"
+
+
+def _live_roster_model_ids() -> list[str]:
+  from gui.trade_model import get_bridge_runtime_model_ids
+
+  ids = get_bridge_runtime_model_ids()
+  if ids:
+    return list(ids)
+  active = get_active_trade_model()
+  if active and active.get("id"):
+    return [str(active["id"])]
+  return []
+
+
+def _legend_model_label(mid: str) -> str:
+  from gui.trade_model import format_model_label, get_model_by_id
+
+  m = get_model_by_id(mid)
+  s = format_model_label(m) if m else str(mid)
+  return s if len(s) <= 28 else s[:27] + "…"
+
+
+def _render_live_model_scope(*, widget_key: str, pref_key: str) -> str | None:
+  """Tất cả → None; một model → id. Ẩn dropdown nếu roster chỉ 1 model."""
+  from gui.trade_model import format_model_label, get_model_by_id
+
+  ids = _live_roster_model_ids()
+  if len(ids) <= 1:
+    return ids[0] if ids else None
+  options = [LIVE_VIEW_ALL, *ids]
+
+  def _label(mid: str) -> str:
+    if mid == LIVE_VIEW_ALL:
+      return f"Tất cả ({len(ids)} model)"
+    m = get_model_by_id(mid)
+    return format_model_label(m) if m else mid
+
+  restore_widget(
+    widget_key, LIVE_VIEW_ALL,
+    preference_key=pref_key,
+    options=options,
+  )
+  pick = st.selectbox(
+    "Trade Model",
+    options,
+    format_func=_label,
+    key=widget_key,
+    on_change=preference_callback(widget_key, pref_key),
+  )
+  if pick == LIVE_VIEW_ALL:
+    return None
+  return str(pick)
+
+
+def _render_manual_remine_controls(model_ids: list[str]) -> None:
+  """Force remine current broker week for the Live roster (running Bridge)."""
+  from mt5_bridge.manual_remine import read_remine_status, request_live_remine
+  from mt5_bridge.protocol import history_replay_active
+  from mt5_bridge.weekend_preremine import this_week_start
+
+  live_dir = resolve_live_bridge_dir()
+  live_on = bool(bridge_bg.get_status().get("running"))
+  feed_on = False
+  try:
+    feed_on = bool(history_replay_active(live_dir))
+  except Exception:
+    feed_on = False
+  file_st = read_json(status_path(live_dir)) or {}
+  status = read_remine_status(live_dir)
+  state = str(status.get("state") or "")
+  week = str(file_st.get("week_start") or this_week_start().date())[:10]
+  n = len(model_ids or [])
+  busy = state in ("queued", "running")
+
+  if state == "running":
+    cur = status.get("current_model") or "…"
+    st.info(status.get("message") or f"Đang remine **{cur}** · tuần {status.get('week_start') or week}.")
+  elif state == "queued":
+    st.warning(
+      "Đã gửi lúc **"
+      + str(status.get("updated_at") or "—")
+      + "**. Bridge nhận trong **vài giây** rồi mine (vài phút/model) — "
+      "không đợi Chủ nhật. Nếu dòng này đứng yên: process đang chạy code cũ → "
+      "**Stop rồi Start Bridge** (không cần bấm lại)."
+    )
+  elif state == "done":
+    bits = []
+    for row in status.get("results") or []:
+      if row.get("ok") and row.get("name"):
+        bits.append(str(row["name"])[:48])
+    extra = (" · " + " · ".join(bits[:5])) if bits else ""
+    st.success(
+      (status.get("message") or "Remine xong")
+      + f" · tuần {status.get('week_start') or week}{extra}"
+    )
+  elif state == "error":
+    st.error(status.get("error") or status.get("message") or "Remine thất bại.")
+
+  disabled = (not live_on) or (not n) or busy or feed_on
+  help_txt = (
+    "Mine lại strategy tuần broker hiện tại với công thức SL hiện tại "
+    "(ATR×mult + spread). Ghi đè live_weeks tuần này. Lệnh đang mở giữ SL cũ. "
+    "Vài phút mỗi model — Bridge tạm ngừng quyết định trong lúc mine."
+  )
+  if not live_on:
+    help_txt = "Cần Start Bridge Live trước."
+  elif feed_on:
+    help_txt = "Tắt Test lịch sử trước khi remine Live."
+  elif not n:
+    help_txt = "Chọn model trên roster trước."
+
+  if st.button(
+    f"Remine tuần này ({n} model · {week})",
+    type="primary",
+    use_container_width=True,
+    key="bridge_manual_remine_week",
+    disabled=disabled,
+    help=help_txt,
+  ):
+    request_live_remine(live_dir, model_ids=list(model_ids), week_start=week)
+    st.toast(f"Đã gửi remine tuần {week} — Bridge đang mine.")
+    st.rerun()
+  st.caption(
+    "Không đợi Chủ nhật. Genome mới dùng SL đã cộng spread. "
+    "Health OOS trên card model chưa đổi cho đến khi chạy lại Đánh giá OOS."
   )
 
 
@@ -296,6 +426,9 @@ def _render_bridge_models_tab() -> list[str]:
         m = by_id.get(mid)
         label = format_model_short(m) if m else f"{mid[:28]} (id ma)"
         st.caption(f"· {label}")
+
+  if ids_runtime:
+    _render_manual_remine_controls(list(ids_runtime))
 
   st.divider()
   # Prefer live status; fall back to sim — use configured/clone bridge dirs
@@ -950,29 +1083,46 @@ def _live_chart_recover_fragment(max_bars: int) -> None:
     st.caption("Đang chờ Live chart server…")
 
 
-def _render_live_chart(max_bars: int) -> None:
+def _render_live_chart(max_bars: int, *, model_id: str | None = None) -> None:
   """Live chart from the desk bridge folder (history replay writes the same folder)."""
+  from urllib.parse import quote
+
+  from mt5_bridge.live_monitor_server import prepare_live_chart_trades
+
   bridge_dir = _active_bridge_dir()
   legend = "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — overlay giống Compare/Sim."
+  if model_id is None and len(_live_roster_model_ids()) > 1:
+    legend = "▲▼ ENTRY màu theo model · ✕ exit — chọn 1 model để xem SL/TP zone."
   port = desk_chart_port()
   monitor_url = f"http://127.0.0.1:{port}"
+  model_q = model_id or "all"
 
   from mt5_bridge.live_monitor_server import ensure_chart_server
   ensure_chart_server(resolve_live_bridge_dir(), port)
   server_ready = _chart_server_healthy(monitor_url)
-  if server_ready:
+  use_iframe = server_ready and model_id is None
+  if use_iframe:
     components.iframe(
-      f"{monitor_url}/chart?bars={max_bars}",
+      f"{monitor_url}/chart?bars={max_bars}&model={quote(model_q, safe='')}",
       height=700,
       scrolling=False,
     )
     st.caption(legend)
     return
-  st.warning("Live chart server chưa chạy; đang dùng snapshot tĩnh.")
+  if not server_ready:
+    st.warning("Live chart server chưa chạy; đang dùng snapshot tĩnh.")
   frame, connection = load_ea_chart_data(max_bars=max_bars, bridge_dir=bridge_dir)
-  trades = load_trades(bridge_dir)
+  roster_ids = _live_roster_model_ids()
+  trades = prepare_live_chart_trades(
+    load_trades(bridge_dir),
+    model_ids=roster_ids,
+    model_filter=model_id,
+    labels={mid: _legend_model_label(mid) for mid in roster_ids},
+  )
   sym = str((connection or {}).get("symbol") or "").strip().upper() or _desk_symbol()
   live_chart_title = f"{sym} {tf_label()} · XM MT5 live"
+  if model_id:
+    live_chart_title += f" · {_legend_model_label(model_id)}"
   fig = build_ea_chart(frame, connection, trades, title=live_chart_title)
   if fig is None:
     st.caption("Đang chờ EA gửi nến để vẽ chart.")
@@ -1556,6 +1706,111 @@ def _render_simulate_ea() -> None:
   )
 
 
+def _render_live_reward_all(
+  detail_ids: list[str],
+  *,
+  bridge_dir=None,
+  date_from=None,
+  date_to=None,
+) -> None:
+  """Overlay weekly / monthly / equity for every roster model."""
+  from gui.bridge_model_monitor import (
+    LIVE_SERIES_COLOR,
+    build_equity_series_figure,
+    build_multi_model_equity_figure,
+    build_multi_model_monthly_figure,
+    build_multi_model_weekly_figure,
+    load_live_auto_trades,
+  )
+
+  live_all = load_live_auto_trades(
+    None,
+    bridge_dir=bridge_dir,
+    date_from=date_from,
+    date_to=date_to,
+    use_exit_time=True,
+  )
+  stats = live_all.get("stats") or {}
+  live_n = int(stats.get("n_trades") or 0)
+  m1, m2, m3, m4 = st.columns(4)
+  m1.metric(
+    "Total R",
+    f"{stats.get('total_r'):+.1f}" if stats.get("total_r") is not None else "—",
+  )
+  m2.metric(
+    "WR%",
+    f"{stats.get('win_rate_pct')}%" if stats.get("win_rate_pct") is not None else "—",
+  )
+  m3.metric(
+    "Max DD",
+    f"{stats.get('max_drawdown_r')}R" if stats.get("max_drawdown_r") is not None else "—",
+  )
+  m4.metric("Trades", f"{live_n}")
+  st.caption(f"Tổng **{len(detail_ids)}** model · lệnh auto đã đóng trên Bridge.")
+
+  weekly_by: dict = {}
+  monthly_by: dict = {}
+  equity_by: dict = {}
+  rows = []
+  for mid in detail_ids:
+    label = _legend_model_label(mid)
+    live = load_live_auto_trades(
+      mid,
+      bridge_dir=bridge_dir,
+      date_from=date_from,
+      date_to=date_to,
+      use_exit_time=True,
+    )
+    weekly_by[label] = live.get("weekly")
+    monthly_by[label] = live.get("monthly")
+    equity_by[label] = live.get("equity")
+    stt = live.get("stats") or {}
+    rows.append({
+      "Model": label,
+      "Đóng": stt.get("n_trades") or 0,
+      "WR%": stt.get("win_rate_pct"),
+      "Total R": stt.get("total_r"),
+      "MaxDD": stt.get("max_drawdown_r"),
+    })
+  st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+
+  tw, th, tr = st.tabs([LABEL_CHART_WEEKLY, LABEL_CHART_MONTHLY, LABEL_CHART_EQUITY])
+  with tw:
+    fig_w = build_multi_model_weekly_figure(
+      weekly_by, title="Tuần · tất cả model · Live Auto",
+    )
+    if fig_w:
+      show_plotly(fig_w, "Tuần · tất cả model")
+      st.caption("Gom theo tuần bắt đầu **thứ Hai** (cùng mốc remine).")
+    else:
+      st.info("Chưa có chuỗi tuần Live.")
+  with th:
+    fig_m = build_multi_model_monthly_figure(
+      monthly_by, title="Tháng · tất cả model · Live Auto",
+    )
+    if fig_m:
+      show_plotly(fig_m, "Tháng · tất cả model")
+    else:
+      st.info("Chưa có chuỗi tháng Live.")
+  with tr:
+    fig_e = build_multi_model_equity_figure(
+      equity_by, title="Equity · tất cả model · Live Auto",
+    )
+    if fig_e:
+      show_plotly(fig_e, "Equity · tất cả model")
+    else:
+      eq = build_equity_series_figure(
+        live_all.get("equity"),
+        title="Equity · Live Auto (gộp)",
+        series_name="Live Auto",
+        color=LIVE_SERIES_COLOR,
+      )
+      if eq:
+        show_plotly(eq, "Equity · Live Auto (gộp)")
+      else:
+        st.info("Chưa có equity Live.")
+
+
 def _render_model_monitor() -> None:
   """Theo dõi lệnh Live Auto trên Bridge — KPI, equity, theo tháng."""
   try:
@@ -1587,6 +1842,7 @@ def _render_model_monitor_body() -> None:
     build_equity_series_figure,
     build_monthly_series_figure,
     build_monitor_bundle,
+    build_weekly_series_figure,
   )
   from gui.trade_model import (
     get_bridge_runtime_model_ids,
@@ -1621,8 +1877,7 @@ def _render_model_monitor_body() -> None:
         d1.isoformat() if hasattr(d1, "isoformat") else None
       ) or sim_st.get("date_to") or None
 
-  # Chọn Trade Model trên roster Bridge (multi-model tổng quan → tab Thống kê).
-  from gui.trade_model import format_model_label
+  # Chọn Trade Model trên roster Bridge (Tất cả / từng model).
 
   detail_ids = bridge_mids if bridge_mids else (
     [str(active["id"])] if active and active.get("id") else []
@@ -1630,21 +1885,20 @@ def _render_model_monitor_body() -> None:
   if not detail_ids:
     return
 
-  def _model_option_label(mid: str) -> str:
-    m = get_model_by_id(mid)
-    return format_model_label(m) if m else str(mid)
-
-  if len(detail_ids) > 1:
-    active_id = str(active.get("id") or "") if active else ""
-    default_i = detail_ids.index(active_id) if active_id in detail_ids else 0
-    pick = st.selectbox(
-      "Trade Model",
+  model_scope = _render_live_model_scope(
+    widget_key=f"monitor_detail_mid_{source}",
+    pref_key="mt5.reward_view_model",
+  )
+  if source == "live" and model_scope is None and len(detail_ids) > 1:
+    _render_live_reward_all(
       detail_ids,
-      index=default_i,
-      format_func=_model_option_label,
-      key=f"monitor_detail_mid_{source}",
+      bridge_dir=view_bridge,
+      date_from=date_from,
+      date_to=date_to,
     )
-    active = get_model_by_id(pick)
+    return
+  if model_scope:
+    active = get_model_by_id(model_scope)
   elif not active:
     active = get_model_by_id(detail_ids[0])
 
@@ -1698,7 +1952,20 @@ def _render_model_monitor_body() -> None:
         st.success(assess.get("message") or "")
       elif assess.get("message"):
         st.info(assess.get("message"))
-      th, tr = st.tabs([LABEL_CHART_MONTHLY, LABEL_CHART_EQUITY])
+      tw, th, tr = st.tabs([LABEL_CHART_WEEKLY, LABEL_CHART_MONTHLY, LABEL_CHART_EQUITY])
+      with tw:
+        live_weekly_title = f"Tuần · {live_label} · {bundle['model_label']}"
+        fig_w = build_weekly_series_figure(
+          bundle["live"].get("weekly"),
+          title=live_weekly_title,
+          series_name=live_label,
+          color=LIVE_SERIES_COLOR,
+        )
+        if fig_w:
+          show_plotly(fig_w, live_weekly_title)
+          st.caption("Gom theo tuần bắt đầu **thứ Hai** (cùng mốc remine).")
+        else:
+          st.info(f"Chưa có chuỗi tuần {live_label}.")
       with th:
         live_monthly_title = f"Tháng · {live_label} · {bundle['model_label']}"
         fig = build_monthly_series_figure(
@@ -2264,13 +2531,31 @@ def _render_live_chart_tab() -> None:
     preference_key=pref_key,
     options=chart_ranges,
   )
-  range_label = st.selectbox(
-    "Khoảng chart",
-    chart_ranges,
-    key=chart_key,
-    on_change=preference_callback(chart_key, pref_key),
-  )
-  _render_live_chart(chart_bars[range_label])
+  roster_ids = _live_roster_model_ids()
+  model_scope: str | None
+  if len(roster_ids) > 1:
+    c1, c2 = st.columns([1.2, 2.4])
+    with c1:
+      range_label = st.selectbox(
+        "Khoảng chart",
+        chart_ranges,
+        key=chart_key,
+        on_change=preference_callback(chart_key, pref_key),
+      )
+    with c2:
+      model_scope = _render_live_model_scope(
+        widget_key="live_chart_view_model",
+        pref_key="mt5.chart_view_model",
+      )
+  else:
+    range_label = st.selectbox(
+      "Khoảng chart",
+      chart_ranges,
+      key=chart_key,
+      on_change=preference_callback(chart_key, pref_key),
+    )
+    model_scope = roster_ids[0] if roster_ids else None
+  _render_live_chart(chart_bars[range_label], model_id=model_scope)
 
 
 def _render_health_tab() -> None:
