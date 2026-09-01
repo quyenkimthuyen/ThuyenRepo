@@ -34,6 +34,7 @@ def _bar(time: str, close: float = 1.1) -> dict:
     "low": close - 0.002,
     "close": close,
     "tick_volume": 100,
+    "spread_points": 19,
   }
 
 
@@ -56,6 +57,7 @@ def test_merge_history_deduplicates_and_overwrites(tmp_path, monkeypatch):
   frame = history_sync.merge_history_bars([_bar("2026.07.15 10:00", 1.2)])
   assert len(frame) == 1
   assert frame.iloc[0]["Close"] == 1.2
+  assert float(frame.iloc[0]["SpreadPoints"]) == 19
   meta = read_json(history_sync.MT5_META_PATH)
   assert meta["source"] == "mt5_ea"
   assert meta["timeframe"] == "M15"

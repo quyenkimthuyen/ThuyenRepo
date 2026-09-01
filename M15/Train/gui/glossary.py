@@ -13,8 +13,8 @@ HELP = {
   "kb_on": "Dùng bộ nhớ kinh nghiệm khi tìm chiến lược (thường tốt hơn, cần kiểm chứng thêm).",
   "kb_off": "Không dùng bộ nhớ — đánh giá **khách quan nhất**, nên chạy trước khi tin vào kết quả.",
   "epoch": "**Vòng học (epoch)** — chạy cả giai đoạn một lần để cập nhật bộ nhớ (ep001, ep002, …).",
-  "spread": "Chênh lệch mua/bán (pip) — trừ vào mỗi lệnh khi mô phỏng.",
-  "slippage": "Trượt giá (pip) — mô phỏng khớp lệnh kém hơn giá lý tưởng.",
+  "spread": "Bid→Ask (pip). Lab/replay: BUY khớp Ask, SELL khớp Bid — cùng kiểu Live. Ưu tiên spread từng nến MT5 khi có.",
+  "slippage": "Trượt giá thêm (pip) trên fill thị trường lab (Live khớp Ask/Bid báo giá).",
   "r_unit": "**Đơn vị R** — lợi nhuận theo rủi ro mỗi lệnh (1R = ±1 lần risk).",
   "drawdown": "**Max DD** — mức sụt giảm lớn nhất từ đỉnh equity (đơn vị R).",
   "win_rate": "**WR** — tỷ lệ lệnh thắng trong giai đoạn kiểm chứng.",
@@ -25,8 +25,8 @@ HELP = {
   "trade_profile": "**Trade Model** — cấu hình giao dịch: cửa sổ học, bộ nhớ, giai đoạn test, phí.",
   "walk_forward": "**WF** — mỗi tuần học trên data gần → trade tuần sau → lặp (tránh nhìn trước).",
   "paper": (
-    "**Sim fills** (tên code cũ: *paper fills*) — khớp lệnh mô phỏng OHLC trong "
-    "**Compare Trade** / HistoryFeed (`mt5_bridge.paper_fill.PaperBook`). "
+    "**Sim fills** (tên code cũ: *paper fills*) — khớp lệnh mô phỏng OHLC Bid/Ask trong "
+    "**Compare Trade** / HistoryFeed (`mt5_bridge.paper_fill.PaperBook`): BUY Ask, SELL Bid. "
     "**Không** phải desk Paper Monitor (đã gỡ khỏi nav)."
   ),
   "active_model": (
@@ -252,7 +252,7 @@ def glossary_sections() -> list[tuple[str, list[tuple[str, str]]]]:
       ("EA", f"Expert Advisor trên MT5 (`{ea_live}`). Test lịch sử dùng cùng file, không gắn EA Sim."),
       ("InpMode", "Input EA mặc định Live. Test lịch sử bật bằng sim_control.json, không đổi EX5."),
       ("Magic", "Magic Number — tách lệnh Bridge khỏi EA khác trên cùng tài khoản."),
-      ("Sim fills / PaperBook", "Khớp lệnh mô phỏng OHLC trong Compare / test lịch sử (module `paper_fill`). Không phải desk Paper Monitor."),
+      ("Sim fills / PaperBook", "Khớp lệnh mô phỏng Bid/Ask (BUY Ask, SELL Bid) trong Compare / test lịch sử. Không phải desk Paper Monitor."),
       ("Id ma", "Id còn trong Bridge config nhưng model đã Archive/xóa — dùng Dọn roster."),
     ]),
     ("Chỉ số & lệnh", [
@@ -263,7 +263,7 @@ def glossary_sections() -> list[tuple[str, list[tuple[str, str]]]]:
       ("Max DD", "Max Drawdown — sụt giảm tối đa từ đỉnh equity (R)."),
       ("RoR", "Risk of Ruin — ước lượng xác suất phá sản (không phải Monte Carlo đầy đủ)."),
       ("PnL", "Profit and Loss — lãi/lỗ (desk thường tính lệnh Auto theo Trade Model)."),
-      ("Spread / Slippage", "Chênh mua-bán / trượt giá (pip) trừ vào mô phỏng."),
+      ("Spread / Slippage", "Bid-Ask từng nến (hoặc pip model) / trượt giá thêm trên fill lab."),
       ("SL / TP", "Stop Loss / Take Profit."),
       ("SIGNAL", "Có tín hiệu chưa khớp; Bridge phải gửi BUY/SELL lúc bar đóng."),
       ("OPEN / CLOSED / FILLED", "Trạng thái lệnh: đang mở / đã đóng / đã khớp (sim FILLED ≠ lệnh MT5 Live)."),

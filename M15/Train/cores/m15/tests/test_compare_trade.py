@@ -39,16 +39,22 @@ def test_paper_fill_open_next_bar_and_tp(tmp_path: Path):
     "max_hold_bars": 96,
     "model_id": "tm_a",
   }
-  # Decision queued → open at next bar open; SL/TP active on the fill bar
+  # Decision queued → open at next bar Ask; SL/TP active on the fill bar
   book.queue_decision(decision)
   assert book.pending is not None
-  fills0 = book.on_bar(open_=1.1005, high=1.1008, low=1.1002, close=1.1006, bar_time="2026.01.02 08:00")
+  fills0 = book.on_bar(
+    open_=1.1005, high=1.1008, low=1.1002, close=1.1006,
+    bar_time="2026.01.02 08:00", spread_points=20,
+  )
   assert len(fills0) == 1
   assert fills0[0]["event"] == "open"
-  assert fills0[0]["price"] == pytest.approx(1.1005)
+  assert fills0[0]["price"] == pytest.approx(1.10070)
   assert book.open is True
   # Next bar: held becomes 2 → SL/TP active; high hits TP
-  fills1 = book.on_bar(open_=1.1005, high=1.1030, low=1.1000, close=1.1025, bar_time="2026.01.02 08:15")
+  fills1 = book.on_bar(
+    open_=1.1005, high=1.1030, low=1.1000, close=1.1025,
+    bar_time="2026.01.02 08:15", spread_points=20,
+  )
   assert len(fills1) == 1
   assert fills1[0]["event"] == "close"
   assert fills1[0]["reason"] == "tp"

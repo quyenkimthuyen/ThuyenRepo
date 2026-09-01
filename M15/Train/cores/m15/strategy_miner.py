@@ -98,6 +98,9 @@ class MinedStrategy:
   anti_chase_rsi_long_min: float = 0.0     # allow long only if RSI > min
   anti_chase_vwap_short_max: float = 99.0  # allow short only if vwap_dist < max
   anti_chase_logic: str = "or"             # or | and
+  # TP uses ATR×mult×RR; SL still ATR×mult + 1 spread (live Ask/Bid).
+  tp_ignores_spread_buffer: bool = False
+  min_atr_spread_ratio: float = 0.0
   ml_scorer: MLScorer | None = None
   name: str = "mined_v3"
 
@@ -149,6 +152,16 @@ class MiningSearchSpace:
   anti_chase_logic: str = "or"
   # Opt-in: only mine full exits (no hybrid/partial that clip winners → RR↓)
   exit_modes_full_only: bool = False
+  # "" | full | hybrid | partial — lock one exit family (overrides full_only).
+  exit_mode_lock: str = ""
+  trail_activate_r: float = 1.8
+  trail_distance_r: float = 0.6
+  partial_pct: float = 0.35
+  partial_at_r: float = 1.5
+  # If True, TP = ATR×mult×RR (SL still +1 spread). See execution.stop_and_target_distances.
+  tp_ignores_spread_buffer: bool = False
+  # 0 = off. Skip entries when ATR < ratio × spread (quiet bars, spread tax dominates).
+  min_atr_spread_ratio: float = 0.0
   # 0 = desk default (MAX_TRADES_PER_DAY). 1 = first signal of the day only.
   max_trades_per_day: int = 0
   # both | long | short — applied on the chosen genome (train-safe).
@@ -220,6 +233,8 @@ def constrain_strategy_to_space(
     strat.allow_long = False
   elif side == "long":
     strat.allow_short = False
+  strat.tp_ignores_spread_buffer = bool(getattr(space, "tp_ignores_spread_buffer", False))
+  strat.min_atr_spread_ratio = float(getattr(space, "min_atr_spread_ratio", 0.0) or 0.0)
   return strat
 
 
@@ -252,12 +267,76 @@ def _exec_cost_kwargs() -> dict:
   }
 
 
+def _exit_modes_for_space(space: MiningSearchSpace) -> list[tuple[str, dict]]:
+  """Exit families the miner actually scores. Default stays full+hybrid+partial."""
+  lock = str(getattr(space, "exit_mode_lock", "") or "").strip().lower()
+  trail_kw = {
+    "trail_activate_r": float(getattr(space, "trail_activate_r", 1.8) or 1.8),
+    "trail_distance_r": float(getattr(space, "trail_distance_r", 0.6) or 0.6),
+  }
+  partial_kw = {
+    "partial_pct": float(getattr(space, "partial_pct", 0.35) or 0.35),
+    "partial_at_r": float(getattr(space, "partial_at_r", 1.5) or 1.5),
+  }
+  if lock == "hybrid":
+    return [("hybrid", trail_kw)]
+  if lock == "partial":
+    return [("partial", partial_kw)]
+  if lock == "full" or getattr(space, "exit_modes_full_only", False):
+    return [("full", {})]
+  return [
+    ("full", {}),
+    ("hybrid", trail_kw),
+    ("partial", partial_kw),
+  ]
+
+
+def _atr_too_small_vs_spread(fm, strat, i: int) -> bool:
+  ratio = float(getattr(strat, "min_atr_spread_ratio", 0.0) or 0.0)
+  if ratio <= 0:
+    return False
+  try:
+    av = float(fm.atr[i])
+  except (TypeError, ValueError, IndexError):
+    return True
+  if av != av or av <= 0:
+    return True
+  from execution import spread_from_quote
+  pts = 0.0
+  arr = getattr(fm, "spread_points", None)
+  if arr is not None and 0 <= i < len(arr):
+    try:
+      pts = float(arr[i] or 0.0)
+    except (TypeError, ValueError):
+      pts = 0.0
+  spr = spread_from_quote(DEFAULT_SPREAD_PIPS, pts)
+  if spr <= 0:
+    return False
+  return av < ratio * spr
+
+
+def _bar_spread_points(fm, i: int, last_pts: float) -> tuple[float, float]:
+  from execution import carry_spread_points
+  pts = 0.0
+  arr = getattr(fm, "spread_points", None)
+  if arr is not None and 0 <= i < len(arr):
+    try:
+      pts = float(arr[i] or 0.0)
+    except (TypeError, ValueError):
+      pts = 0.0
+  return carry_spread_points(pts, last_pts)
+
+
 def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
-                    spread_pips: float | None = None):
+                    spread_pips: float | None = None,
+                    tp_ignores_spread_buffer: bool = False):
   ensure_label_cache_for_df(fm.n)
-  from execution import atr_stop_distance, spread_price
+  from execution import stop_and_target_distances, spread_from_quote
   spr = float(DEFAULT_SPREAD_PIPS if spread_pips is None else spread_pips)
-  key = (fm.n, start, end, rr, atr_mult, max_hold_bars, round(spr, 4))
+  key = (
+    "bidask1", fm.n, start, end, rr, atr_mult, max_hold_bars, round(spr, 4),
+    int(bool(tp_ignores_spread_buffer)),
+  )
   with _LABEL_LOCK:
     cached = LABEL_CACHE.get(key)
     if cached is not None:
@@ -271,16 +350,24 @@ def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
   o, h, l, atr_v = fm.open, fm.high, fm.low, fm.atr
   max_hold = max_hold_bars
   last_i = min(end - max_hold - 2, fm.n - max_hold - 2)
+  last_pts = 0.0
 
   for i in range(start, last_i):
     av = atr_v[i]
     if np.isnan(av) or av <= 0:
       continue
-    entry = o[i + 1]
-    sl_d = atr_stop_distance(av, atr_mult, spr)
-    spr_px = spread_price(spr)
-    lsl, ltp = entry - sl_d, entry + sl_d * rr
-    ssl, stp = entry + sl_d, entry - sl_d * rr
+    pts, last_pts = _bar_spread_points(fm, i + 1, last_pts)
+    spr_px = spread_from_quote(spr, pts)
+    bid_entry = o[i + 1]
+    # BUY at Ask, SELL at Bid — same as live OrderSend / Trade replay.
+    buy_entry = bid_entry + spr_px
+    sell_entry = bid_entry
+    sl_d, tp_d = stop_and_target_distances(
+      av, atr_mult, rr, spr, pts,
+      tp_ignores_spread_buffer=bool(tp_ignores_spread_buffer),
+    )
+    lsl, ltp = buy_entry - sl_d, buy_entry + tp_d
+    ssl, stp = sell_entry + sl_d, sell_entry - tp_d
     j_end = min(i + 1 + max_hold, end)
 
     # Include the entry bar (i+1) — live SL is active from the fill tick.
@@ -291,9 +378,11 @@ def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
         long_win[i] = 1
         break
     for j in range(i + 1, j_end):
-      if h[j] + spr_px >= ssl:
+      j_pts, last_pts = _bar_spread_points(fm, j, last_pts)
+      j_spr = spread_from_quote(spr, j_pts)
+      if h[j] + j_spr >= ssl:
         break
-      if l[j] + spr_px <= stp:
+      if l[j] + j_spr <= stp:
         short_win[i] = 1
         break
 
@@ -482,6 +571,11 @@ def generate_signals_mined(
   if getattr(strat, "anti_chase", False):
     for i in range(fm.n):
       if signals[i] != 0 and _is_chase_entry(fm, strat, i, int(signals[i])):
+        signals[i] = 0
+
+  if float(getattr(strat, "min_atr_spread_ratio", 0.0) or 0.0) > 0:
+    for i in range(fm.n):
+      if signals[i] != 0 and _atr_too_small_vs_spread(fm, strat, i):
         signals[i] = 0
   return signals
 
@@ -730,63 +824,73 @@ def backtest_mined(
   return_open: bool = False,
 ):
   from execution import (
-    adjust_entry_price, adjust_exit_price, atr_stop_distance, spread_price,
+    PIP, adjust_entry_price, stop_and_target_distances, spread_from_quote,
   )
   from mt5_bridge.history_sync import utc_to_broker_time
 
   if end_idx is None:
     end_idx = fm.n
   o, h, l, c, atr_v = fm.open, fm.high, fm.low, fm.close, fm.atr
-  spr_px = spread_price(spread_pips)
   trades = []
   i = max(start_idx, fm.warmup)
   in_trade = False
   direction = entry_price = sl = tp = risk = 0.0
   entry_idx = partial_done = trail_active = 0.0
   entries_by_broker_day: dict[str, int] = {}
+  last_pts = 0.0
 
   while i < end_idx - 1:
+    pts, last_pts = _bar_spread_points(fm, i, last_pts)
+    spr_px = spread_from_quote(spread_pips, pts)
     if in_trade:
-      exit_price = c[i]
+      bid_h, bid_l, bid_c = h[i], l[i], c[i]
+      ask_h, ask_l, ask_c = bid_h + spr_px, bid_l + spr_px, bid_c + spr_px
+      exit_price = bid_c
       hit_sl = hit_tp = False
 
       # Hybrid: trail chỉ sau khi gần TP (bảo vệ lợi nhuận, không cắt sớm)
+      # Live: BUY trail from Bid, SELL trail from Ask.
       if strat.exit_mode in ("trail", "hybrid") and not partial_done:
         act = strat.trail_activate_r
-        if direction == 1 and h[i] >= entry_price + risk * act:
+        if direction == 1 and bid_h >= entry_price + risk * act:
           trail_active = 1.0
-          sl = max(sl, h[i] - risk * strat.trail_distance_r)
-        elif direction == -1 and l[i] <= entry_price - risk * act:
+          sl = max(sl, bid_h - risk * strat.trail_distance_r)
+        elif direction == -1 and ask_l <= entry_price - risk * act:
           trail_active = 1.0
-          sl = min(sl, l[i] + risk * strat.trail_distance_r)
+          sl = min(sl, ask_l + risk * strat.trail_distance_r)
 
       # Partial TP
       if strat.exit_mode == "partial" and not partial_done:
-        if direction == 1 and h[i] >= entry_price + risk * strat.partial_at_r:
+        if direction == 1 and bid_h >= entry_price + risk * strat.partial_at_r:
           partial_done = 1.0
           sl = entry_price + risk * 0.1
-        elif direction == -1 and l[i] <= entry_price - risk * strat.partial_at_r:
+        elif direction == -1 and ask_l <= entry_price - risk * strat.partial_at_r:
           partial_done = 1.0
           sl = entry_price - risk * 0.1
 
       if direction == 1:
-        if l[i] <= sl:
+        if bid_l <= sl:
           hit_sl, exit_price = True, sl
-        elif h[i] >= tp:
+        elif bid_h >= tp:
           hit_tp, exit_price = True, tp
       else:
         # SELL closes on Ask (OHLC is Bid).
-        if h[i] + spr_px >= sl:
+        if ask_h >= sl:
           hit_sl, exit_price = True, sl
-        elif l[i] + spr_px <= tp:
+        elif ask_l <= tp:
           hit_tp, exit_price = True, tp
 
-      if hit_sl or hit_tp or (i - entry_idx) >= strat.max_hold_bars:
+      max_hold = int(strat.max_hold_bars or 0)
+      timed_out = max_hold > 0 and (i - entry_idx) >= max_hold
+      if hit_sl or hit_tp or timed_out:
         reason = "tp" if hit_tp else ("trail" if trail_active and hit_sl else "sl")
         if not hit_sl and not hit_tp:
-          exit_price, reason = c[i], "timeout"
-
-        exit_price = adjust_exit_price(exit_price, int(direction), spread_pips, slippage_pips)
+          reason = "timeout"
+          slip_px = max(0.0, float(slippage_pips)) * PIP
+          if direction == 1:
+            exit_price = bid_c - slip_px
+          else:
+            exit_price = ask_c + slip_px
 
         if strat.exit_mode == "partial" and partial_done:
           pnl_r = strat.partial_pct * strat.partial_at_r
@@ -823,15 +927,21 @@ def backtest_mined(
       if entries_by_broker_day.get(broker_day, 0) >= strat.max_trades_per_day:
         i += 1
         continue
-      entry_price = adjust_entry_price(o[entry_idx], int(sig), spread_pips, slippage_pips)
-      sl_d = atr_stop_distance(av, strat.atr_mult_sl, spread_pips)
+      entry_pts, last_pts = _bar_spread_points(fm, entry_idx, last_pts)
+      entry_price = adjust_entry_price(
+        o[entry_idx], int(sig), spread_pips, slippage_pips, spread_points=entry_pts,
+      )
+      sl_d, tp_d = stop_and_target_distances(
+        av, strat.atr_mult_sl, strat.rr_ratio, spread_pips, entry_pts,
+        tp_ignores_spread_buffer=bool(getattr(strat, "tp_ignores_spread_buffer", False)),
+      )
       direction = float(sig)
       risk = sl_d
       partial_done = trail_active = 0.0
       if direction == 1:
-        sl, tp = entry_price - sl_d, entry_price + sl_d * strat.rr_ratio
+        sl, tp = entry_price - sl_d, entry_price + tp_d
       else:
-        sl, tp = entry_price + sl_d, entry_price - sl_d * strat.rr_ratio
+        sl, tp = entry_price + sl_d, entry_price - tp_d
       in_trade = True
       entries_by_broker_day[broker_day] = entries_by_broker_day.get(broker_day, 0) + 1
       i = entry_idx
@@ -1273,6 +1383,8 @@ def apply_breakthrough_filters(
     out.allow_long = False
   elif side == "long":
     out.allow_short = False
+  out.tp_ignores_spread_buffer = bool(getattr(space, "tp_ignores_spread_buffer", False))
+  out.min_atr_spread_ratio = float(getattr(space, "min_atr_spread_ratio", 0.0) or 0.0)
   return out
 
 
@@ -1292,17 +1404,16 @@ def mine_strategy(
   best = best_fallback = None
   best_score = best_fallback_score = -1e9
 
-  exit_modes = [("full", {}),
-                ("hybrid", {"trail_activate_r": 1.8, "trail_distance_r": 0.6}),
-                ("partial", {"partial_pct": 0.35, "partial_at_r": 1.5})]
-  if getattr(space, "exit_modes_full_only", False):
-    exit_modes = [("full", {})]
+  exit_modes = _exit_modes_for_space(space)
+  tp_geom = bool(getattr(space, "tp_ignores_spread_buffer", False))
+  min_atr_r = float(getattr(space, "min_atr_spread_ratio", 0.0) or 0.0)
 
   for rr in space.rr_ratios:
     for atr_m in space.atr_multipliers:
       for max_hold in space.max_hold_bars:
         long_wins, short_wins = _label_outcomes(
           fm, train_start, train_end, rr, atr_m, max_hold,
+          tp_ignores_spread_buffer=tp_geom,
         )
 
         ml = MLScorer()
@@ -1357,6 +1468,8 @@ def mine_strategy(
                         allow_long=side != "short",
                         allow_short=side != "long",
                         exit_mode=exit_mode, ml_scorer=ml,
+                        tp_ignores_spread_buffer=tp_geom,
+                        min_atr_spread_ratio=min_atr_r,
                         name=f"v3_{exit_mode}_rr{rr}",
                         **exit_kw,
                       )

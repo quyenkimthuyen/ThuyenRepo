@@ -15,7 +15,7 @@ def test_host_atr_stop_adds_one_spread():
   desk = resolve_host_desk("EURUSD", "M15")
   src = (desk / "execution.py").read_text(encoding="utf-8")
   fn = src[src.find("def atr_stop_distance") :]
-  assert "spread_price(spread_pips)" in fn
+  assert "spread_from_quote" in fn or "spread_price(spread_pips)" in fn
   assert "float(atr_mult) * float(atr)" in fn
 
 

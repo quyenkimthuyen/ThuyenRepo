@@ -177,7 +177,7 @@ def _replay_symbol() -> str:
 
 def _bar_dict(ts: pd.Timestamp, row: pd.Series) -> dict:
   broker = utc_to_broker_time(ts)
-  return {
+  payload = {
     "time": broker.strftime("%Y.%m.%d %H:%M"),
     "open": float(row["Open"]),
     "high": float(row["High"]),
@@ -186,6 +186,20 @@ def _bar_dict(ts: pd.Timestamp, row: pd.Series) -> dict:
     "volume": float(row["Volume"] if "Volume" in row.index else 0.0),
     "symbol": _replay_symbol(),
   }
+  pts = _row_spread_points(row)
+  if pts:
+    payload["spread_points"] = pts
+  return payload
+
+
+def _row_spread_points(row: pd.Series) -> int:
+  for key in ("SpreadPoints", "spread_points"):
+    if key in row.index:
+      try:
+        return int(float(row[key] or 0))
+      except (TypeError, ValueError):
+        return 0
+  return 0
 
 
 def _broker_date(ts: pd.Timestamp):
@@ -327,6 +341,7 @@ def run_compare(
           low=bar["low"],
           close=bar["close"],
           bar_time=bar_time,
+          spread_points=_row_spread_points(row),
         )
         # 2) decide on closed bar → pending for next open
         try:

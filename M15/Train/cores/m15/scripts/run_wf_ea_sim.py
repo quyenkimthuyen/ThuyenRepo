@@ -15,7 +15,7 @@ from data_loader import load_eurusd_m15
 from feature_engine import FeatureMatrix
 from strategy import Trade, compute_metrics
 from strategy_miner import MinedStrategy, backtest_mined
-from execution import adjust_entry_price, adjust_exit_price
+from execution import PIP, adjust_entry_price, spread_from_quote
 
 SCHEDULE = ROOT / "mt5" / "frozen" / "best_3m_wf_schedule.json"
 
@@ -35,6 +35,8 @@ def main():
   # Custom backtest respecting per-signal atr/rr/exit
   o = fm.open; h = fm.high; l = fm.low; c = fm.close; atr = fm.atr
   spread, slip = float(meta["spread_pips"]), float(meta["slippage_pips"])
+  spr_px = spread_from_quote(spread, 0)
+  slip_px = max(0.0, slip) * PIP
 
   # Map signal times
   sig_map = {}
@@ -65,14 +67,14 @@ def main():
         if direction == 1 and h[i] >= entry_price + risk * trail_act:
           trail_active = 1.0
           sl = max(sl, h[i] - risk * trail_dist)
-        elif direction == -1 and l[i] <= entry_price - risk * trail_act:
+        elif direction == -1 and l[i] + spr_px <= entry_price - risk * trail_act:
           trail_active = 1.0
-          sl = min(sl, l[i] + risk * trail_dist)
+          sl = min(sl, l[i] + spr_px + risk * trail_dist)
       elif exit_mode in ("trail", "hybrid") and trail_active:
         if direction == 1:
           sl = max(sl, h[i] - risk * trail_dist)
         else:
-          sl = min(sl, l[i] + risk * trail_dist)
+          sl = min(sl, l[i] + spr_px + risk * trail_dist)
 
       exit_price = c[i]
       if direction == 1:
@@ -81,16 +83,16 @@ def main():
         elif h[i] >= tp:
           hit_tp, exit_price = True, tp
       else:
-        if h[i] >= sl:
+        if h[i] + spr_px >= sl:
           hit_sl, exit_price = True, sl
-        elif l[i] <= tp:
+        elif l[i] + spr_px <= tp:
           hit_tp, exit_price = True, tp
 
       if hit_sl or hit_tp or (i - entry_idx) >= max_hold:
         reason = "tp" if hit_tp else ("trail" if trail_active and hit_sl else "sl")
         if not hit_sl and not hit_tp:
-          exit_price, reason = c[i], "timeout"
-        exit_price = adjust_exit_price(exit_price, int(direction), spread, slip)
+          reason = "timeout"
+          exit_price = (c[i] - slip_px) if direction == 1 else (c[i] + spr_px + slip_px)
         pnl_r = (exit_price - entry_price) * direction / risk if risk > 0 else 0
         trades.append(Trade(
           fm.index[entry_idx], fm.index[i], int(direction),
