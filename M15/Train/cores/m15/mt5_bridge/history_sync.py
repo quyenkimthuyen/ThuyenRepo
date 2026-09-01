@@ -230,11 +230,12 @@ def normalize_mt5_bars(bars: list[dict]) -> pd.DataFrame:
         "Low": float(bar["low"]),
         "Close": float(bar["close"]),
         "Volume": float(bar.get("volume") or bar.get("tick_volume") or 0),
+        "SpreadPoints": float(bar.get("spread_points") or 0),
       })
     except (KeyError, TypeError, ValueError):
       continue
   if not rows:
-    return pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume"])
+    return pd.DataFrame(columns=["Open", "High", "Low", "Close", "Volume", "SpreadPoints"])
   frame = pd.DataFrame(rows, index=pd.DatetimeIndex(index))
   frame = frame.sort_index()
   frame = frame[~frame.index.duplicated(keep="last")]
@@ -300,6 +301,10 @@ def merge_history_bars(bars: list[dict], source: dict | None = None) -> pd.DataF
     else:
       merged = pd.concat([current, incoming]).sort_index()
       merged = merged[~merged.index.duplicated(keep="last")]
+    if "SpreadPoints" not in merged.columns:
+      merged["SpreadPoints"] = 0.0
+    else:
+      merged["SpreadPoints"] = pd.to_numeric(merged["SpreadPoints"], errors="coerce").fillna(0.0)
     if not merged.empty:
       _write_cache(merged, source or {})
     return merged

@@ -46,15 +46,25 @@ def require_canonical_mt5_data() -> dict:
   return meta
 
 
+def _keep_spread_col(out: pd.DataFrame) -> pd.DataFrame:
+  cols = ["Open", "High", "Low", "Close", "Volume"]
+  if "SpreadPoints" in out.columns:
+    out = out.copy()
+    out["SpreadPoints"] = pd.to_numeric(out["SpreadPoints"], errors="coerce").fillna(0.0)
+    cols.append("SpreadPoints")
+  return out[cols]
+
+
 def _normalize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
   rename = {
     "open": "Open", "high": "High", "low": "Low",
     "close": "Close", "volume": "Volume",
+    "spread_points": "SpreadPoints", "spreadpoints": "SpreadPoints",
   }
   out = df.rename(columns={c: rename.get(str(c).lower(), c) for c in df.columns})
   if "Volume" not in out.columns:
     out["Volume"] = 0.0
-  out = out[["Open", "High", "Low", "Close", "Volume"]].copy()
+  out = _keep_spread_col(out).copy()
   out.index = pd.to_datetime(out.index, utc=True).tz_convert(None)
   out = out.sort_index()
   out = out[~out.index.duplicated(keep="last")]

@@ -143,6 +143,54 @@ G23_OOSWALK_PRESETS = ["nova", "nova_fixed", "elite_or_quality"]
 FILTER_Q_OOSWALK = {"wr_gt": 47.0, "rr_gt": 2.15, "total_r_gt": 28.0, "max_dd_lt": 11.0}
 FILTER_R_OOSWALK = {"wr_gt": 40.0, "rr_gt": 2.05, "total_r_gt": 45.0, "max_dd_lt": 14.0, "n_ge": 50}
 
+# e21 filladapt: Bid/Ask geometry — wider SL, closer TP. 3×4×3×2 = 72 combo.
+# Densify on elite RR3.2–4 peaked WR33; do not swap Active unless quality hits.
+E21_FILLADAPT_WEEKS = [6, 8, 12]
+E21_FILLADAPT_PRESETS = [
+  "eur_fill_wide",
+  "eur_fill_book",
+  "eur_fill_wr",
+  "eur_fill_flow",
+]
+E21_FILLADAPT_EPOCHS = 3
+E21_FILLADAPT_ERA_KEYS = ["2025-full", "2025-h2"]
+FILTER_FILLADAPT = {
+  "wr_gt": 40.0, "rr_gt": 2.0, "total_r_gt": 35.0, "max_dd_lt": 12.0,
+}
+
+# e21 fillrefine: densify around filladapt winner (book WR38/+43R). 2×4×3×2 = 48.
+# No KB reset — profiles already Bid/Ask. Do not swap Active unless quality hits.
+E21_FILLREFINE_WEEKS = [8, 12]
+E21_FILLREFINE_PRESETS = [
+  "eur_fill_surg",
+  "eur_fill_rsi",
+  "eur_fill_core",
+  "eur_fill_short",
+]
+E21_FILLREFINE_EPOCHS = 3
+E21_FILLREFINE_ERA_KEYS = ["2025-full", "2025-h2"]
+
+# e21 fillkeep: old-era skeleton + fill-aware RR/ATR. 2×2×3×3 = 36 combo.
+# Restore 2025-h1 (elite +139R KB source); OOS all 2026; only reset h1 KB.
+E21_FILLKEEP_WEEKS = [8, 12]
+E21_FILLKEEP_PRESETS = ["eur_fill_book", "eur_fill_core"]
+E21_FILLKEEP_EPOCHS = 3
+E21_FILLKEEP_ERA_KEYS = ["2025-full", "2025-h1", "2025-h2"]
+
+# e21 fillgeom: TP no longer × SL spread buffer. Book DNA + 4 geometry knobs.
+# 2×4×3×2 = 48. Do not swap Active unless quality hits.
+E21_FILLGEOM_WEEKS = [8, 12]
+E21_FILLGEOM_PRESETS = [
+  "eur_fill_geom",
+  "eur_fill_reach",
+  "eur_fill_bank",
+  "eur_fill_vol",
+]
+E21_FILLGEOM_EPOCHS = 3
+E21_FILLGEOM_ERA_KEYS = ["2025-full", "2025-h2"]
+
+_FILL_E21_MODES = ("filladapt", "fillrefine", "fillkeep", "fillgeom")
+
 # Stricter than previous fine (WR45/RR2.2) — aim to beat live actives.
 FILTER_Q = {"wr_gt": 48.0, "rr_gt": 2.30, "total_r_gt": 40.0, "max_dd_lt": 9.0}
 # Softer for g23 boost/explore — historical best is ~WR53.5 / +55R.
@@ -407,6 +455,42 @@ def _profile_for(desk: str) -> dict:
       "era_keys": list(rnd["era_keys"]),
       "filter_q": _round_filter(),
     }
+  if desk == "e21" and _MODE == "filladapt":
+    return {
+      "label": "e21 filladapt Bid/Ask",
+      "weeks": list(E21_FILLADAPT_WEEKS),
+      "presets": list(E21_FILLADAPT_PRESETS),
+      "epochs": int(E21_FILLADAPT_EPOCHS),
+      "era_keys": list(E21_FILLADAPT_ERA_KEYS),
+      "filter_q": dict(FILTER_FILLADAPT),
+    }
+  if desk == "e21" and _MODE == "fillrefine":
+    return {
+      "label": "e21 fillrefine WR/R",
+      "weeks": list(E21_FILLREFINE_WEEKS),
+      "presets": list(E21_FILLREFINE_PRESETS),
+      "epochs": int(E21_FILLREFINE_EPOCHS),
+      "era_keys": list(E21_FILLREFINE_ERA_KEYS),
+      "filter_q": dict(FILTER_FILLADAPT),
+    }
+  if desk == "e21" and _MODE == "fillkeep":
+    return {
+      "label": "e21 fillkeep old-eras + new fill",
+      "weeks": list(E21_FILLKEEP_WEEKS),
+      "presets": list(E21_FILLKEEP_PRESETS),
+      "epochs": int(E21_FILLKEEP_EPOCHS),
+      "era_keys": list(E21_FILLKEEP_ERA_KEYS),
+      "filter_q": dict(FILTER_FILLADAPT),
+    }
+  if desk == "e21" and _MODE == "fillgeom":
+    return {
+      "label": "e21 fillgeom TP không nhân spread",
+      "weeks": list(E21_FILLGEOM_WEEKS),
+      "presets": list(E21_FILLGEOM_PRESETS),
+      "epochs": int(E21_FILLGEOM_EPOCHS),
+      "era_keys": list(E21_FILLGEOM_ERA_KEYS),
+      "filter_q": dict(FILTER_FILLADAPT),
+    }
   if _MODE == "target60":
     if desk == "e21":
       return {
@@ -448,6 +532,19 @@ def _apply_fine_settings(desk: str) -> dict:
   s["grid_objective"] = FINE_OBJECTIVE
   s["learning_era_keys"] = list(prof["era_keys"])
   s["learning_loops"] = int(prof["epochs"])
+  if _MODE == "fillkeep":
+    # Old elite_60_3 used h1 KB + OOS 2026. Catalog h1 still has ooswalk H2'25 —
+    # strip so grid_build_kwargs does not divert h1 combos off 2026.
+    eras = []
+    for e in list(s.get("learning_eras") or []):
+      e = dict(e)
+      if e.get("key") == "2025-h1":
+        e.pop("oos_from", None)
+        e.pop("oos_to", None)
+      eras.append(e)
+    s["learning_eras"] = eras
+    s["backtest_from"] = "2026-01-01"
+    s["backtest_to"] = "2026-12-31"
   if _MODE in ("fillbook", "wr50"):
     rounds = _round_table()
     idx = max(0, min(int(_FILLBOOK_ROUND) - 1, len(rounds) - 1))
@@ -534,14 +631,17 @@ def _ensure_kb(desk: str, *, reset: bool) -> dict:
   learned, skipped = [], []
   for era in eras:
     label = era.get("label") or era["kb_profile"]
-    _log(desk, f"KB ensure · {label} · target {loops} epochs · reset={reset}")
+    era_reset = bool(reset)
+    if _MODE == "fillkeep" and not reset:
+      era_reset = era.get("key") == "2025-h1" or era.get("kb_profile") == "era_2025_h1"
+    _log(desk, f"KB ensure · {label} · target {loops} epochs · reset={era_reset}")
     spec = {
       "kb_profile": era["kb_profile"],
       "kb_name": era.get("label") or era["kb_profile"],
       "learn_from": era["learn_from"],
       "learn_until": era["learn_until"],
     }
-    out = ensure_profile_learned(spec, epochs=loops, reset=reset)
+    out = ensure_profile_learned(spec, epochs=loops, reset=era_reset)
     if out.get("skipped"):
       skipped.append(era["kb_profile"])
       _log(desk, f"KB skip (đã đủ) · {era['kb_profile']} epochs={out.get('epochs')}")
@@ -681,7 +781,7 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
 
   q_hits = [r for r in rows if _passes_q(r, fq)]
   # g23 boost/explore: among quality floor, prefer higher Total R to close gap vs e21.
-  if _MODE in ("target60", "ooswalk", "fillbook", "wr50") or desk == "g23" and _MODE in (
+  if _MODE in ("target60", "ooswalk", "fillbook", "wr50") + _FILL_E21_MODES or desk == "g23" and _MODE in (
     "boost", "explore", "refine", "fullera", "hybrid",
   ):
     q_hits.sort(
@@ -700,6 +800,8 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
     _log(desk, "No hits WR>60/R>100 — không promote (bar target60)")
   if not q_hits and _MODE in ("fillbook", "wr50"):
     _log(desk, "No hits WR>50/RR>2/R>80 — không promote")
+  if not q_hits and _MODE in _FILL_E21_MODES:
+    _log(desk, "No hits WR>40/RR>2/R>35/DD<12 — không promote (giữ roster cũ)")
   if not q_hits and _MODE == "ooswalk":
     _log(desk, "No strict quality — ooswalk soft fallback WR>45 RR>2.1 R>22 DD<12")
     q_hits = [
@@ -714,7 +816,7 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
       key=lambda r: (float(r.get("total_r") or 0), float(r.get("win_rate_pct") or 0)),
       reverse=True,
     )
-  if not q_hits and _MODE not in ("target60", "ooswalk", "fillbook", "wr50"):
+  if not q_hits and _MODE not in ("target60", "ooswalk", "fillbook", "wr50") + _FILL_E21_MODES:
     _log(desk, "No strict quality — soft fallback WR>45 RR>2.2 R>35 DD<12")
     q_hits = [
       r for r in rows
@@ -735,7 +837,7 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
       q_hits.sort(key=lambda r: _score(r, objective), reverse=True)
 
   r_filt = FILTER_R_OOSWALK if _MODE == "ooswalk" else FILTER_R
-  r_hits = [] if _MODE in ("target60", "fillbook", "wr50") else [r for r in rows if _passes_r(r)]
+  r_hits = [] if _MODE in ("target60", "fillbook", "wr50") + _FILL_E21_MODES else [r for r in rows if _passes_r(r)]
   r_hits.sort(key=lambda r: float(r.get("total_r") or -1e9), reverse=True)
   # Dedup vs quality picks by grid key
   q_keys = {r.get("key") for r in q_hits[:max_quality]}
@@ -779,7 +881,7 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
       prefix = "M15Q" if track == "quality" else "M15R"
     label = f"{prefix} {preset} WR{wr:.0f} RR{rr:.2f} +{tot:.0f}R{oos_tag}"
     # refine/fullera/target60: only flip active if strictly improves (R, then WR) vs current.
-    do_active = set_active and _MODE != "ooswalk"
+    do_active = set_active and _MODE not in ("ooswalk",) + _FILL_E21_MODES
     if do_active and cur_r is not None:
       better = (tot > cur_r + 0.5) or (tot >= cur_r - 0.5 and wr > cur_wr + 0.5)
       if not better:
@@ -853,7 +955,7 @@ def _promote_missed_from_latest(desk: str) -> list[dict]:
 
 def _log_closest(desk: str, rows: list[dict], *, n: int = 8) -> None:
   ok = [r for r in rows if not r.get("error")]
-  filt = _round_filter()
+  filt = dict(_profile_for(desk).get("filter_q") or _round_filter())
   def _gap(r):
     wr = float(r.get("win_rate_pct") or 0)
     rr = float(r.get("avg_rr") or 0)
@@ -889,6 +991,8 @@ def run_desk(
     raise ValueError(f"pipeline_m15_tune chỉ hỗ trợ e21,g23 — nhận {desk!r}")
   if mode in ("boost", "explore", "refine", "fullera", "hybrid", "fillbook", "wr50") and desk != "g23":
     raise ValueError(f"--mode {mode} chỉ hỗ trợ desk g23")
+  if mode in _FILL_E21_MODES and desk != "e21":
+    raise ValueError(f"--mode {mode} chỉ hỗ trợ desk e21")
   if mode == "target60" and desk not in ("e21", "g23"):
     raise ValueError("--mode target60 chỉ hỗ trợ e21,g23")
   if mode == "ooswalk" and desk not in ("e21", "g23"):
@@ -898,7 +1002,7 @@ def run_desk(
   _clear_stale_jobs(desk)
   salvaged = (
     _promote_missed_from_latest(desk)
-    if salvage and mode not in ("ooswalk", "fillbook", "wr50") else []
+    if salvage and mode not in ("ooswalk", "fillbook", "wr50") + _FILL_E21_MODES else []
   )
   if mode in ("fillbook", "wr50"):
     start = max(1, int(os.environ.get("FILLBOOK_START_ROUND", "1")))
@@ -946,7 +1050,12 @@ def run_desk(
       "promoted": len(created), "models": [m.get("id") for m in created],
     }
   run = _run_grid(desk, workers=workers)
-  created = _promote(desk, run)
+  if mode in _FILL_E21_MODES:
+    created = _promote(desk, run, max_quality=4, max_high_r=0)
+    if not created:
+      _log_closest(desk, run.get("rows") or [])
+  else:
+    created = _promote(desk, run)
   return {
     "desk": desk,
     "mode": mode,
@@ -969,9 +1078,10 @@ def main() -> int:
   ap.add_argument("--desks", default="e21,g23")
   ap.add_argument("--mode", choices=(
     "densify", "boost", "explore", "refine", "fullera", "hybrid",
-    "target60", "ooswalk", "fillbook", "wr50",
+    "target60", "ooswalk", "fillbook", "wr50", "filladapt", "fillrefine", "fillkeep",
+    "fillgeom",
   ), default="densify",
-                  help="wr50/fillbook=g23 WR>50 R>80 RR>2; ooswalk=6m walk; target60=WR>60+R>100")
+                  help="fillgeom=e21 TP không nhân spread; fillkeep=old eras; wr50/fillbook=g23")
   ap.add_argument("--reset-kb", action="store_true")
   ap.add_argument("--workers", type=int, default=2,
                   help="Keep low while M5 tune shares the machine (default 2)")
@@ -982,6 +1092,8 @@ def main() -> int:
   desks = [d.strip().lower() for d in args.desks.split(",") if d.strip()]
   if args.mode in ("boost", "explore", "refine", "fullera", "hybrid", "fillbook", "wr50"):
     desks = [d for d in desks if d == "g23"] or ["g23"]
+  if args.mode in _FILL_E21_MODES:
+    desks = [d for d in desks if d == "e21"] or ["e21"]
   summary = []
   rc = 0
   for desk in desks:

@@ -59,7 +59,17 @@ def test_strategy_roundtrip_preserves_genome():
   assert back.rr_ratio == 3.0
   assert back.min_bars_between == 16
   assert back.session_start_hour == 8
+  assert back.tp_ignores_spread_buffer is False
   assert abs(back.long_rules[0].threshold - 40.123456) < 1e-9
+
+
+def test_strategy_roundtrip_tp_geometry():
+  strat = _sample_strat()
+  strat.tp_ignores_spread_buffer = True
+  strat.min_atr_spread_ratio = 5.0
+  back = strategy_from_dict(full_strategy_dict(strat))
+  assert back.tp_ignores_spread_buffer is True
+  assert back.min_atr_spread_ratio == 5.0
 
 
 def test_lookup_prefers_oos_schedule_over_live(tmp_models_dir):

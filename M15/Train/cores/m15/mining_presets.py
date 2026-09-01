@@ -266,6 +266,103 @@ ELITE_60_35 = {
   "target_trades_per_week": 4.0,
 }
 
+# EUR Bid/Ask fill: SL = ATR×mult + 1 spread, BUY at Ask. Elite RR 3.2–4.0
+# put TP too far (densify WR peaked ~33%). Wider SL + closer TP vs old elites.
+EUR_FILL_WIDE = {
+  **ELITE_OR_QUALITY,
+  "rr_ratios": [2.0, 2.4, 2.8],
+  "atr_multipliers": [1.15, 1.35],
+  "anti_chase_fixed_rsi": 60.0,
+  "anti_chase_fixed_vwap": 1.8,
+  "target_trades_per_week": 4.5,
+  "drawdown_penalty": 0.6,
+  "loss_streak_penalty": 1.2,
+}
+EUR_FILL_BOOK = {
+  **ELITE_OR_QUALITY,
+  "rr_ratios": [2.2, 2.6, 3.0],
+  "atr_multipliers": [1.05, 1.25],
+  "anti_chase_fixed_rsi": 60.0,
+  "anti_chase_fixed_vwap": 1.8,
+  "target_trades_per_week": 5.0,
+  "drawdown_penalty": 0.6,
+  "loss_streak_penalty": 1.2,
+}
+EUR_FILL_WR = {
+  **ELITE_OR_QUALITY,
+  "rr_ratios": [2.0, 2.4, 2.6],
+  "atr_multipliers": [1.10, 1.30],
+  "score_thresholds": [1.0, 1.6, 2.2],
+  "min_rules_matches": [2],
+  "ml_probability_thresholds": [0.40, 0.44, 0.48],
+  "anti_chase_fixed_rsi": 58.0,
+  "anti_chase_fixed_vwap": 1.5,
+  "target_trades_per_week": 3.5,
+  "drawdown_penalty": 0.8,
+  "loss_streak_penalty": 1.5,
+}
+EUR_FILL_FLOW = {
+  **EDGE_GENTLE,
+  "rr_ratios": [2.0, 2.4, 2.8],
+  "atr_multipliers": [1.15, 1.35],
+  "anti_chase": True,
+  "anti_chase_mode": "fixed",
+  "anti_chase_fixed_rsi": 65.0,
+  "anti_chase_use_vwap": False,
+  "exit_modes_full_only": True,
+  "target_trades_per_week": 6.0,
+  "drawdown_penalty": 0.8,
+  "loss_streak_penalty": 1.5,
+}
+
+# Refine around filladapt winner (eur_fill_book WR38/+43R n=108): lift WR
+# without sniper n-collapse. Do not widen SL further (eur_fill_wide lost).
+EUR_FILL_SURG = {
+  **EUR_FILL_BOOK,
+  "edge_surgery": True,
+  "edge_surgery_hours": True,
+  "edge_surgery_min_hour_trades": 4,
+  "edge_surgery_max_hour_wr": 0.36,
+  "edge_surgery_dominant_side_ratio": 0.62,
+}
+EUR_FILL_RSI = {
+  **EUR_FILL_BOOK,
+  "anti_chase_fixed_rsi": 58.0,
+  "anti_chase_fixed_vwap": 1.5,
+}
+EUR_FILL_CORE = {
+  **EUR_FILL_BOOK,
+  "rr_ratios": [2.4, 2.6, 2.8],
+  "atr_multipliers": [1.00, 1.15],
+}
+EUR_FILL_SHORT = {
+  **EUR_FILL_BOOK,
+  "force_side": "short",
+  "target_trades_per_week": 4.5,
+}
+
+# Fill geometry: SL keeps +1 spread (live Ask/Bid), TP no longer × that buffer.
+# Book DNA already won RR/ATR search; this is the unused tax on the target.
+EUR_FILL_GEOM = {
+  **EUR_FILL_BOOK,
+  "tp_ignores_spread_buffer": True,
+}
+EUR_FILL_REACH = {
+  **EUR_FILL_GEOM,
+  "rr_ratios": [2.6, 3.0, 3.4],
+}
+EUR_FILL_BANK = {
+  **EUR_FILL_GEOM,
+  "exit_modes_full_only": False,
+  "exit_mode_lock": "hybrid",
+  "trail_activate_r": 1.5,
+  "trail_distance_r": 0.5,
+}
+EUR_FILL_VOL = {
+  **EUR_FILL_GEOM,
+  "min_atr_spread_ratio": 5.0,
+}
+
 # Post-fill GBP (SL = ATR×mult + 1 spread, entry-bar + ask): old RR 3.2–4.0
 # puts TP too far. Modest RR>2 + more fills so OOS 2026 can clear R>80 at WR>50.
 GBP_FILL_BOOK = {
@@ -428,6 +525,18 @@ PRESET_LABELS: dict[str, str] = {
   "elite_55_4": "Elite WR60 · RR4 (ít lệnh)",
   "elite_or_quality": "Elite OR-quality (khuyến nghị)",
   "elite_60_35": "Elite RSI60 · RR3.5",
+  "eur_fill_wide": "EUR fill · SL rộng TP gần",
+  "eur_fill_book": "EUR fill-aware · RR 2.2–3",
+  "eur_fill_wr": "EUR fill WR-first",
+  "eur_fill_flow": "EUR fill flow · volume",
+  "eur_fill_surg": "EUR fill · cắt giờ độc",
+  "eur_fill_rsi": "EUR fill · RSI58 VWAP1.5",
+  "eur_fill_core": "EUR fill · ATR 1.0–1.15",
+  "eur_fill_short": "EUR fill · SHORT only",
+  "eur_fill_geom": "EUR fill · TP không nhân spread",
+  "eur_fill_reach": "EUR fill · TP ATR×RR 2.6–3.4",
+  "eur_fill_bank": "EUR fill · hybrid bank 1.5R",
+  "eur_fill_vol": "EUR fill · ATR≥5×spread",
   "gbp_fill_book": "GBP fill-aware · WR>50 R>80",
   "gbp_fill_sniper": "GBP fill sniper · WR-first",
   "gbp_fill_flow": "GBP fill flow · volume + RR>2",
@@ -500,6 +609,66 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "intent": "Elite dự phòng — RSI lỏng hơn một chút",
     "knobs": "RSI≥60 · RR 3.5 · exit full",
     "tradeoff": "Cân bằng hơn elite chặt; vẫn chất lượng > tần suất",
+  },
+  "eur_fill_wide": {
+    "intent": "EUR sau fill Bid/Ask — nới SL, kéo TP gần",
+    "knobs": "RR 2.0–2.8 · ATR 1.15/1.35 · RSI<60 OR VWAP<1.8 · exit full",
+    "tradeoff": "WR↑ vs elite RR3.5+ trên fill thật · RR thấp hơn sách cũ",
+  },
+  "eur_fill_book": {
+    "intent": "EUR fill-aware, cân WR và Total R",
+    "knobs": "RR 2.2–3.0 · ATR 1.05/1.25 · RSI<60 OR VWAP<1.8 · TPW 5",
+    "tradeoff": "TP gần hơn elite cũ · nhiều lệnh hơn sniper",
+  },
+  "eur_fill_wr": {
+    "intent": "EUR fill-aware, ưu tiên WR",
+    "knobs": "RR 2.0–2.6 · ATR 1.10/1.30 · ML/score siết · TPW 3.5",
+    "tradeoff": "Ít lệnh hơn fill_book · WR cao hơn nếu filter OOS giống train",
+  },
+  "eur_fill_flow": {
+    "intent": "EUR fill-aware, gom R bằng tần suất + surgery",
+    "knobs": "edge_gentle + RR 2.0–2.8 · ATR 1.15/1.35 · RSI<65 · TPW 6",
+    "tradeoff": "Nhiều lệnh hơn elite · WR có thể thấp hơn fill_wr",
+  },
+  "eur_fill_surg": {
+    "intent": "Nâng WR trên sách fill_book — cắt giờ/side độc trên train",
+    "knobs": "hour WR≤36% n≥4 · side 62% · RR 2.2–3.0 · ATR 1.05/1.25",
+    "tradeoff": "Ít lệnh hơn fill_book · WR↑ nếu giờ độc OOS giống train",
+  },
+  "eur_fill_rsi": {
+    "intent": "Siết chase trên geometry fill_book",
+    "knobs": "RSI<58 OR VWAP<1.5 · giữ RR/ATR fill_book",
+    "tradeoff": "WR↑ nếu chase là loser · n↓ vừa",
+  },
+  "eur_fill_core": {
+    "intent": "SL vừa + RR giữa — tránh ATR 1.25 làm TP xa",
+    "knobs": "RR 2.4–2.8 · ATR 1.00/1.15 · RSI<60 OR VWAP<1.8",
+    "tradeoff": "TP gần hơn fill_book · SL hẹp hơn wide",
+  },
+  "eur_fill_short": {
+    "intent": "EUR fill-aware SHORT-only — book OOS gần như hết short",
+    "knobs": "force_side=short · RR 2.2–3.0 · ATR 1.05/1.25",
+    "tradeoff": "Mất long · n có thể ↓ · WR/R↑ nếu long là nhiễu",
+  },
+  "eur_fill_geom": {
+    "intent": "EUR Bid/Ask — TP không bị nhân buffer spread của SL",
+    "knobs": "SL = ATR×mult+1 spread · TP = ATR×mult×RR · DNA fill_book",
+    "tradeoff": "TP gần hơn book hiện tại · RR báo cáo có thể < RR danh nghĩa",
+  },
+  "eur_fill_reach": {
+    "intent": "Geom + RR ATR 2.6–3.4 — khôi phục tầm TP cũ",
+    "knobs": "tp_ignores_spread_buffer · RR 2.6/3.0/3.4 · ATR 1.05/1.25",
+    "tradeoff": "Winner lớn hơn geom · WR có thể thấp hơn nếu TP lại xa",
+  },
+  "eur_fill_bank": {
+    "intent": "Geom + hybrid — chốt khi đi được 1.5R rồi trail",
+    "knobs": "exit hybrid 1.5/0.5 · TP ATR-only · DNA fill_book",
+    "tradeoff": "WR↑ nếu loser có MFE · RR clip so với full TP",
+  },
+  "eur_fill_vol": {
+    "intent": "Geom + bỏ nến ATR nhỏ so với spread",
+    "knobs": "min ATR ≥ 5×spread · TP ATR-only · DNA fill_book",
+    "tradeoff": "Ít lệnh Asia yên · WR↑ nếu spread chiếm SL",
   },
   "gbp_fill_book": {
     "intent": "GBP sau fill thật — WR>50 và Total R>80",
@@ -665,7 +834,14 @@ def _summarize_space_knobs(space: dict | None) -> str:
     bits.append(part)
   if ss.get("edge_surgery"):
     bits.append("edge_surgery")
-  if ss.get("exit_modes_full_only"):
+  if ss.get("tp_ignores_spread_buffer"):
+    bits.append("TP:ATRxRR")
+  if float(ss.get("min_atr_spread_ratio") or 0) > 0:
+    bits.append(f"ATRmin×{ss.get('min_atr_spread_ratio')}")
+  lock = str(ss.get("exit_mode_lock") or "")
+  if lock:
+    bits.append(f"exit:{lock}")
+  elif ss.get("exit_modes_full_only"):
     bits.append("exit:full")
   return " · ".join(bits) if bits else "baseline knobs"
 
@@ -703,6 +879,18 @@ PRESETS: dict[str, dict] = {
   "elite_55_surgery": deepcopy(ELITE_55_SURGERY),
   "elite_or_quality": deepcopy(ELITE_OR_QUALITY),
   "elite_60_35": deepcopy(ELITE_60_35),
+  "eur_fill_wide": deepcopy(EUR_FILL_WIDE),
+  "eur_fill_book": deepcopy(EUR_FILL_BOOK),
+  "eur_fill_wr": deepcopy(EUR_FILL_WR),
+  "eur_fill_flow": deepcopy(EUR_FILL_FLOW),
+  "eur_fill_surg": deepcopy(EUR_FILL_SURG),
+  "eur_fill_rsi": deepcopy(EUR_FILL_RSI),
+  "eur_fill_core": deepcopy(EUR_FILL_CORE),
+  "eur_fill_short": deepcopy(EUR_FILL_SHORT),
+  "eur_fill_geom": deepcopy(EUR_FILL_GEOM),
+  "eur_fill_reach": deepcopy(EUR_FILL_REACH),
+  "eur_fill_bank": deepcopy(EUR_FILL_BANK),
+  "eur_fill_vol": deepcopy(EUR_FILL_VOL),
   "gbp_fill_book": deepcopy(GBP_FILL_BOOK),
   "gbp_fill_sniper": deepcopy(GBP_FILL_SNIPER),
   "gbp_fill_flow": deepcopy(GBP_FILL_FLOW),

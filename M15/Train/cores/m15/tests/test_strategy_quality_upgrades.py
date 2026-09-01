@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from feature_engine import FeatureMatrix
 from strategy_miner import MiningSearchSpace, score_strategy_metrics, MinedStrategy
@@ -205,6 +206,68 @@ def test_elite_presets_opt_in():
   ]
   assert "elite_60_3_vwap" in DEPRECATED_PRESETS
   assert "frontier_rr_hi" not in list_curated_presets()
+
+
+def test_eur_fill_presets_wider_sl_closer_tp():
+  from mining_presets import get_preset
+  from strategy_miner import mining_search_space_from_dict
+
+  wide = mining_search_space_from_dict(get_preset("eur_fill_wide"))
+  assert wide.rr_ratios == (2.0, 2.4, 2.8)
+  assert wide.atr_multipliers == (1.15, 1.35)
+  assert max(wide.rr_ratios) < 3.2
+  assert min(wide.atr_multipliers) > 1.05
+  book = mining_search_space_from_dict(get_preset("eur_fill_book"))
+  assert book.rr_ratios == (2.2, 2.6, 3.0)
+  assert book.atr_multipliers == (1.05, 1.25)
+  wr = mining_search_space_from_dict(get_preset("eur_fill_wr"))
+  assert wr.rr_ratios == (2.0, 2.4, 2.6)
+  flow = mining_search_space_from_dict(get_preset("eur_fill_flow"))
+  assert flow.edge_surgery is True
+  assert flow.rr_ratios == (2.0, 2.4, 2.8)
+  surg = mining_search_space_from_dict(get_preset("eur_fill_surg"))
+  assert surg.edge_surgery is True
+  assert surg.rr_ratios == (2.2, 2.6, 3.0)
+  rsi = mining_search_space_from_dict(get_preset("eur_fill_rsi"))
+  assert rsi.anti_chase_fixed_rsi == 58.0
+  core = mining_search_space_from_dict(get_preset("eur_fill_core"))
+  assert core.atr_multipliers == (1.00, 1.15)
+  short = mining_search_space_from_dict(get_preset("eur_fill_short"))
+  assert short.force_side == "short"
+  geom = mining_search_space_from_dict(get_preset("eur_fill_geom"))
+  assert geom.tp_ignores_spread_buffer is True
+  assert geom.rr_ratios == (2.2, 2.6, 3.0)
+  reach = mining_search_space_from_dict(get_preset("eur_fill_reach"))
+  assert reach.tp_ignores_spread_buffer is True
+  assert reach.rr_ratios == (2.6, 3.0, 3.4)
+  bank = mining_search_space_from_dict(get_preset("eur_fill_bank"))
+  assert bank.exit_mode_lock == "hybrid"
+  assert bank.trail_activate_r == 1.5
+  vol = mining_search_space_from_dict(get_preset("eur_fill_vol"))
+  assert vol.min_atr_spread_ratio == 5.0
+
+
+def test_exit_modes_lock_and_tp_geometry():
+  from execution import PIP, stop_and_target_distances
+  from strategy_miner import MiningSearchSpace, _exit_modes_for_space
+
+  atr, mult, rr, spr = 0.0010, 1.05, 2.6, 1.9
+  sl_taxed, tp_taxed = stop_and_target_distances(atr, mult, rr, spr)
+  sl_free, tp_free = stop_and_target_distances(
+    atr, mult, rr, spr, tp_ignores_spread_buffer=True,
+  )
+  assert sl_taxed == sl_free
+  assert sl_taxed == pytest.approx(mult * atr + 1.9 * PIP)
+  assert tp_taxed == pytest.approx(sl_taxed * rr)
+  assert tp_free == pytest.approx(mult * atr * rr)
+  assert tp_free < tp_taxed
+
+  full = _exit_modes_for_space(MiningSearchSpace(exit_modes_full_only=True))
+  assert [m for m, _ in full] == ["full"]
+  hyb = _exit_modes_for_space(MiningSearchSpace(
+    exit_modes_full_only=True, exit_mode_lock="hybrid", trail_activate_r=1.5,
+  ))
+  assert hyb == [("hybrid", {"trail_activate_r": 1.5, "trail_distance_r": 0.6})]
 
 
 def test_preset_blurbs_and_direction_line():

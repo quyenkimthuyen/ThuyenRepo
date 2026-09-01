@@ -86,6 +86,12 @@ class FeatureMatrix:
     self.atr = atr(
       df["High"], df["Low"], df["Close"], self.profile.atr_period
     ).values
+    if "SpreadPoints" in df.columns:
+      self.spread_points = np.nan_to_num(
+        df["SpreadPoints"].values.astype(np.float64),
+      )
+    else:
+      self.spread_points = np.zeros(self.n, dtype=np.float64)
 
     self.features: dict[str, np.ndarray] = {}
     self._build()

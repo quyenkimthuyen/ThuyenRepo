@@ -855,6 +855,8 @@ class BridgeEngine:
       "reason": "signal",
       "conditions_fp": self.conditions_fp,
       "run_conditions": strategy_conditions(self._params),
+      "spread_pips": spread,
+      "slippage_pips": slip,
     }
     return self._remember(
       bar_key,
@@ -907,7 +909,10 @@ class BridgeEngine:
 
 
 def _normalize(df: pd.DataFrame) -> pd.DataFrame:
-  rename = {"open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}
+  rename = {
+    "open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume",
+    "spread_points": "SpreadPoints", "spreadpoints": "SpreadPoints",
+  }
   out = df.rename(columns={c: rename.get(c.lower(), c) for c in df.columns})
   need = ["Open", "High", "Low", "Close"]
   for c in need:
@@ -915,7 +920,11 @@ def _normalize(df: pd.DataFrame) -> pd.DataFrame:
       raise ValueError(f"OHLC missing column {c}")
   if "Volume" not in out.columns:
     out["Volume"] = 0.0
-  out = out[["Open", "High", "Low", "Close", "Volume"]].copy()
+  cols = ["Open", "High", "Low", "Close", "Volume"]
+  if "SpreadPoints" in out.columns:
+    out["SpreadPoints"] = pd.to_numeric(out["SpreadPoints"], errors="coerce").fillna(0.0)
+    cols.append("SpreadPoints")
+  out = out[cols].copy()
   out.index = pd.to_datetime(out.index, utc=True).tz_convert(None)
   out = out.sort_index()
   return out[~out.index.duplicated(keep="last")].dropna()

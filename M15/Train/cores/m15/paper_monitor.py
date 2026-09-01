@@ -9,7 +9,7 @@ from config import (
   MIN_TRAIN_BARS, TRAIN_WEEKS,
 )
 from data_loader import get_train_window_indices, get_week_indices
-from execution import adjust_entry_price, atr_stop_distance
+from execution import adjust_entry_price, stop_and_target_distances
 from feature_engine import FeatureMatrix
 from mt5_bridge.history_sync import utc_to_broker_time
 from optimizer import optimize_on_window
@@ -48,18 +48,35 @@ def _project_signal_levels(
   av = fm.atr[bar_idx]
   if pd.isna(av) or av <= 0:
     return None
+  pts = 0.0
+  arr = getattr(fm, "spread_points", None)
   if entry_idx >= fm.n:
     raw_entry = float(fm.close[bar_idx])
     entry_time = str(fm.index[bar_idx] + pd.Timedelta(minutes=15))
+    if arr is not None and 0 <= bar_idx < len(arr):
+      try:
+        pts = float(arr[bar_idx] or 0.0)
+      except (TypeError, ValueError):
+        pts = 0.0
   else:
     raw_entry = float(fm.open[entry_idx])
     entry_time = str(fm.index[entry_idx])
-  entry_price = adjust_entry_price(raw_entry, direction, spread_pips, slippage_pips)
-  sl_d = atr_stop_distance(av, strat.atr_mult_sl, spread_pips)
+    if arr is not None and 0 <= entry_idx < len(arr):
+      try:
+        pts = float(arr[entry_idx] or 0.0)
+      except (TypeError, ValueError):
+        pts = 0.0
+  entry_price = adjust_entry_price(
+    raw_entry, direction, spread_pips, slippage_pips, spread_points=pts,
+  )
+  sl_d, tp_d = stop_and_target_distances(
+    av, strat.atr_mult_sl, strat.rr_ratio, spread_pips, pts,
+    tp_ignores_spread_buffer=bool(getattr(strat, "tp_ignores_spread_buffer", False)),
+  )
   if direction == 1:
-    sl, tp = entry_price - sl_d, entry_price + sl_d * strat.rr_ratio
+    sl, tp = entry_price - sl_d, entry_price + tp_d
   else:
-    sl, tp = entry_price + sl_d, entry_price - sl_d * strat.rr_ratio
+    sl, tp = entry_price + sl_d, entry_price - tp_d
   risk_pips = sl_d * 10000
   return {
     "signal_time": str(fm.index[bar_idx]),

@@ -178,6 +178,8 @@ class KnowledgeBase:
       "anti_chase_rsi_long_min": float(getattr(strat, "anti_chase_rsi_long_min", 0.0)),
       "anti_chase_vwap_short_max": float(getattr(strat, "anti_chase_vwap_short_max", 99.0)),
       "anti_chase_logic": str(getattr(strat, "anti_chase_logic", "or")),
+      "tp_ignores_spread_buffer": bool(getattr(strat, "tp_ignores_spread_buffer", False)),
+      "min_atr_spread_ratio": float(getattr(strat, "min_atr_spread_ratio", 0.0) or 0.0),
     }
 
   def dict_to_strategy(self, g: dict):
@@ -212,6 +214,8 @@ class KnowledgeBase:
       anti_chase_rsi_long_min=float(g.get("anti_chase_rsi_long_min", 0.0)),
       anti_chase_vwap_short_max=float(g.get("anti_chase_vwap_short_max", 99.0)),
       anti_chase_logic=str(g.get("anti_chase_logic", "or")),
+      tp_ignores_spread_buffer=bool(g.get("tp_ignores_spread_buffer", False)),
+      min_atr_spread_ratio=float(g.get("min_atr_spread_ratio", 0.0) or 0.0),
       name=name,
     )
 

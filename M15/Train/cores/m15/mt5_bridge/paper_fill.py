@@ -3,8 +3,9 @@
 Legacy name ``paper_fill`` / ``PaperBook`` matches EA ``ManagePaperHistory`` /
 ``InpHistoryPaperFills`` — **not** the retired Paper Monitor GUI desk.
 
-Entry at next bar open after BUY/SELL decision; SL/TP/trail/max_hold run on
-the entry bar (same as live OrderSend). SELL SL/TP use Ask = Bid + spread.
+Entry at next bar open after BUY/SELL decision (same as live OrderSend):
+BUY at Ask = Bid open + spread, SELL at Bid open. SL/TP/trail/max_hold run
+on the fill bar. Prefer per-bar ``spread_points``; else model ``spread_pips``.
 """
 from __future__ import annotations
 
@@ -13,18 +14,22 @@ from pathlib import Path
 from typing import Any
 
 from mt5_bridge.trade_journal import process_fill
-
-# FX majors 5-digit: Point≈0.00001, pip=0.0001
-_POINT = 1e-5
-_PIP = 1e-4
+from execution import POINT as _POINT, PIP as _PIP, spread_from_quote
 
 
 def _spread_px() -> float:
   try:
     from config import DEFAULT_SPREAD_PIPS
-    return max(0.0, float(DEFAULT_SPREAD_PIPS)) * _PIP
+    return spread_from_quote(float(DEFAULT_SPREAD_PIPS), 0)
   except Exception:
     return 0.0
+
+
+def _resolve_spread_px(spread_points: Any = 0, spread_pips: Any = 0) -> float:
+  px = spread_from_quote(spread_pips, spread_points)
+  if px > 0:
+    return px
+  return _spread_px()
 
 
 def _desk_symbol() -> str:
@@ -93,6 +98,8 @@ class PaperBook:
   max_hold: int = 96
   last_signal_id: str = ""
   n_fills: int = 0
+  spread_pips: float = 0.0
+  _spread_px_cached: float = 0.0
   _fills: list[dict] = field(default_factory=list, repr=False)
 
   def queue_decision(self, decision: dict | None) -> None:
@@ -115,22 +122,38 @@ class PaperBook:
     low: float,
     close: float,
     bar_time: str,
+    spread_points: int | float = 0,
   ) -> list[dict]:
     """Apply pending open then manage SL/TP/trail on this bar. Returns fills."""
     emitted: list[dict] = []
     if self.pending and not self.open:
-      fill = self._open_from_decision(self.pending, float(open_), bar_time)
+      fill = self._open_from_decision(
+        self.pending, float(open_), bar_time, spread_points=spread_points,
+      )
       self.pending = None
       if fill:
         emitted.append(fill)
 
     if self.open:
-      close_fill = self._manage(high=float(high), low=float(low), close=float(close), bar_time=bar_time)
+      close_fill = self._manage(
+        high=float(high),
+        low=float(low),
+        close=float(close),
+        bar_time=bar_time,
+        spread_points=spread_points,
+      )
       if close_fill:
         emitted.append(close_fill)
     return emitted
 
-  def _open_from_decision(self, decision: dict, entry_price: float, bar_time: str) -> dict | None:
+  def _open_from_decision(
+    self,
+    decision: dict,
+    entry_price: float,
+    bar_time: str,
+    *,
+    spread_points: int | float = 0,
+  ) -> dict | None:
     action = str(decision.get("action") or "").upper()
     if action not in ("BUY", "SELL"):
       return None
@@ -138,16 +161,23 @@ class PaperBook:
     if sid and sid == self.last_signal_id:
       return None
 
+    spread = float(decision.get("spread_pips") or 0.0)
+    spr = _resolve_spread_px(spread_points, spread)
+    # Same as live OrderSend / HistoryFeed EA: BUY at Ask, SELL at Bid.
+    fill_entry = float(entry_price) + spr if action == "BUY" else float(entry_price)
+
     planned = float(decision.get("entry") or 0.0)
     sl = float(decision.get("sl") or 0.0)
     tp = float(decision.get("tp") or 0.0)
-    if sl <= 0 or tp <= 0 or entry_price <= 0:
+    if sl <= 0 or tp <= 0 or fill_entry <= 0:
       return None
 
     self.exit_mode = _exit_mode_code(decision.get("exit_mode"))
     self.trail_act = float(decision.get("trail_activate_r") or 1.0)
     self.trail_dist = float(decision.get("trail_distance_r") or 0.5)
     self.max_hold = int(decision.get("max_hold_bars") or 96)
+    self.spread_pips = spread
+    self._spread_px_cached = spr
 
     planned_risk = abs(planned - sl) if planned > 0 else 0.0
     rr = float(decision.get("rr") or 0.0)
@@ -158,24 +188,24 @@ class PaperBook:
 
     if planned_risk > 0.0:
       if action == "BUY":
-        sl = entry_price - planned_risk
-        tp = entry_price + planned_risk * rr
+        sl = fill_entry - planned_risk
+        tp = fill_entry + planned_risk * rr
       else:
-        sl = entry_price + planned_risk
-        tp = entry_price - planned_risk * rr
+        sl = fill_entry + planned_risk
+        tp = fill_entry - planned_risk * rr
     elif planned > 0.0:
-      delta = entry_price - planned
+      delta = fill_entry - planned
       sl += delta
       tp += delta
 
-    sl_dist = abs(entry_price - sl)
+    sl_dist = abs(fill_entry - sl)
     if sl_dist <= 0.0 or sl_dist < 0.5 * _PIP:
       return None
 
     self.ticket += 1
     self.signal_id = sid
     self.action = action
-    self.entry = entry_price
+    self.entry = fill_entry
     self.sl = sl
     self.sl_initial = sl
     self.tp = tp
@@ -193,7 +223,7 @@ class PaperBook:
       "action": action,
       "signal_id": sid,
       "ticket": self.ticket,
-      "price": entry_price,
+      "price": fill_entry,
       "sl": sl,
       "tp": tp,
       "lots": self.lots,
@@ -221,14 +251,16 @@ class PaperBook:
     low: float,
     close: float,
     bar_time: str,
+    spread_points: int | float = 0,
   ) -> dict | None:
     if not self.open:
       return None
     self.held += 1
 
-    spr = _spread_px()
-    bid_h, bid_l = high, low
-    ask_h, ask_l = high + spr, low + spr
+    spr = _resolve_spread_px(spread_points, self.spread_pips)
+    self._spread_px_cached = spr
+    bid_h, bid_l, bid_c = float(high), float(low), float(close)
+    ask_h, ask_l, ask_c = bid_h + spr, bid_l + spr, bid_c + spr
 
     if self.exit_mode in (1, 2):
       if self.action == "BUY":
@@ -258,8 +290,10 @@ class PaperBook:
       if self.tp > 0 and ask_l <= self.tp:
         return self._close("tp", self.tp, bar_time)
 
-    if self.held - 1 >= self.max_hold:
-      return self._close("max_hold", close, bar_time)
+    if self.max_hold > 0 and self.held - 1 >= self.max_hold:
+      return self._close(
+        "max_hold", bid_c if self.action == "BUY" else ask_c, bar_time,
+      )
     return None
 
   def _close(self, reason: str, exit_px: float, bar_time: str) -> dict:

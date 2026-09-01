@@ -75,6 +75,8 @@ def full_strategy_dict(s: MinedStrategy) -> dict:
     "anti_chase_rsi_long_min": float(getattr(s, "anti_chase_rsi_long_min", 0.0)),
     "anti_chase_vwap_short_max": float(getattr(s, "anti_chase_vwap_short_max", 99.0)),
     "anti_chase_logic": str(getattr(s, "anti_chase_logic", "or")),
+    "tp_ignores_spread_buffer": bool(getattr(s, "tp_ignores_spread_buffer", False)),
+    "min_atr_spread_ratio": float(getattr(s, "min_atr_spread_ratio", 0.0) or 0.0),
     "long_rules": rules_to_list(s.long_rules),
     "short_rules": rules_to_list(s.short_rules),
   }
@@ -124,6 +126,8 @@ def strategy_from_dict(g: dict) -> MinedStrategy:
     anti_chase_rsi_long_min=float(g.get("anti_chase_rsi_long_min", 0.0)),
     anti_chase_vwap_short_max=float(g.get("anti_chase_vwap_short_max", 99.0)),
     anti_chase_logic=str(g.get("anti_chase_logic", "or")),
+    tp_ignores_spread_buffer=bool(g.get("tp_ignores_spread_buffer", False)),
+    min_atr_spread_ratio=float(g.get("min_atr_spread_ratio", 0.0) or 0.0),
     ml_scorer=None,
     name=str(g.get("name", "scheduled")),
   )
@@ -168,6 +172,7 @@ def attach_ml_scorer(
 
   long_wins, short_wins = _label_outcomes(
     fm, train_start, train_end, rr, atr_m, max_hold,
+    tp_ignores_spread_buffer=bool(getattr(space, "tp_ignores_spread_buffer", False)),
   )
   if isinstance(kb, KnowledgeBase):
     ml = _fit_ml_with_experience(

@@ -43,6 +43,20 @@ def test_project_levels_sl_includes_spread():
   atr_only = 0.9 * float(fm.atr[0])
   assert sl_d == pytest.approx(atr_only + 1.9 * PIP, abs=1.5e-5)
   assert sl_d > atr_only + 1.5 * PIP
+  tp_d = abs(proj["entry_px"] - proj["tp"])
+  assert tp_d == pytest.approx(sl_d * 3.0, abs=1.5e-5)
+
+
+def test_project_levels_tp_can_ignore_spread_buffer():
+  fm = _LevelsFm()
+  strat = MinedStrategy(atr_mult_sl=0.9, rr_ratio=3.0, tp_ignores_spread_buffer=True)
+  proj = _project_signal_levels(fm, strat, 0, -1, spread_pips=1.9, slippage_pips=0.3)
+  atr_only = 0.9 * float(fm.atr[0])
+  sl_d = abs(proj["entry_px"] - proj["sl"])
+  tp_d = abs(proj["entry_px"] - proj["tp"])
+  assert sl_d == pytest.approx(atr_only + 1.9 * PIP, abs=1.5e-5)
+  assert tp_d == pytest.approx(atr_only * 3.0, abs=1.5e-5)
+  assert tp_d < sl_d * 3.0
 
 
 def test_project_levels_eur_sell_survives_11_15_wick():

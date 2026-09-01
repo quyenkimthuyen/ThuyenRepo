@@ -198,6 +198,7 @@ def _mine_strategy_learning_impl(
 
   long_wins, short_wins = _label_outcomes(
     fm, train_start, train_end, rr, atr_m, max_hold,
+    tp_ignores_spread_buffer=bool(getattr(space, "tp_ignores_spread_buffer", False)),
   )
   ml = _fit_ml_with_experience(fm, train_start, train_end, long_wins, short_wins, kb, as_of=as_of)
 

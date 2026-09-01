@@ -145,7 +145,7 @@ Chỉ Live **micro lot** khi Parity / Health khớp kỳ vọng. Test lịch s�
 | Ở đâu | Dropdown Trade Models | Tab Live Trade · Trade Models | Trang Compare Trade | Tab Live Trade · Test lịch sử |
 | Việc | Phân tích / Health / Journal | Remine + quyết định Live | So lịch sử, không EA | Ghi from/to → EA → bar/fill hiện trên **Live** |
 | Điều khiển lệnh MT5? | Không | **Live:** có (cần EA) | Không | Không (không tiền thật) |
-| Khớp lệnh nội bộ | — | Fill EA → `trades.json` | `PaperBook` sim fills | Fill EA sim / paper path |
+| Khớp lệnh nội bộ | — | Fill EA → `trades.json` | `PaperBook` Bid/Ask | Fill EA sim / paper Bid/Ask |
 
 **Active không ghi đè Bridge.** Đổi Active chỉ đổi tab phân tích.
 
@@ -158,7 +158,7 @@ Chỉ Live **micro lot** khi Parity / Health khớp kỳ vọng. Test lịch s�
 ### “Paper” trong code ≠ Paper Monitor
 
 Desk **Paper Monitor** đã gỡ (bookmark cũ → Bridge).  
-Module `paper_fill` / `PaperBook` / port chart legacy = **sim fills** cho Compare/test lịch sử — đúng kỹ thuật, dễ nhầm tên.
+Module `paper_fill` / `PaperBook` / port chart legacy = **sim fills Bid/Ask** (BUY Ask, SELL Bid) cho Compare/test lịch sử — đúng kỹ thuật, dễ nhầm tên.
 
 ### Remine vs cập nhật model
 
