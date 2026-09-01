@@ -14,8 +14,10 @@ sys.path.insert(0, str(ROOT))
 from data_loader import load_eurusd_m15
 from feature_engine import FeatureMatrix
 from strategy import Trade, compute_metrics
-from strategy_miner import MinedStrategy, backtest_mined
-from execution import adjust_entry_price, adjust_exit_price
+from execution import (
+  atr_stop_distance, entry_fill_price, hit_sl_tp, manage_quote_high,
+  manage_quote_low, market_exit_price,
+)
 
 SCHEDULE = ROOT / "mt5" / "frozen" / "best_3m_wf_schedule.json"
 
@@ -61,36 +63,36 @@ def main():
   while i < end:
     if in_trade:
       hit_sl = hit_tp = False
+      qh = manage_quote_high(h[i], int(direction), spread)
+      ql = manage_quote_low(l[i], int(direction), spread)
       if exit_mode in ("trail", "hybrid") and not trail_active:
-        if direction == 1 and h[i] >= entry_price + risk * trail_act:
+        if direction == 1 and qh >= entry_price + risk * trail_act:
           trail_active = 1.0
-          sl = max(sl, h[i] - risk * trail_dist)
-        elif direction == -1 and l[i] <= entry_price - risk * trail_act:
+          sl = max(sl, qh - risk * trail_dist)
+        elif direction == -1 and ql <= entry_price - risk * trail_act:
           trail_active = 1.0
-          sl = min(sl, l[i] + risk * trail_dist)
+          sl = min(sl, ql + risk * trail_dist)
       elif exit_mode in ("trail", "hybrid") and trail_active:
         if direction == 1:
-          sl = max(sl, h[i] - risk * trail_dist)
+          sl = max(sl, qh - risk * trail_dist)
         else:
-          sl = min(sl, l[i] + risk * trail_dist)
+          sl = min(sl, ql + risk * trail_dist)
 
-      exit_price = c[i]
-      if direction == 1:
-        if l[i] <= sl:
-          hit_sl, exit_price = True, sl
-        elif h[i] >= tp:
-          hit_tp, exit_price = True, tp
+      reason, fill_px = hit_sl_tp(
+        int(direction), h[i], l[i], sl, tp, spread, slip,
+      )
+      if reason == "sl":
+        hit_sl, exit_price = True, fill_px
+      elif reason == "tp":
+        hit_tp, exit_price = True, fill_px
       else:
-        if h[i] >= sl:
-          hit_sl, exit_price = True, sl
-        elif l[i] <= tp:
-          hit_tp, exit_price = True, tp
+        exit_price = c[i]
 
       if hit_sl or hit_tp or (i - entry_idx) >= max_hold:
         reason = "tp" if hit_tp else ("trail" if trail_active and hit_sl else "sl")
         if not hit_sl and not hit_tp:
-          exit_price, reason = c[i], "timeout"
-        exit_price = adjust_exit_price(exit_price, int(direction), spread, slip)
+          exit_price = market_exit_price(c[i], int(direction), spread, slip)
+          reason = "timeout"
         pnl_r = (exit_price - entry_price) * direction / risk if risk > 0 else 0
         trades.append(Trade(
           fm.index[entry_idx], fm.index[i], int(direction),
@@ -109,8 +111,8 @@ def main():
         if entry_idx >= end:
           break
         direction = float(s["d"])
-        entry_price = adjust_entry_price(o[entry_idx], int(direction), spread, slip)
-        risk = float(s["atr_m"]) * av
+        entry_price = entry_fill_price(o[entry_idx], int(direction), spread, slip)
+        risk = atr_stop_distance(av, float(s["atr_m"]), spread)
         rr = float(s["rr"])
         exit_mode = str(s.get("exit") or "hybrid")
         trail_act = float(s.get("trail_act") or 1.8)

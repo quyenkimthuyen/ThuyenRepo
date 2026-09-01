@@ -497,6 +497,55 @@ def _dump_seen_fills(seen_fills: list[str], *, limit: int = 80) -> str:
   return json.dumps(seen_fills[-limit:], ensure_ascii=False)
 
 
+def _pin_replay_universe(
+  eng_map: dict[str, BridgeEngine],
+  bridge_dir: Path,
+) -> None:
+  """Pin decide FeatureMatrix to parquet through date_to (not the growing tip)."""
+  import pandas as pd
+
+  from mt5_bridge.compare_runner import causal_replay_universe, slice_replay_frame
+  from mt5_bridge.engine import _normalize
+  from mt5_bridge.protocol import read_sim_control
+
+  ctrl = read_sim_control(bridge_dir) or {}
+  date_from = str(ctrl.get("from") or "").replace(".", "-")[:10]
+  date_to = str(ctrl.get("to") or "").replace(".", "-")[:10]
+  if len(date_from) < 10 or len(date_to) < 10:
+    return
+  for eng in eng_map.values():
+    if getattr(eng, "_universe", None) is not None:
+      continue
+    cache = getattr(eng, "mt5_cache", None)
+    try:
+      if cache is not None and Path(cache).exists():
+        full = _normalize(pd.read_parquet(cache))
+      else:
+        full = eng.load()
+    except Exception:
+      continue
+    if full is None or full.empty:
+      continue
+    replay = slice_replay_frame(full, date_from, date_to)
+    if replay.empty:
+      continue
+    eng.set_causal_universe(causal_replay_universe(full, replay))
+
+
+def _clear_replay_universe(eng_map: dict[str, BridgeEngine]) -> None:
+  """After Test lịch sử stops, Live remine may use the full parquet again."""
+  for eng in eng_map.values():
+    if getattr(eng, "_universe", None) is None:
+      continue
+    eng._universe = None
+    eng._fm = None
+    eng._fm_key = None
+    try:
+      eng.ensure_history()
+    except Exception:
+      pass
+
+
 def _cycle(
   engines: dict[str, BridgeEngine] | BridgeEngine,
   bridge_dir: Path,
@@ -518,6 +567,10 @@ def _cycle(
   primary = next(iter(eng_map.values()), None)
   primary_id = primary.model_id if primary else None
   is_sim = history_replay_active(bridge_dir)
+  if is_sim:
+    _pin_replay_universe(eng_map, bridge_dir)
+  else:
+    _clear_replay_universe(eng_map)
   roster = read_models_roster(bridge_dir)
   seen_fills = _load_seen_fills(last_fill_fp)
   ingested_any_fill = False

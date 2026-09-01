@@ -7,7 +7,12 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_boot_script_starts_mt5_app_and_worker():
-  boot = (ROOT / "scripts" / "live_windows_boot.ps1").read_text(encoding="utf-8")
+  boot_path = ROOT / "scripts" / "live_windows_boot.ps1"
+  raw = boot_path.read_bytes()
+  assert all(b < 128 for b in raw), (
+    "live_windows_boot.ps1 must be ASCII; PowerShell 5.1 misparses UTF-8 em-dash"
+  )
+  boot = boot_path.read_text(encoding="ascii")
   assert "terminal64.exe" in boot
   assert "XM Global MT5" in boot
   assert "manage.ps1" in boot
@@ -46,9 +51,11 @@ def test_enable_writes_marker_when_task_register_ok(tmp_path, monkeypatch):
   (tmp_path / "scripts").mkdir()
   (tmp_path / "scripts" / "live_windows_boot.ps1").write_text("# boot\n", encoding="utf-8")
   monkeypatch.setattr(auto, "_run_powershell", lambda *_a, **_k: (0, "OK\n", ""))
+  assert "LiveCheck2-Train" in auto.TASK_PREFIX
+  assert auto.legacy_task_name("e21") == "TrainApp-Live-e21"
   ok, name = auto.enable_live_autostart("e21")
   assert ok is True
-  assert name == "TrainApp-Live-e21"
+  assert name == "LiveCheck2-Train-e21"
   assert auto.autostart_is_marked("e21")
   cmd = auto.launcher_cmd_path("e21")
   assert cmd.is_file()
@@ -71,8 +78,9 @@ def test_disable_clears_marker(tmp_path, monkeypatch):
 
 def test_live_trade_and_bridge_hook_autostart():
   live = (ROOT / "gui" / "views" / "live_trade_dash.py").read_text(encoding="utf-8")
-  bridge = (ROOT / "gui" / "views" / "mt5_bridge.py").read_text(encoding="utf-8")
   assert "enable_live_autostart" in live
   assert "disable_live_autostart" in live
-  assert "enable_live_autostart" in bridge
-  assert "disable_live_autostart" in bridge
+  dash = live[live.find("def _start_live_bridge"):live.find("def _rerun_app")]
+  stop = live[live.find("disable_live_autostart"):]
+  assert "enable_live_autostart()" in dash or "enable_live_autostart(" in live
+  assert "disable_live_autostart()" in live

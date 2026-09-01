@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from run_backtest import REPORT_DIR
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 ROOT = Path(__file__).resolve().parent
 CONFIG_PATH = REPORT_DIR / "paper_monitor_config.json"
@@ -76,8 +77,8 @@ def load_config() -> dict:
     "use_learning": bool(raw.get("use_learning", True)),
     "kb_profile": raw.get("kb_profile") or "default",
     "kb_snapshot": raw.get("kb_snapshot"),
-    "spread_pips": float(raw.get("spread_pips", 1.0)),
-    "slippage_pips": float(raw.get("slippage_pips", 0.3)),
+    "spread_pips": float(raw.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    "slippage_pips": float(raw.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     "service_pid": raw.get("service_pid"),
   }
 

@@ -1,4 +1,5 @@
 """EdgeMiner Live — trader desk UI (daily ops first, config second)."""
+# asof-now-v3 — force Streamlit to re-exec this file
 from __future__ import annotations
 
 import html
@@ -19,8 +20,53 @@ sys.path.insert(0, str(LIVE))
 sys.path.insert(0, str(SPLIT))
 
 
+def _ensure_asof_modules() -> None:
+  """Fragments re-run without app.py imports — drop stale journal_view/desk_snapshot."""
+  jv = sys.modules.get("journal_view")
+  need = jv is None
+  if jv is not None:
+    try:
+      fn = getattr(jv, "journal_summary_many", None)
+      need = (
+        fn is None
+        or "now" not in inspect.signature(fn).parameters
+        or not hasattr(jv, "set_stats_asof")
+      )
+    except Exception:
+      need = True
+  ds = sys.modules.get("desk_snapshot")
+  if ds is not None:
+    try:
+      if "set_stats_asof" not in ds.today_r.__code__.co_names:
+        need = True
+    except Exception:
+      need = True
+  if not need:
+    return
+  sys.modules.pop("journal_view", None)
+  sys.modules.pop("desk_snapshot", None)
+  import journal_view  # noqa: F401
+  import desk_snapshot  # noqa: F401
+
+
+def _desk_snapshot(*, sim: bool = False):
+  _ensure_asof_modules()
+  import desk_snapshot as ds
+  return ds.desk_snapshot(sim=sim)
+
+
 def _reload_stale_live_modules() -> None:
   """Streamlit re-runs app.py but keeps sibling modules in sys.modules."""
+  token = "asof-now-v3"
+  _ensure_asof_modules()
+  try:
+    if st.session_state.get("_live_mod_token") != token:
+      for name in ("journal_view", "desk_snapshot", "watch_expect", "replay_control"):
+        sys.modules.pop(name, None)
+      st.session_state["_live_mod_token"] = token
+  except Exception:
+    for name in ("journal_view", "desk_snapshot", "watch_expect", "replay_control"):
+      sys.modules.pop(name, None)
 
   def _missing_sim(fn) -> bool:
     try:
@@ -123,6 +169,8 @@ def _reload_stale_live_modules() -> None:
     need_rc = True
   if not hasattr(rc, "live_bridge_dirs") or not hasattr(rc, "_assert_live_feed_bridge"):
     need_rc = True
+  if not hasattr(rc, "feed_asof_now"):
+    need_rc = True
   start_fn = getattr(rc, "_start_ea_simulate", None)
   if start_fn is not None:
     try:
@@ -207,8 +255,19 @@ def _reload_stale_live_modules() -> None:
     jv_src = inspect.getsource(jv)
   except Exception:
     jv_src = ""
-  if "_profit_looks_like_r" not in jv_src:
-    importlib.reload(jv)
+  need_jv = "_profit_looks_like_r" not in jv_src
+  try:
+    if "now" not in inspect.signature(jv.journal_summary_many).parameters:
+      need_jv = True
+    if "now" not in inspect.signature(jv.period_bounds).parameters:
+      need_jv = True
+  except Exception:
+    need_jv = True
+  if need_jv:
+    sys.modules.pop("journal_view", None)
+    import journal_view as jv  # noqa: F811
+    sys.modules.pop("desk_snapshot", None)
+    import desk_snapshot as ds  # noqa: F811
 
 
 _reload_stale_live_modules()
@@ -239,6 +298,7 @@ from package_store import (  # noqa: E402
 )
 from books import bridge_subdir, group_models_by_book  # noqa: E402
 from replay_control import (  # noqa: E402
+  feed_asof_now,
   load_oos_prefs,
   save_oos_prefs,
   start_oos_replay,
@@ -396,7 +456,7 @@ def _model_label_map(models: list[dict]) -> dict[str, str]:
 
 def _render_replay_live_panels(snap: dict | None = None) -> dict:
   """OOS HistoryFeed progress — results show on the Live desk."""
-  snap = snap or desk_snapshot(sim=False)
+  snap = snap or _desk_snapshot(sim=False)
   replay = snap.get("replay") or {}
   running = bool(replay.get("running"))
   books = replay.get("books") or []
@@ -424,6 +484,48 @@ def _render_replay_live_panels(snap: dict | None = None) -> dict:
       "Bấm **Restart feed** — app sẽ compile/gắn ForgeBridgeLive 1.25."
     )
   if running or any(int(b.get("bars_done") or 0) for b in books) or books:
+    stats = replay.get("strategy_stats") or {}
+    skip = int(stats.get("skip_count") or 0)
+    remines = int(stats.get("remine_count") or 0)
+    sched = int(stats.get("schedule_hits") or 0)
+    if running and skip > 50 and remines == 0 and sched == 0:
+      st.error(
+        "Worker đang skip mọi nến (`no_strategy`) — remine không lấy được nến train "
+        "(universe pin quá ngắn). **Stop** replay, restart worker Live, rồi Start lại. "
+        "Run hiện tại không ghi lệnh nên tab Live trống."
+      )
+    elif remines or sched or skip:
+      st.caption(
+        f"Strategy · remine **{remines}** · schedule {sched} · skip {skip}"
+        + (" · đã có genome" if remines or sched else "")
+      )
+    try:
+      from journal_view import load_trades_many
+      from replay_control import live_bridge_dirs
+      journal = load_trades_many(live_bridge_dirs())
+    except Exception:
+      journal = []
+    n_open = sum(1 for t in journal if str(t.get("status") or "").upper() == "OPEN")
+    n_closed = sum(1 for t in journal if str(t.get("status") or "").upper() == "CLOSED")
+    if n_open or n_closed:
+      st.caption(
+        f"Journal · **{n_open} OPEN** · **{n_closed} CLOSED** — "
+        "tab Live D/W/M theo nến feed (`last_bar`), không theo ngày tường."
+      )
+      preview = []
+      for t in journal[-8:]:
+        preview.append({
+          "when": t.get("entry_time") or t.get("bar_time") or "",
+          "sym": t.get("symbol") or "",
+          "side": str(t.get("direction") or t.get("action") or "").upper(),
+          "st": str(t.get("status") or "").upper(),
+          "r": t.get("r"),
+          "result": t.get("result") or "",
+        })
+      if preview:
+        st.dataframe(preview, use_container_width=True, hide_index=True)
+    elif running and (remines or sched):
+      st.caption("Đã remine — chưa có fill (đang ở đầu cửa sổ OOS).")
     for b in books:
       done = int(b.get("bars_done") or 0)
       total = int(b.get("bars_total") or 0)
@@ -458,6 +560,7 @@ def _render_replay_live_panels(snap: dict | None = None) -> dict:
 
 
 def _replay_progress_tick_body() -> None:
+  _ensure_asof_modules()
   _render_replay_live_panels()
 
 
@@ -478,7 +581,7 @@ def render_replay_desk() -> dict:
   st.session_state.desk_mode = "Replay"
   mode = "ea"
 
-  snap = desk_snapshot(sim=False)
+  snap = _desk_snapshot(sim=False)
   tone = snap["health_tone"]
   models = snap.get("models") or []
   running = bool((snap.get("replay") or {}).get("running"))
@@ -1011,6 +1114,13 @@ def _render_now_watch(rows: list[dict]) -> None:
   )
 
 
+def _stats_asof():
+  try:
+    return feed_asof_now()
+  except Exception:
+    return None
+
+
 def _render_now_inspect(rows: list[dict], health_detail: dict, *, period: str = "today") -> None:
   groups = _watch_book_groups(rows)
   if not groups:
@@ -1049,7 +1159,10 @@ def _render_now_inspect(rows: list[dict], health_detail: dict, *, period: str = 
         counts: dict[str, int] = {}
         hits_by: dict[str, list] = {}
         for p in ("today", "week", "month", "all"):
-          hits_p = period_fill_marks(trades, model_id=mid, period=p)
+          try:
+            hits_p = period_fill_marks(trades, model_id=mid, period=p, now=_stats_asof())
+          except TypeError:
+            hits_p = period_fill_marks(trades, model_id=mid, period=p)
           hits_by[p] = hits_p
           counts[p] = len(hits_p)
         labeled[mid] = {
@@ -1177,15 +1290,20 @@ def _render_now_inspect(rows: list[dict], health_detail: dict, *, period: str = 
           period=period,
           hit_times=list(row.get("period_hits") or []),
           selected=chart_selected,
+          now=_stats_asof(),
         )
       except Exception as exc:
         fig = None
         chart_err = str(exc)
       if fig is not None:
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        asof = _stats_asof()
+        asof_s = asof.strftime("%Y-%m-%d %H:%M") if asof is not None else None
         st.caption(
           f"Chấm = mở · nét đứt = đóng · xanh = thắng · đỏ = thua. "
-          f"Giờ VN (UTC+7) · {PERIOD_LABELS.get(period, period)}. Session 7–20 theo broker."
+          f"Giờ VN (UTC+7) · {PERIOD_LABELS.get(period, period)}"
+          + (f" · replay {asof_s}" if asof_s else "")
+          + ". Session 7–20 theo broker."
         )
       else:
         st.caption(
@@ -1202,7 +1320,7 @@ def _render_live_live_panels(*, period: str, section: str = "now") -> dict:
     period = "today"
   if section not in LIVE_SECTIONS:
     section = "now"
-  snap = desk_snapshot(sim=False)
+  snap = _desk_snapshot(sim=False)
   health_detail = snap.get("health_detail") or {}
   models = snap.get("models") or []
   bdirs = _bridge_dirs_for_enabled(book_models(), sim=False)
@@ -1210,10 +1328,21 @@ def _render_live_live_panels(*, period: str, section: str = "now") -> dict:
     bdirs = [Path(p) for p in (snap.get("bridge_dirs") or [])] or [BRIDGE_DIR]
 
   st.caption(f"Updated {snap.get('updated_at')}")
+  asof = _stats_asof()
+  try:
+    from journal_view import set_stats_asof
+    set_stats_asof(asof)
+  except Exception:
+    pass
+  if asof is not None:
+    st.caption(
+      f"Replay as-of **{asof.strftime('%Y-%m-%d %H:%M')}** — D/W/M theo nến HistoryFeed, không theo lịch tường."
+    )
   if section == "pipeline":
     _render_health_panel(health_detail, sim=False)
     return snap
-  session = journal_summary_many(bdirs, period=period)
+  from journal_view import journal_summary_many as _jsm
+  session = _jsm(bdirs, period=period)
   if section == "session":
     _render_live_session_body(
       snap, period=period, bdirs=bdirs, session=session,
@@ -1281,10 +1410,10 @@ def _render_live_live_panels(*, period: str, section: str = "now") -> dict:
 
 
 def _render_live_session_body(snap: dict, *, period: str, bdirs: list, session: dict) -> None:
-  from journal_view import filter_trades_by_period
+  from journal_view import filter_trades_by_period, stats_by_model_many as _sbm
 
   rows = [
-    r for r in stats_by_model_many(bdirs, period=period)
+    r for r in _sbm(bdirs, period=period)
     if (r.get("n_closed") or 0) or (r.get("n_open") or 0)
   ]
   model_table = [
@@ -1429,7 +1558,7 @@ def _render_live_status_header(snap: dict) -> None:
 
 def _live_status_tick_body() -> None:
   """Fresh desk_snapshot each Auto-refresh tick — n_open/EA age must not lag a full page rerun."""
-  _render_live_status_header(desk_snapshot(sim=False))
+  _render_live_status_header(_desk_snapshot(sim=False))
 
 
 def _run_live_status_tick() -> None:
@@ -1437,6 +1566,7 @@ def _run_live_status_tick() -> None:
 
 
 def _live_now_tick_body() -> None:
+  _ensure_asof_modules()
   period = st.session_state.get("live_stats_period") or "today"
   section = st.session_state.get("live_desk_section") or "now"
   _render_live_live_panels(period=str(period), section=str(section))
@@ -1455,7 +1585,7 @@ def render_live_desk() -> dict:
 
   _run_live_status_tick()
 
-  snap = desk_snapshot(sim=False)
+  snap = _desk_snapshot(sim=False)
 
   if st.session_state.get("live_desk_section") not in LIVE_SECTIONS:
     st.session_state.live_desk_section = "now"
@@ -1845,9 +1975,18 @@ def render_setup_page() -> None:
         is_windows as _is_win_as,
         load_prefs as _as_prefs,
         task_status as _as_status,
+        ensure_autostart_if_enabled as _as_ensure,
       )
       st_as = _as_status()
       prefs_as = st_as.get("prefs") or _as_prefs()
+      if (
+        _is_win_as()
+        and bool(prefs_as.get("enabled"))
+        and (not bool(st_as.get("task_installed")))
+      ):
+        _as_ensure()
+        st_as = _as_status()
+        prefs_as = st_as.get("prefs") or _as_prefs()
       st.markdown(
         "**Theo Start / Stop trading:**\n"
         "- **Start** → gắn Scheduled Task (reboot: MT5 + Live app + bridge)\n"

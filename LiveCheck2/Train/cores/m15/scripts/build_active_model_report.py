@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT))
 from data_loader import load_eurusd_m15
 from gui.trade_model import get_model_by_id, load_active_model_id, save_model_report
 from run_backtest import run_walk_forward, save_backtest_report
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 
 def main() -> int:
@@ -22,8 +23,8 @@ def main() -> int:
     load_eurusd_m15("2025-01-01"),
     use_learning=bool(model.get("use_kb", True)),
     train_weeks=int(model["train_weeks"]),
-    spread_pips=float(model.get("spread_pips", 1.0)),
-    slippage_pips=float(model.get("slippage_pips", 0.3)),
+    spread_pips=float(model.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    slippage_pips=float(model.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     holdout_months=0,
     kb_profile=model.get("kb_profile"),
     kb_snapshot=model.get("kb_snapshot"),

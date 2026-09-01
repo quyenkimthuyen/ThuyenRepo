@@ -29,4 +29,18 @@ def test_host_remine_clips_bars_before_week_start():
     assert remine, desk
     assert "as_of=week_start" in remine, desk
     assert "get_train_window_indices" in remine, desk
+    assert "_frame_before" in remine, desk
     assert "datetime.now" not in remine
+
+
+def test_host_decide_scans_only_through_closed_bar():
+  for symbol in ("EURUSD", "GBPUSD"):
+    desk = resolve_host_desk(symbol, "M15")
+    src = (desk / "mt5_bridge" / "engine.py").read_text(encoding="utf-8")
+    start = src.find("def decide_for_bar")
+    end = src.find("def _remember")
+    body = src[start:end]
+    assert body, desk
+    assert "_causalize_roc5_through" in body, desk
+    assert "scan_end" in body, desk
+    assert "refresh_through" in body, desk

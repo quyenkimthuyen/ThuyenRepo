@@ -13,7 +13,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-TASK_PREFIX = "TrainApp-Live"
+TASK_PREFIX = "LiveCheck2-Train"
+LEGACY_TASK_PREFIX = "TrainApp-Live"  # shared name with LiveCheck\TrainApp2
 BOOT_DELAY = "PT45S"
 
 _ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +27,11 @@ def current_desk() -> str:
 def task_name(desk: str | None = None) -> str:
   d = (desk or current_desk() or "desk").strip().lower()
   return f"{TASK_PREFIX}-{d}"
+
+
+def legacy_task_name(desk: str | None = None) -> str:
+  d = (desk or current_desk() or "desk").strip().lower()
+  return f"{LEGACY_TASK_PREFIX}-{d}"
 
 
 def app_root() -> Path:
@@ -126,29 +132,42 @@ def _run_powershell(command: str, *, timeout: int = 40) -> tuple[int, str, str]:
   return proc.returncode, proc.stdout or "", proc.stderr or ""
 
 
-def _register_task_ps(*, task: str, cmd_path: Path) -> str:
+def _register_task_ps(*, task: str, desk: str, python_exe: str) -> str:
   tn = _ps_quote(task)
-  arg = _ps_quote(f'/c "{cmd_path}"')
+  legacy = _ps_quote(legacy_task_name(desk))
+  boot = boot_script_path()
+  root = app_root()
+  arg = _ps_quote(
+    "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden "
+    f'-File "{boot}" -Desk {desk} -Python "{python_exe}"'
+  )
+  wd = _ps_quote(str(root))
   delay = _ps_quote(BOOT_DELAY)
   user = _ps_quote(os.environ.get("USERNAME") or "")
   return f"""
 $ErrorActionPreference = 'Stop'
-$action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument {arg}
+Unregister-ScheduledTask -TaskName {tn} -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+Unregister-ScheduledTask -TaskName {legacy} -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument {arg} -WorkingDirectory {wd}
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User {user}
 $trigger.Delay = {delay}
 $principal = New-ScheduledTaskPrincipal -UserId {user} -LogonType Interactive -RunLevel Limited
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 2 -RestartInterval (New-TimeSpan -Minutes 1)
+if ($settings.IdleSettings) {{ $settings.IdleSettings.StopOnIdleEnd = $false }}
 Register-ScheduledTask -TaskName {tn} -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
 Write-Output 'OK'
 """
 
 
-def _unregister_task_ps(*, task: str) -> str:
+def _unregister_task_ps(*, task: str, desk: str) -> str:
   tn = _ps_quote(task)
+  legacy = _ps_quote(legacy_task_name(desk))
   return f"""
 $ErrorActionPreference = 'SilentlyContinue'
 Unregister-ScheduledTask -TaskName {tn} -Confirm:$false | Out-Null
+Unregister-ScheduledTask -TaskName {legacy} -Confirm:$false | Out-Null
 & schtasks.exe /Delete /TN {tn} /F 2>$null | Out-Null
+& schtasks.exe /Delete /TN {legacy} /F 2>$null | Out-Null
 Write-Output 'OK'
 exit 0
 """
@@ -163,10 +182,12 @@ def enable_live_autostart(desk: str | None = None) -> tuple[bool, str]:
     return False, "Auto-start Windows chỉ chạy trên Windows."
   if not boot_script_path().is_file():
     return False, f"Thiếu script boot: {boot_script_path()}"
-  cmd_path = write_launcher_cmd(desk=d, python_exe=sys.executable)
+  py = sys.executable
+  write_launcher_cmd(desk=d, python_exe=py)
   name = task_name(d)
-  code, out, err = _run_powershell(_register_task_ps(task=name, cmd_path=cmd_path))
+  code, out, err = _run_powershell(_register_task_ps(task=name, desk=d, python_exe=py))
   if code != 0 or "OK" not in (out or ""):
+    cmd_path = launcher_cmd_path(d)
     tr = f'cmd.exe /c "{cmd_path}"'
     try:
       proc = subprocess.run(
@@ -197,7 +218,7 @@ def disable_live_autostart(desk: str | None = None) -> tuple[bool, str]:
   if sys.platform != "win32":
     return True, "not-windows"
   name = task_name(d)
-  code, out, err = _run_powershell(_unregister_task_ps(task=name))
+  code, out, err = _run_powershell(_unregister_task_ps(task=name, desk=d))
   if code != 0 and "OK" not in (out or ""):
     detail = (err or out or "Unregister failed").strip()
     return False, f"Không gỡ auto-start Windows: {detail[:400]}"

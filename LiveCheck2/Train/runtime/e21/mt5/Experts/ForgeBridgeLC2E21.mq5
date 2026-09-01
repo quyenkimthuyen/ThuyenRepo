@@ -36,6 +36,8 @@ input double InpRiskPct        = 1.0;
 input ulong  InpMagic          = 20281021;        // base magic; multi-model uses models.json
 input int    InpMaxModels      = 5;               // max concurrent trade models
 input int    InpSlipPoints     = 30;
+input double InpSpreadPips     = 1.9;   // desk YAML fallback when bar.spread==0
+input double InpSlippagePips   = 0.3;   // modeled market slip (same as lab)
 input int    InpMaxHoldBars    = 36;                // fallback if decision omits
 
 CTrade   trade;
@@ -2272,6 +2274,16 @@ void ReportPaperClose(const string reason, const double exit_px, const string ba
    g_had_position = false;
 }
 
+double DeskPipSize()
+{
+   return (_Digits == 3 || _Digits == 5) ? (10.0 * _Point) : _Point;
+}
+
+double DeskSlipPrice()
+{
+   return InpSlippagePips * DeskPipSize();
+}
+
 double HistSpreadPrice(const MqlRates &r)
 {
    // OHLC from CopyRates is Bid. Live fills BUY at Ask / SELL at Bid.
@@ -2282,7 +2294,7 @@ double HistSpreadPrice(const MqlRates &r)
    else if(g_last_hist_spread_pts > 0)
       pts = g_last_hist_spread_pts;
    else
-      pts = 10; // 1.0 pip on 3/5-digit
+      pts = (int)MathRound(InpSpreadPips * 10.0); // desk YAML pips → 5-digit points
    return pts * _Point;
 }
 
@@ -2293,6 +2305,7 @@ void ManagePaperHistory(const MqlRates &r)
    g_paper_held++;
 
    const double spr = HistSpreadPrice(r);
+   const double slip = DeskSlipPrice();
    const double bid_h = r.high;
    const double bid_l = r.low;
    const double bid_c = r.close;
@@ -2330,7 +2343,7 @@ void ManagePaperHistory(const MqlRates &r)
    {
       if(g_open_sl > 0 && bid_l <= g_open_sl)
       {
-         ReportPaperClose(trail_moved ? "trail" : "sl", g_open_sl,
+         ReportPaperClose(trail_moved ? "trail" : "sl", g_open_sl - slip,
                           TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
@@ -2344,7 +2357,7 @@ void ManagePaperHistory(const MqlRates &r)
    {
       if(g_open_sl > 0 && ask_h >= g_open_sl)
       {
-         ReportPaperClose(trail_moved ? "trail" : "sl", g_open_sl,
+         ReportPaperClose(trail_moved ? "trail" : "sl", g_open_sl + slip,
                           TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
@@ -2359,7 +2372,7 @@ void ManagePaperHistory(const MqlRates &r)
    // max_hold<=0 means unlimited (full TP) — never treat 0 as "close next bar"
    if(g_max_hold > 0 && g_paper_held - 1 >= g_max_hold)
       ReportPaperClose("max_hold",
-                       (g_open_action == "BUY") ? bid_c : ask_c,
+                       (g_open_action == "BUY") ? (bid_c - slip) : (ask_c + slip),
                        TimeToString(r.time, TIME_DATE | TIME_MINUTES));
 }
 
@@ -2395,9 +2408,10 @@ bool PaperOpenFromDecision(const string json, const MqlRates &r, const string ba
    double planned = JsonGetDouble(json, "entry", 0);
    double sl = JsonGetDouble(json, "sl", 0);
    double tp = JsonGetDouble(json, "tp", 0);
-   // Same as live OrderSend: BUY at Ask, SELL at Bid (OHLC is Bid).
+   // Same as live OrderSend: BUY at Ask + slip, SELL at Bid − slip (OHLC is Bid).
    const double spr = HistSpreadPrice(r);
-   const double entry_price = (action == "BUY") ? (r.open + spr) : r.open;
+   const double slip = DeskSlipPrice();
+   const double entry_price = (action == "BUY") ? (r.open + spr + slip) : (r.open - slip);
    if(sl <= 0 || tp <= 0 || entry_price <= 0)
       return false;
 

@@ -244,15 +244,16 @@ Tuần sau: cửa sổ trượt tới trước. OOS không nằm trong train. Fe
 
 ### Mining search space
 Cách miner được phép tìm edge (RR, exit, anti-chase…) — **khác** KB và train weeks.  
-Mặc định app: preset **`elite_or_quality`** (thường **ít lệnh hơn**, WR/DD tốt hơn).  
+Danh sách preset đang mở của desk, kèm ý định và trade-off: bảng **Chi tiết preset** ở Cài đặt (sinh từ chính preset nên luôn khớp).  
 Đổi ở Cài đặt chỉ ảnh hưởng Grid; Live/Sim theo space **đã lưu trên Trade Model** trong Bridge roster.
 
 ### Grid Search
-Số combo ≈ `train × KB profile × epoch × mining_preset` (OOS/spread/slip cố định).  
+Số combo = `train weeks × mining_preset × (KB profile × epoch)` (OOS/spread/slip cố định).  
+Mỗi giai đoạn học là một KB profile, nên **thêm giai đoạn là nhân số combo**.  
 `grid_objective` chỉ xếp hạng, không nhân combo. Đổi Cài đặt → Grid chỉ chạy combo **mới**.
 
 ### Chi phí & hold-out
-Spread/slip mặc định desk (EUR thường 1.0/0.3; GBP thường 1.5/0.3) — luôn bật khi đánh giá.  
+Spread/slip mặc định desk (EUR 1.9/0.3; GBP 2.3/0.3) — luôn bật khi đánh giá.  
 Hold-out: giữ tháng cuối chỉ test, không re-optimize WF chính.
 
 ### Mục tiêu checklist

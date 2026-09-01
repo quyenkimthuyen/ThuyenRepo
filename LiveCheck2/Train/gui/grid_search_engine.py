@@ -345,6 +345,8 @@ def run_grid(
     from concurrent.futures import ProcessPoolExecutor, as_completed
     done = 0
     with ProcessPoolExecutor(max_workers=workers) as pool:
+      if on_progress:
+        on_progress(0, total, f"pool {workers} workers submitted")
       futs = {pool.submit(run_single, spec): spec for spec in specs}
       for fut in as_completed(futs):
         spec = futs[fut]
@@ -363,6 +365,13 @@ def run_grid(
             "kb_snapshot": spec.kb_snapshot,
             "error": str(e),
           })
+    pool_dead = "process pool was terminated"
+    if rows and all(pool_dead in str(r.get("error") or "") for r in rows):
+      rows = []
+      for i, spec in enumerate(specs):
+        if on_progress:
+          on_progress(i + 1, total, spec.label())
+        rows.append(_safe(spec))
   rows.sort(key=lambda r: _score(r, objective), reverse=True)
   return rows
 

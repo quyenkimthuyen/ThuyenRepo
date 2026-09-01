@@ -435,7 +435,19 @@ def today_r(bridge_dirs: list[Path] | Path | None = None) -> dict[str, Any]:
     dirs = [bridge_dirs]
   else:
     dirs = list(bridge_dirs)
-  day = journal_summary_many(dirs, period="today")
+  now = None
+  try:
+    from replay_control import feed_asof_now
+    now = feed_asof_now()
+  except Exception:
+    now = None
+  try:
+    from journal_view import set_stats_asof
+    set_stats_asof(now)
+  except Exception:
+    pass
+  from journal_view import journal_summary_many as _sum
+  day = _sum(dirs, period="today")
   return {
     "n": int(day.get("n_closed") or 0),
     "total_r": float(day.get("total_r") or 0.0),

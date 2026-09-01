@@ -19,6 +19,7 @@ from mt5_bridge.models import get_model_run_params, load_active_model_id, resolv
 from paper_live_monitor_server import start_paper_live_monitor_server
 from paper_service import PID_PATH, load_config, save_config
 from paper_background import run_cycle_now
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 _stop = False
 
@@ -45,8 +46,8 @@ def _runtime_config() -> dict:
     "use_learning": bool(params.get("use_learning", True)),
     "kb_profile": params.get("kb_profile") or "default",
     "kb_snapshot": params.get("kb_snapshot"),
-    "spread_pips": float(params.get("spread_pips", 1.0)),
-    "slippage_pips": float(params.get("slippage_pips", 0.3)),
+    "spread_pips": float(params.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    "slippage_pips": float(params.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
   }
   if any(cfg.get(key) != value for key, value in desired.items()):
     cfg = save_config(**desired, last_model_reload_at=time.strftime("%Y-%m-%dT%H:%M:%S"))
@@ -60,8 +61,8 @@ def _settings_fingerprint(cfg: dict) -> tuple:
     bool(cfg.get("use_learning")),
     cfg.get("kb_profile"),
     cfg.get("kb_snapshot"),
-    float(cfg.get("spread_pips", 1.0)),
-    float(cfg.get("slippage_pips", 0.3)),
+    float(cfg.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    float(cfg.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
   )
 
 

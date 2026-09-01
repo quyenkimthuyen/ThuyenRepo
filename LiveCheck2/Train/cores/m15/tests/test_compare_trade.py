@@ -10,7 +10,7 @@ from gui.bridge_model_monitor import (
   build_multi_model_equity_figure,
   build_multi_model_monthly_figure,
 )
-from mt5_bridge.compare_runner import slice_replay_frame
+from mt5_bridge.compare_runner import causal_replay_universe, slice_replay_frame
 from mt5_bridge.engine import (
   _journal_open_and_day_count,
   _journal_last_auto_signal_idx,
@@ -18,6 +18,7 @@ from mt5_bridge.engine import (
   _spacing_ok,
 )
 from mt5_bridge.history_sync import utc_to_broker_time
+from execution import entry_fill_price
 from mt5_bridge.paper_fill import PaperBook
 from mt5_bridge.trade_journal import clear_trades, filter_trades, load_trades, save_trades
 
@@ -27,7 +28,7 @@ def _bar_time(ts: pd.Timestamp) -> str:
 
 
 def test_paper_fill_open_next_bar_and_tp(tmp_path: Path):
-  book = PaperBook(bridge_dir=tmp_path, model_id="tm_a")
+  book = PaperBook(bridge_dir=tmp_path, model_id="tm_a", spread_pips=1.9, slippage_pips=0.3)
   decision = {
     "action": "BUY",
     "signal_id": "sig_buy_1",
@@ -45,7 +46,7 @@ def test_paper_fill_open_next_bar_and_tp(tmp_path: Path):
   fills0 = book.on_bar(open_=1.1005, high=1.1008, low=1.1002, close=1.1006, bar_time="2026.01.02 08:00")
   assert len(fills0) == 1
   assert fills0[0]["event"] == "open"
-  assert fills0[0]["price"] == pytest.approx(1.1005)
+  assert fills0[0]["price"] == pytest.approx(entry_fill_price(1.1005, 1, 1.9, 0.3))
   assert book.open is True
   # Next bar: held becomes 2 → SL/TP active; high hits TP
   fills1 = book.on_bar(open_=1.1005, high=1.1030, low=1.1000, close=1.1025, bar_time="2026.01.02 08:15")
@@ -223,6 +224,26 @@ def test_two_paper_books_do_not_block_each_other(tmp_path: Path):
   assert len(load_trades(dir_b)) == 1
   assert load_trades(dir_a)[0]["model_id"] == "tm_a"
   assert load_trades(dir_b)[0]["model_id"] == "tm_b"
+
+
+def test_causal_replay_universe_drops_bars_after_window():
+  idx = pd.to_datetime([
+    "2026-01-01 10:00",
+    "2026-01-02 10:00",
+    "2026-01-03 10:00",
+  ], utc=True).tz_convert(None)
+  df = _normalize(pd.DataFrame({
+    "Open": [1.0, 1.1, 1.2],
+    "High": [1.01, 1.11, 1.21],
+    "Low": [0.99, 1.09, 1.19],
+    "Close": [1.005, 1.105, 1.205],
+    "Volume": [1, 1, 1],
+  }, index=idx))
+  replay = df.iloc[1:2]
+  out = causal_replay_universe(df, replay)
+  assert replay.index[-1] in out.index
+  assert idx[0] in out.index
+  assert idx[2] not in out.index
 
 
 def test_slice_replay_frame_by_broker_date():

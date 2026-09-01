@@ -9,10 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from data_loader import load_eurusd_m15
-from feature_engine import FeatureMatrix
-from strategy import compute_metrics
-from strategy_miner import MinedStrategy, Rule, generate_signals_mined, backtest_mined
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 FROZEN = ROOT / "mt5" / "frozen" / "best_3m_frozen.json"
 
@@ -67,7 +64,10 @@ def main():
       print(f"{label}: no bars")
       continue
     sig = generate_signals_mined(fm, strat, i0, i1)
-    trades = backtest_mined(fm, strat, sig, i0, i1, spread_pips=1.0, slippage_pips=0.3)
+    trades = backtest_mined(
+      fm, strat, sig, i0, i1,
+      spread_pips=DEFAULT_SPREAD_PIPS, slippage_pips=DEFAULT_SLIPPAGE_PIPS,
+    )
     m = compute_metrics(trades)
     print(f"=== FROZEN Python · {label} ({a} → {b}) ===")
     print(f"  trades={m['n_trades']}  WR={m['win_rate']*100:.2f}%  PF={m['profit_factor']:.3f}")

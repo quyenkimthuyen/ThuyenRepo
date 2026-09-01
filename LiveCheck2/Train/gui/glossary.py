@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
+
 # --- Giải thích ngắn (dùng trong help= / caption) ---
 
 HELP = {
@@ -42,10 +44,13 @@ HELP = {
     "Live = thật/demo; test lịch sử = replay nến trên cùng EA Live (fill giấy)."
   ),
   "grid_search": "**Grid Search** — thử nhiều combo tham số để tìm setting tốt hơn.",
+  # No preset names here on purpose: naming them meant this text kept describing
+  # a desk's old lineup after it changed. The Settings table is generated from the
+  # presets themselves, so it is the one place that cannot go stale.
   "mining_preset": (
     "**Mining preset** — không gian tìm chiến lược (RR, exit, anti-chase…). "
-    "Mặc định app: **elite_or_quality** (void RSI/VWAP OR, RR 3.2–4, exit full). "
-    "Xem bảng Chi tiết preset trong Cài đặt."
+    "Preset đang mở và ý định/trade-off của từng cái: xem bảng "
+    "**Chi tiết preset** trong Cài đặt (sinh trực tiếp từ preset nên luôn khớp)."
   ),
   "remine": "**Remine** — mỗi tuần mine lại strategy trên cửa sổ học gần nhất (không đổi Trade Model).",
   "parity": "**Parity** — đối chiếu strategy tuần Live với weekly_log Health OOS.",
@@ -174,8 +179,8 @@ def format_profile_oneline(tp: dict) -> str:
   kb = format_kb_line(bool(tp.get("use_kb", True)), tp.get("kb_profile"), tp.get("kb_snapshot"))
   oos_f = tp.get("oos_from", "?")
   oos_t = tp.get("oos_to", "?")
-  spread = tp.get("spread_pips", 1)
-  slip = tp.get("slippage_pips", 0.3)
+  spread = tp.get("spread_pips", DEFAULT_SPREAD_PIPS)
+  slip = tp.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)
   return (
     f"Học **{train} tuần** · {kb} · "
     f"Kiểm chứng {oos_f} → {oos_t} · "

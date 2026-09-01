@@ -4,6 +4,7 @@ Meta-learner — optimize có nhớ: epoch sau tốt hơn epoch trước.
 from __future__ import annotations
 
 import hashlib
+import os
 import random
 import threading
 from typing import Optional
@@ -20,10 +21,20 @@ from strategy_miner import (
   score_strategy_metrics, _label_outcomes, _mine_threshold_rules, _mine_binary_rules,
   _count_matching_rules, CONTINUOUS_FEATURES, BINARY_LONG, BINARY_SHORT,
   _weeks_in_window, MiningSearchSpace, constrain_strategy_to_space,
-  apply_breakthrough_filters, _exec_cost_kwargs,
+  apply_breakthrough_filters, _exec_cost_kwargs, freq_floor_penalty,
 )
 
 _DETERMINISM_LOCK = threading.RLock()
+
+# Evolution is seeded per draw, so one era learned twice gives the identical KB.
+# That makes a single KB one sample of a high-variance process rather than "the"
+# answer for that era. Bump this salt to draw an independent KB from the same
+# inputs, which is how the spread of that process gets measured instead of
+# assumed. Empty/invalid keeps the default draw.
+try:
+  LEARNING_SEED_SALT = int(os.environ.get("M15_LEARNING_SEED_SALT") or 0)
+except ValueError:
+  LEARNING_SEED_SALT = 0
 
 
 def get_matched_rule_keys(fm, strat: MinedStrategy, bar_idx: int, direction: int) -> list[str]:
@@ -100,8 +111,9 @@ def _evaluate_genome(
   search_space: MiningSearchSpace | None = None,
 ) -> tuple[float, dict, MinedStrategy]:
   space = search_space or MiningSearchSpace(target_trades_per_week=target_tpw)
-  # Score with surgery / calibrate-chase only. Fixed anti-chase is applied later
-  # on the final genome so ranking matches the unfiltered frontier book.
+  # Score with surgery / calibrate-chase only; fixed anti-chase lands on the
+  # final genome — unless the preset opts into anti_chase_score_with_veto, which
+  # ranks genomes on the post-veto book.
   strat = apply_breakthrough_filters(
     fm, strat, train_start, train_end, space, for_scoring=True,
   )
@@ -134,7 +146,47 @@ def _evaluate_genome(
     )
   if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
     s -= 80
+  s -= freq_floor_penalty(comb, weeks, space)
   return s, comb, strat
+
+
+def _window_stamp(fm, idx) -> str:
+  """Calendar stamp of a bar index, or the raw index when unavailable.
+
+  Bar indices shift whenever the loaded frame starts elsewhere — a wider data
+  cache or a repointed desk start_date is enough. Seeding on the timestamp keeps
+  the same calendar window drawing the same evolution.
+  """
+  index = getattr(fm, "index", None)
+  if index is None:
+    return str(idx)
+  try:
+    i = int(idx)
+  except (TypeError, ValueError):
+    return str(idx)
+  if not 0 <= i < len(index):
+    return str(idx)
+  return str(index[i])
+
+
+def learning_seed(
+  fm, train_start, train_end, kb: KnowledgeBase, as_of=None,
+  search_space: MiningSearchSpace | None = None,
+) -> int:
+  """Seed for one mining draw, stable across machines and data windows.
+
+  Deliberately excludes the absolute KB path: it made the seed depend on where
+  the repo happened to sit, so the same era learned on two checkouts drew two
+  different evolutions and their results were never comparable. Identity is the
+  profile stem plus what is actually being mined.
+  """
+  raw_seed = (
+    f"{kb.path.stem}|{kb.epoch_count}|"
+    f"{_window_stamp(fm, train_start)}|{_window_stamp(fm, train_end)}|"
+    f"{as_of if as_of is not None else ''}|{search_space!r}|"
+    f"{getattr(fm, 'profile_name', 'current')}|salt={LEARNING_SEED_SALT}"
+  )
+  return int(hashlib.sha256(raw_seed.encode("utf-8")).hexdigest()[:8], 16)
 
 
 def mine_strategy_learning(
@@ -144,12 +196,7 @@ def mine_strategy_learning(
   search_space: MiningSearchSpace | None = None,
 ) -> Optional[MinedStrategy]:
   """Run evolution reproducibly for a given KB snapshot and train window."""
-  raw_seed = (
-    f"{kb.path.resolve()}|{kb.epoch_count}|{train_start}|{train_end}|"
-    f"{as_of if as_of is not None else ''}|{search_space!r}|"
-    f"{getattr(fm, 'profile_name', 'current')}"
-  )
-  seed = int(hashlib.sha256(raw_seed.encode("utf-8")).hexdigest()[:8], 16)
+  seed = learning_seed(fm, train_start, train_end, kb, as_of, search_space)
   with _DETERMINISM_LOCK:
     py_state = random.getstate()
     np_state = np.random.get_state()

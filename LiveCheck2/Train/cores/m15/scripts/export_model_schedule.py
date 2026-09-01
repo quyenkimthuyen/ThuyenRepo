@@ -19,6 +19,7 @@ from trade_model_schedule import (
   save_model_schedule,
   schedule_from_walk_forward_result,
 )
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 
 def main() -> int:
@@ -50,8 +51,8 @@ def main() -> int:
       kb_snapshot = None
   oos_from = (model or {}).get("oos_from") or cfg.get("oos_from") or "2026-01-01"
   oos_to = (model or {}).get("oos_to") or cfg.get("oos_to") or "2026-12-31"
-  spread = float((model or {}).get("spread_pips") or cfg.get("spread_pips") or 1.0)
-  slip = float((model or {}).get("slippage_pips") or cfg.get("slippage_pips") or 0.3)
+  spread = float((model or {}).get("spread_pips") or cfg.get("spread_pips") or DEFAULT_SPREAD_PIPS)
+  slip = float((model or {}).get("slippage_pips") or cfg.get("slippage_pips") or DEFAULT_SLIPPAGE_PIPS)
   feature_profile = (
     (model or {}).get("feature_profile")
     or cfg.get("feature_profile")

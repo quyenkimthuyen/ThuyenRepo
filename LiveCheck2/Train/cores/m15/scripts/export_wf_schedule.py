@@ -25,6 +25,7 @@ from strategy import compute_metrics
 from strategy_miner import (
   MinedStrategy, Rule, generate_signals_mined, backtest_mined,
 )
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 OUT = ROOT / "mt5" / "frozen" / "best_3m_wf_schedule.json"
 
@@ -57,8 +58,8 @@ def main():
   ap.add_argument("--kb-epoch", type=int, default=1)
   ap.add_argument("--oos-from", default="2025-01-01")
   ap.add_argument("--oos-to", default="2026-12-31")
-  ap.add_argument("--spread", type=float, default=1.0)
-  ap.add_argument("--slippage", type=float, default=0.3)
+  ap.add_argument("--spread", type=float, default=DEFAULT_SPREAD_PIPS)
+  ap.add_argument("--slippage", type=float, default=DEFAULT_SLIPPAGE_PIPS)
   ap.add_argument("--out", type=Path, default=OUT)
   args = ap.parse_args()
 

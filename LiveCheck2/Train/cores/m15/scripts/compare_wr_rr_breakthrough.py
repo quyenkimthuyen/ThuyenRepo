@@ -31,6 +31,7 @@ from mining_presets import PRESETS, get_preset, list_presets
 from optimizer import reset_kb_cache
 from run_backtest import run_walk_forward
 from strategy_miner import mining_search_space_from_dict
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 OUT_DIR = ROOT / "results" / "research" / "wr_rr_breakthrough"
 RESULT_PATH = OUT_DIR / "latest.json"
@@ -50,8 +51,8 @@ def _model_cfg(model_id: str | None = None) -> tuple[str, dict, dict]:
     "kb_snapshot": meta.get("kb_snapshot", cfg.get("kb_snapshot")),
     "oos_from": meta.get("oos_from") or cfg.get("oos_from") or "2026-01-01",
     "oos_to": meta.get("oos_to") or cfg.get("oos_to") or "2026-12-31",
-    "spread_pips": float(meta.get("spread_pips") or cfg.get("spread_pips") or 1.0),
-    "slippage_pips": float(meta.get("slippage_pips") or cfg.get("slippage_pips") or 0.3),
+    "spread_pips": float(meta.get("spread_pips") or cfg.get("spread_pips") or DEFAULT_SPREAD_PIPS),
+    "slippage_pips": float(meta.get("slippage_pips") or cfg.get("slippage_pips") or DEFAULT_SLIPPAGE_PIPS),
     "feature_profile": meta.get("feature_profile") or cfg.get("feature_profile") or "current",
   }
 

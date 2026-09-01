@@ -13,6 +13,7 @@ from gui.app_settings import get_settings
 from gui.grid_search_engine import build_grid_from_settings, run_single, save_grid_run
 from gui.trade_model import create_trade_model, save_model_report
 from mt5_bridge.history_sync import get_history_status
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 
 def main() -> int:
@@ -68,8 +69,8 @@ def main() -> int:
     load_eurusd_m15("2025-01-01"),
     use_learning=bool(model.get("use_kb", True)),
     train_weeks=int(model["train_weeks"]),
-    spread_pips=float(model.get("spread_pips", 1.0)),
-    slippage_pips=float(model.get("slippage_pips", 0.3)),
+    spread_pips=float(model.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    slippage_pips=float(model.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     holdout_months=0,
     kb_profile=model.get("kb_profile"),
     kb_snapshot=model.get("kb_snapshot"),

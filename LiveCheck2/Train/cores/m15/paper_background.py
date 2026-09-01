@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from run_backtest import REPORT_DIR
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 CONFIG_PATH = REPORT_DIR / "paper_monitor_config.json"
 STATE_PATH = REPORT_DIR / "paper_monitor_state.json"
@@ -92,8 +93,8 @@ def _run_cycle(cfg: dict, *, force_refresh: bool = False) -> dict:
     use_learning=bool(cfg.get("use_learning")),
     kb_profile=cfg.get("kb_profile") or "default",
     kb_snapshot=cfg.get("kb_snapshot"),
-    spread_pips=float(cfg.get("spread_pips", 1.0)),
-    slippage_pips=float(cfg.get("slippage_pips", 0.3)),
+    spread_pips=float(cfg.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    slippage_pips=float(cfg.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     risk_pct=float(cfg.get("risk_pct", 1.0)),
     model_id=cfg.get("model_id"),
   )

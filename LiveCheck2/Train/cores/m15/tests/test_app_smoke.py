@@ -5,7 +5,15 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
-APP = Path(__file__).resolve().parents[1] / "gui" / "app.py"
+# gui/ moved out of cores/m15 to the TrainApp root in the shared-GUI refactor;
+# parents[1] kept pointing at the old location, so every case here failed with
+# FileNotFoundError instead of rendering anything.
+#
+# Note on reach: these cases run with no TRAINAPP_DESK, so desk-scoped state
+# (runtime/<desk>/…) is absent and every config read falls back to defaults. That is
+# why they cannot catch bugs which only fire on a real desk's stored values — the
+# DATA_START picker crash is covered by test_mt5_history_sync instead.
+APP = Path(__file__).resolve().parents[3] / "gui" / "app.py"
 
 
 @pytest.mark.parametrize(

@@ -84,8 +84,7 @@ DEFAULT_SETTINGS = {
   "spread_pips": DEFAULT_SPREAD_PIPS,
   "slippage_pips": DEFAULT_SLIPPAGE_PIPS,
   "grid_objective": "risk_adjusted",
-  # Opt-in mining direction for Grid — default = elite_or_quality.
-  "mining_presets": ["elite_or_quality"],
+  # mining_presets: desk-aware in _sanitize_settings via recommended_presets().
   "updated_at": None,
 }
 
@@ -167,16 +166,16 @@ def _sanitize_settings(data: dict) -> dict:
   out["learning_era_keys"] = eras or [e["key"] for e in catalog]
   out["learning_loops"] = max(1, min(12, int(out.get("learning_loops") or 4)))
   try:
-    from mining_presets import RECOMMENDED_PRESET, list_presets
+    from mining_presets import list_presets, recommended_presets
     known = set(list_presets())
-    raw_presets = out.get("mining_presets")
-    if raw_presets is None:
-      presets = [RECOMMENDED_PRESET]
+    raw_presets = data.get("mining_presets")
+    if not raw_presets:
+      presets = list(recommended_presets())
     else:
-      presets = [p for p in list(raw_presets or []) if p in known]
+      presets = [p for p in list(raw_presets) if p in known] or list(recommended_presets())
     out["mining_presets"] = presets
   except Exception:
-    out["mining_presets"] = list(out.get("mining_presets") or [])
+    out["mining_presets"] = list(data.get("mining_presets") or out.get("mining_presets") or [])
   return out
 
 
@@ -299,7 +298,7 @@ def settings_era_presets(settings: dict | None = None) -> list[tuple[str, str, s
 def load_settings() -> dict:
   data = _read_json(SETTINGS_PATH)
   if not data:
-    return dict(DEFAULT_SETTINGS)
+    return _sanitize_settings({})
   if not data.get("learning_eras"):
     data["learning_eras"] = [dict(e) for e in DEFAULT_LEARNING_ERAS]
   return _sanitize_settings(data)
@@ -402,8 +401,8 @@ def settings_grid_signature(settings: dict | None = None) -> str:
     str(s.get("learning_loops", 4)),
     s.get("backtest_from", ""),
     s.get("backtest_to", ""),
-    str(s.get("spread_pips", 1.0)),
-    str(s.get("slippage_pips", 0.3)),
+    str(s.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    str(s.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     f"msp:{presets}",
   ]
   return "|".join(parts)

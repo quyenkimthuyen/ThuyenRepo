@@ -1,7 +1,7 @@
 """Helpers cho trang Phân tích — báo cáo khớp Trade Model."""
 from __future__ import annotations
 
-from config import DEFAULT_FEATURE_PROFILE
+from config import DEFAULT_FEATURE_PROFILE, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 import streamlit as st
 
@@ -45,8 +45,8 @@ def start_model_report_job(model: dict | None = None) -> str:
       "model_id": m["id"],
       "use_learning": bool(p.get("use_kb", True)),
       "train_weeks": int(p.get("train_weeks") or 6),
-      "spread_pips": float(p.get("spread_pips", 1.0)),
-      "slippage_pips": float(p.get("slippage_pips", 0.3)),
+      "spread_pips": float(p.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+      "slippage_pips": float(p.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
       "kb_profile": p.get("kb_profile"),
       "kb_snapshot": p.get("kb_snapshot"),
       "oos_from": p.get("oos_from"),
@@ -82,8 +82,8 @@ def start_model_health_job(
       "refresh_kb_on": refresh_kb_on,
       "start_date": start_date,
       "train_weeks": int(p.get("train_weeks") or 6),
-      "spread_pips": float(p.get("spread_pips", 1.0)),
-      "slippage_pips": float(p.get("slippage_pips", 0.3)),
+      "spread_pips": float(p.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+      "slippage_pips": float(p.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
       "kb_profile": p.get("kb_profile"),
       "kb_snapshot": p.get("kb_snapshot"),
       "oos_from": p.get("oos_from"),
@@ -116,8 +116,8 @@ def start_mining_space_health_job(
       "refresh_active": refresh_active,
       "start_date": start_date,
       "train_weeks": int(p.get("train_weeks") or 6),
-      "spread_pips": float(p.get("spread_pips", 1.0)),
-      "slippage_pips": float(p.get("slippage_pips", 0.3)),
+      "spread_pips": float(p.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+      "slippage_pips": float(p.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
       "kb_profile": p.get("kb_profile"),
       "kb_snapshot": p.get("kb_snapshot"),
       "oos_from": p.get("oos_from"),
@@ -150,8 +150,8 @@ def start_remine_health_job(
       "refresh_remine_on": refresh_remine_on,
       "start_date": start_date,
       "train_weeks": int(p.get("train_weeks") or 6),
-      "spread_pips": float(p.get("spread_pips", 1.0)),
-      "slippage_pips": float(p.get("slippage_pips", 0.3)),
+      "spread_pips": float(p.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+      "slippage_pips": float(p.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
       "kb_profile": p.get("kb_profile"),
       "kb_snapshot": p.get("kb_snapshot"),
       "oos_from": p.get("oos_from"),
@@ -273,8 +273,8 @@ def start_missing_model_checks_job(
       "refresh_remine_on": refresh_remine_on,
       "refresh_active": refresh_active,
       "train_weeks": int(p.get("train_weeks") or 6),
-      "spread_pips": float(p.get("spread_pips", 1.0)),
-      "slippage_pips": float(p.get("slippage_pips", 0.3)),
+      "spread_pips": float(p.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+      "slippage_pips": float(p.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
       "kb_profile": p.get("kb_profile"),
       "kb_snapshot": p.get("kb_snapshot"),
       "oos_from": p.get("oos_from"),

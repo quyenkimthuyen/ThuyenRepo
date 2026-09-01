@@ -14,9 +14,33 @@ from gui.ui_theme import icon_btn
 from gui.workflow_ui import render_workflow_panel
 
 
+def _clamp_date(
+  value: object,
+  lo: date_cls,
+  hi: date_cls,
+  fallback: date_cls,
+) -> date_cls:
+  """Coerce anything a widget/config may hold into a date inside [lo, hi].
+
+  st.date_input raises if its value falls outside min/max, so a stored DATA_START
+  older than the picker floor took down the whole home page with no way to fix it
+  from the UI. Streamlit also hands back a list when a range was ever rendered
+  under the same key, hence the sequence unwrap.
+  """
+  if isinstance(value, (list, tuple)):
+    value = value[0] if value else None
+  if not isinstance(value, date_cls):
+    try:
+      value = date_cls.fromisoformat(str(value)[:10])
+    except (TypeError, ValueError):
+      value = fallback
+  return min(max(value, lo), hi)
+
+
 def _render_data_start_panel() -> None:
   """Chỉnh DATA_START + force sync."""
   from mt5_bridge.history_sync import (
+    MIN_DATA_START,
     data_start_source,
     get_data_start_broker,
     get_history_status,
@@ -50,20 +74,29 @@ def _render_data_start_panel() -> None:
   else:
     st.warning("Chưa có lịch sử MT5.")
 
-  try:
-    default_start = date_cls.fromisoformat(str(effective_start)[:10])
-  except ValueError:
-    default_start = date_cls(2024, 1, 1)
-  if "home_data_start" not in st.session_state:
-    st.session_state["home_data_start"] = default_start
+  lo = _clamp_date(MIN_DATA_START, date_cls(1990, 1, 1), date_cls.today(), date_cls(2010, 1, 1))
+  hi = date_cls.today()
+  configured = _clamp_date(effective_start, lo, hi, date_cls(2024, 1, 1))
+  # Re-clamp on every run: session_state survives across reruns, so a value that
+  # was valid under an older bound would keep crashing the widget otherwise.
+  st.session_state["home_data_start"] = _clamp_date(
+    st.session_state.get("home_data_start", configured), lo, hi, configured
+  )
+  raw_configured = str(effective_start)[:10]
+  if raw_configured != st.session_state["home_data_start"].isoformat():
+    st.warning(
+      f"DATA_START đang lưu là **{raw_configured}**, ngoài khoảng chọn được "
+      f"({lo} → {hi}). Ô dưới đã kẹp về khoảng hợp lệ — bấm **Áp dụng & lấy data** "
+      "mới ghi đè giá trị đang lưu."
+    )
 
   c1, c2, c3 = st.columns([2.2, 1.4, 1.4])
   with c1:
     st.date_input(
       "DATA_START",
       key="home_data_start",
-      min_value=date_cls(2018, 1, 1),
-      max_value=date_cls.today(),
+      min_value=lo,
+      max_value=hi,
     )
   with c2:
     if st.button(
@@ -72,7 +105,7 @@ def _render_data_start_panel() -> None:
       key="home_data_start_apply",
       use_container_width=True,
     ):
-      chosen = st.session_state.get("home_data_start") or default_start
+      chosen = _clamp_date(st.session_state.get("home_data_start"), lo, hi, configured)
       result = set_data_start_broker(f"{chosen} 00:00", sync=True)
       try:
         from gui.services import _clear_ohlc_streamlit_cache

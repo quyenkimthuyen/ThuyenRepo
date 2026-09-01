@@ -184,3 +184,40 @@ def test_cache_path_tracks_desk_after_import(monkeypatch):
   assert "gbpusd" in gbp_name
   assert gbp_name != eur_name
 
+
+def test_data_start_picker_bounds_accept_the_persisted_value():
+  """A DATA_START this module accepts must stay selectable in the UI.
+
+  The picker hardcoded a 2018-01-01 floor while set_data_start_broker happily
+  persisted 2015-01-01, and st.date_input raises when its value sits outside
+  min/max — so a legitimate deep backfill crashed the whole home page with no way
+  to undo it from the UI. Bound and default now live next to each other here."""
+  min_dt = pd.Timestamp(history_sync.MIN_DATA_START)
+  default_dt = pd.Timestamp(history_sync.DEFAULT_DATA_START)
+  assert min_dt < default_dt
+  # Anything normalize_data_start accepts and is not in the future must be offerable.
+  for value in ("2015-01-01 00:00", "2010-01-01 00:00", history_sync.DEFAULT_DATA_START):
+    assert pd.Timestamp(history_sync.normalize_data_start(value)) >= min_dt, value
+
+
+def test_clamp_date_never_raises_on_stored_or_stale_widget_values():
+  from datetime import date
+
+  from gui.views.command_center import _clamp_date
+
+  lo, hi = date(2010, 1, 1), date(2026, 8, 31)
+  fallback = date(2024, 1, 1)
+  cases = {
+    "2015-01-01 00:00": date(2015, 1, 1),      # persisted config string
+    "2005-06-07": lo,                           # older than the floor
+    "2099-01-01": hi,                           # beyond today
+    "rác": fallback,                            # unparseable
+    None: fallback,
+  }
+  for raw, want in cases.items():
+    assert _clamp_date(raw, lo, hi, fallback) == want, raw
+  # Streamlit hands back a sequence if a range was ever rendered under the key.
+  assert _clamp_date([date(2015, 1, 1)], lo, hi, fallback) == date(2015, 1, 1)
+  assert _clamp_date([], lo, hi, fallback) == fallback
+  assert _clamp_date((date(1999, 5, 5),), lo, hi, fallback) == lo
+

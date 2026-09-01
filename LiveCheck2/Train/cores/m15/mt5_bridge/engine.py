@@ -5,9 +5,13 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
-from config import DEFAULT_RISK_PCT_PER_TRADE, MIN_TRAIN_BARS, TRAIN_WEEKS
+from config import (
+  DEFAULT_RISK_PCT_PER_TRADE, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS,
+  MIN_TRAIN_BARS, TRAIN_WEEKS,
+)
 from data_loader import get_train_window_indices, get_week_indices
 from feature_engine import FeatureMatrix
 from mt5_bridge.history_sync import (
@@ -42,6 +46,53 @@ from trade_model_schedule import (
 )
 
 MT5_CACHE = MT5_CACHE_PATH
+
+
+def _asof_ts(ts) -> pd.Timestamp:
+  """Naive UTC timestamp matching ``_normalize`` index."""
+  t = pd.Timestamp(ts)
+  if t.tzinfo is not None:
+    t = t.tz_convert("UTC").tz_localize(None)
+  return t
+
+
+def _frame_through(df: pd.DataFrame, ts) -> pd.DataFrame:
+  """Bars at or before the closed bar — Live-like as-of (no future OHLC)."""
+  if df is None or df.empty:
+    return df
+  cut = _asof_ts(ts)
+  return df.loc[df.index <= cut]
+
+
+def _frame_before(df: pd.DataFrame, ts) -> pd.DataFrame:
+  """Bars strictly before ``ts`` — remine / ML train as-of week open."""
+  if df is None or df.empty:
+    return df
+  cut = _asof_ts(ts)
+  return df.loc[df.index < cut]
+
+
+def _causalize_roc5_through(fm, bar_idx: int) -> None:
+  """Rewrite ``roc_5``[:bar_idx] as if FeatureMatrix was built only through this bar.
+
+  ``roc_5`` is the one feature that uses a *global* std. EMA/RSI/zscore are
+  already causal on a longer series. Mutates ``fm.features`` in place.
+  """
+  if fm is None or bar_idx < 0:
+    return
+  roc_n = int(getattr(fm.profile, "roc_period", 5) or 5)
+  close = np.asarray(fm.close, dtype=np.float64)
+  n = min(int(bar_idx) + 1, int(close.shape[0]))
+  if n <= roc_n:
+    return
+  roc = np.full(n, np.nan, dtype=np.float64)
+  roc[roc_n:] = (close[roc_n:n] / np.clip(close[: n - roc_n], 1e-12, None) - 1.0) * 100.0
+  std = float(np.nanstd(roc))
+  if not np.isfinite(std) or std < 1e-18:
+    std = 1.0
+  arr = np.array(fm.features["roc_5"], dtype=np.float64, copy=True)
+  arr[:n] = roc / (std + 1e-12)
+  fm.features["roc_5"] = arr
 
 
 def _journal_open_and_day_count(
@@ -240,6 +291,7 @@ class BridgeEngine:
     self._last_remine_source: str | None = None
     self._fm: FeatureMatrix | None = None
     self._fm_key: tuple | None = None
+    self._universe: pd.DataFrame | None = None
     self._last_bar_key: str | None = None
     self._last_decision: dict | None = None
     self._model = resolve_model(model_id)
@@ -273,10 +325,11 @@ class BridgeEngine:
     return changed
 
   def _feature_matrix(self, df: pd.DataFrame, feature_profile: str) -> FeatureMatrix:
-    """Build FeatureMatrix like OOS walk-forward (full series, cached).
+    """Build FeatureMatrix on the given series (cached by range).
 
-    Do not clip lookback before features: ``htf_trend`` (H4 EMA200) and
-    ``roc_5`` (global std) change under short windows and diverge from Health KB ON.
+    Remine passes ``_frame_before(week_start)``. Decide passes the working
+    series (cached — Replay cannot rebuild 60k rows every bar) and then
+    as-of-patches ``roc_5`` through the closed bar.
     """
     if df.empty:
       raise ValueError("empty history for FeatureMatrix")
@@ -313,11 +366,25 @@ class BridgeEngine:
       return self._df
     return self.ensure_history()
 
-  def _canonical_frame(self) -> pd.DataFrame:
-    """Full parquet history for weekly remine (matches Health OOS / tip tests).
+  def set_causal_universe(self, df: pd.DataFrame) -> None:
+    """Pin history for remine + FeatureMatrix (Compare / Test lịch sử).
 
-    HistoryFeed must not remine on a truncated in-memory tip — that locks a
-    weaker strategy for the whole week in ``_strat_cache``.
+    Remine still clips ``_frame_before(week_start)``. Decide as-of-patches
+    ``roc_5`` and scans only through the closed bar so later OHLC is unused.
+    """
+    if df is None or df.empty:
+      self._universe = None
+      return
+    self._universe = _normalize(df)
+    self._df = self._universe.copy()
+    self._fm = None
+    self._fm_key = None
+
+  def _canonical_frame(self) -> pd.DataFrame:
+    """Parquet lookback for weekly remine — never the pinned replay universe.
+
+    HistoryFeed / Compare may pin ``_universe`` to a short in-memory tip.
+    Remine must still train on the canonical cache (bars before week_start).
     """
     if self.mt5_cache.exists():
       return _normalize(pd.read_parquet(self.mt5_cache))
@@ -368,7 +435,12 @@ class BridgeEngine:
       return cached
 
     canonical = self._canonical_frame()
-    df_mine = self._sync_working_frame_from_canonical(canonical)
+    if self._universe is None:
+      self._sync_working_frame_from_canonical(canonical)
+    # Train FM must not include the trading week (roc_5 std / ML would leak OOS).
+    df_mine = _frame_before(canonical if canonical is not None else self.load(), week_start)
+    if df_mine is None or df_mine.empty:
+      return None
     fm_mine = self._feature_matrix(df_mine, feature_profile)
 
     kb = None
@@ -622,9 +694,10 @@ class BridgeEngine:
   def decide_for_bar(self, bar: dict) -> dict:
     """Produce decision.json for the closed M15 bar (Live + HistoryFeed + OOS-parity).
 
-    Live and Simulate share this path: same Trade Model conditions, KB snapshot,
-    full-history FeatureMatrix, and weekly ``optimize_on_window`` as Health OOS.
-    Only execution differs (real fills vs paper HistoryFeed).
+    FeatureMatrix is cached on the working series (Replay must stay fast).
+    Look-ahead is blocked by: remine on bars before week_start, scanning
+    only through this closed bar, rewriting ``roc_5`` as-of that bar, and
+    projecting entry from the closed close (not the next bar's open).
     """
     bar_ts = self.merge_bar(bar)
     bar_key = bar_ts.isoformat(sep=" ")
@@ -636,8 +709,8 @@ class BridgeEngine:
     use_learning = bool(params.get("use_learning", True))
     kb_profile = params.get("kb_profile")
     kb_snapshot = params.get("kb_snapshot")
-    spread = float(params.get("spread_pips", 1.0))
-    slip = float(params.get("slippage_pips", 0.3))
+    spread = float(params.get("spread_pips", DEFAULT_SPREAD_PIPS))
+    slip = float(params.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS))
     model_id = params.get("trade_model_id") or self.model_id
     if (
       not self._model
@@ -659,7 +732,7 @@ class BridgeEngine:
           df = self._sync_working_frame_from_canonical(canonical)
       except Exception:
         pass
-    if df.empty or bar_ts not in df.index:
+    if df is None or df.empty or bar_ts not in df.index:
       decision = self._flat(
         bar_ts, model_id, reason="bar_not_in_series",
       )
@@ -676,7 +749,7 @@ class BridgeEngine:
       f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_weeks}w|"
       f"{feature_profile}|{search_space!r}"
     )
-    # Eager remine on first decision of the week (FLAT or SIGNAL) using full-history FM
+    # Eager remine on first decision of the week (FLAT or SIGNAL); train FM is pre-week.
     strat = self._remine_week_strategy(
       week_start=week_start,
       cache_key=cache_key,
@@ -689,7 +762,7 @@ class BridgeEngine:
     )
     if strat is None:
       # Distinguish train vs mine failure
-      df_chk = self.load()
+      df_chk = _frame_before(self.load(), week_start)
       ts, te = get_train_window_indices(df_chk, week_start, train_weeks)
       reason = (
         "insufficient_train_data"
@@ -701,14 +774,24 @@ class BridgeEngine:
       )
       return self._remember(bar_key, decision)
 
-    # Signal scan FM: working series (synced to canonical when remine ran)
+    # Cached FM on the working series (do not rebuild 60k rows every HistoryFeed bar).
     df = self.load()
     fm = self._feature_matrix(df, feature_profile)
 
-    # Cached weekly strat keeps ML probs sized to the fm at mine-time.
-    # Live bars append mid-week → refresh probs before scanning signals.
+    if bar_ts not in fm.index:
+      decision = self._flat(
+        bar_ts, model_id, reason="bar_not_in_series", week_start=week_start,
+      )
+      return self._remember(bar_key, decision)
+    bar_idx = int(fm.index.get_loc(bar_ts))
+    if isinstance(bar_idx, slice):
+      bar_idx = bar_idx.start
+
+    _causalize_roc5_through(fm, bar_idx)
     ml = getattr(strat, "ml_scorer", None)
-    if ml is not None and hasattr(ml, "refresh_for_fm"):
+    if ml is not None and hasattr(ml, "refresh_through"):
+      ml.refresh_through(fm, bar_idx)
+    elif ml is not None and hasattr(ml, "refresh_for_fm"):
       ml.refresh_for_fm(fm)
 
     oos_s, oos_e = get_week_indices(df, week_start, week_end)
@@ -717,25 +800,15 @@ class BridgeEngine:
         bar_ts, model_id, reason="no_oos_week", week_start=week_start,
       )
       return self._remember(bar_key, decision)
+    scan_end = min(bar_idx + 1, int(oos_e) if oos_e is not None else bar_idx + 1)
 
     signals = generate_signals_mined(
-      fm, strat, oos_s, oos_e, include_last_bar=True,
+      fm, strat, oos_s, scan_end, include_last_bar=True,
     )
     week_trades, open_position = backtest_mined(
-      fm, strat, signals, oos_s, oos_e,
+      fm, strat, signals, oos_s, scan_end,
       spread_pips=spread, slippage_pips=slip, return_open=True,
     )
-
-    # Decision keyed to closed bar (= signal bar). Entry is next open (handled by EA).
-    if bar_ts not in fm.index:
-      decision = self._flat(
-        bar_ts, model_id, reason="bar_not_in_series", week_start=week_start,
-      )
-      return self._remember(bar_key, decision)
-
-    bar_idx = int(fm.index.get_loc(bar_ts))
-    if isinstance(bar_idx, slice):
-      bar_idx = bar_idx.start
 
     try:
       wait = explain_bar_gates(fm, strat, bar_idx)
@@ -816,7 +889,9 @@ class BridgeEngine:
         _stamp_signal_wait(decision, wait, slots_left=slots_left),
       )
 
-    proj = _project_signal_levels(fm, strat, bar_idx, direction, spread, slip)
+    proj = _project_signal_levels(
+      fm, strat, bar_idx, direction, spread, slip, as_of_closed_bar=True,
+    )
     if not proj:
       decision = self._flat(
         bar_ts, model_id, reason="levels_unavailable", week_start=week_start, strat=strat,

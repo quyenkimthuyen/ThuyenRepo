@@ -147,6 +147,38 @@ class MLScorer:
       self._prob_short = self.short_model.predict_proba(X_all_s)[:, 1]
     self._fm_n = fm.n
 
+  def refresh_through(self, fm: FeatureMatrix, bar_idx: int) -> None:
+    """Recompute ML probs for rows ``0..bar_idx`` after as-of feature patches.
+
+    Replay keeps a cached full-length FeatureMatrix (fast) but ``roc_5`` is
+    rewritten through the closed bar. ``refresh_for_fm`` would no-op because
+    ``fm.n`` did not change.
+    """
+    end = min(int(bar_idx) + 1, int(fm.n))
+    if end <= 0:
+      return
+    if self.long_model is None and self.short_model is None:
+      self._prob_long = np.full(fm.n, 0.5)
+      self._prob_short = np.full(fm.n, 0.5)
+      self._fm_n = fm.n
+      return
+    self._X_cache = None
+    X = self.get_X(fm)
+    Xs = self.scaler.transform(X[:end])
+    if self._prob_long is None or len(self._prob_long) != fm.n:
+      self._prob_long = np.full(fm.n, 0.5)
+    if self._prob_short is None or len(self._prob_short) != fm.n:
+      self._prob_short = np.full(fm.n, 0.5)
+    if self.long_model is not None:
+      self._prob_long[:end] = self.long_model.predict_proba(Xs)[:, 1]
+    else:
+      self._prob_long[:end] = 0.5
+    if self.short_model is not None:
+      self._prob_short[:end] = self.short_model.predict_proba(Xs)[:, 1]
+    else:
+      self._prob_short[:end] = 0.5
+    self._fm_n = fm.n
+
   def refresh_for_fm(self, fm: FeatureMatrix) -> None:
     """Keep cached models, but rebuild probs when the series grows/shrinks.
 

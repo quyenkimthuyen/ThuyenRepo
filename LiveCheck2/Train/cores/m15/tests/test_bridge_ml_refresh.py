@@ -54,7 +54,7 @@ def test_decide_survives_in_session_append_with_cached_strat(mt5_frame, tmp_path
   decision = eng.decide_for_bar(_bar_payload(mt5_frame, first))
   assert decision.get("action") in {"FLAT", "BUY", "SELL", "HOLD"}
   assert decision.get("reason") != "error"
-  assert len(ml._prob_long) == len(eng._df)
+  assert len(ml._prob_long) == len(eng._fm.index)
   assert len(ml._prob_long) >= probs_before
   # Live last-bar path should be able to emit SELL for this known signal.
   assert decision.get("action") == "SELL"
@@ -64,4 +64,4 @@ def test_decide_survives_in_session_append_with_cached_strat(mt5_frame, tmp_path
   for ts in mt5_frame.index[cut + 1:cut + 3]:
     decision = eng.decide_for_bar(_bar_payload(mt5_frame, ts))
     assert decision.get("action") in {"FLAT", "BUY", "SELL", "HOLD"}
-    assert len(ml._prob_long) == len(eng._df)
+    assert len(ml._prob_long) == len(eng._fm.index)

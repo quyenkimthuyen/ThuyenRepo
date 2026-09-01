@@ -147,6 +147,14 @@ class MiningSearchSpace:
   anti_chase_vwap_caps: tuple[float, ...] = (1.5, 2.0, 2.5, 99.0)
   # or = void if RSI or VWAP is chase; and = void only if both are chase
   anti_chase_logic: str = "or"
+  # Opt-in: rank genomes on the book that SURVIVES the fixed veto. Default False
+  # keeps legacy ranking, where the veto is attached only to the final pick — on
+  # e21 that deleted ~95% of the mined long signals (10 candidates/week became
+  # 0.2 fills/week OOS) because the miner never saw the veto while choosing.
+  anti_chase_score_with_veto: bool = False
+  # Opt-in genome eligibility floor in trades/week over the train window.
+  # 0 = off. Blocks 3-trade genomes that win on tiny samples and then never fire.
+  min_trades_per_week: float = 0.0
   # Opt-in: only mine full exits (no hybrid/partial that clip winners → RR↓)
   exit_modes_full_only: bool = False
   # 0 = desk default (MAX_TRADES_PER_DAY). 1 = first signal of the day only.
@@ -253,11 +261,13 @@ def _exec_cost_kwargs() -> dict:
 
 
 def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
-                    spread_pips: float | None = None):
+                    spread_pips: float | None = None,
+                    slippage_pips: float | None = None):
   ensure_label_cache_for_df(fm.n)
-  from execution import atr_stop_distance, spread_price
+  from execution import hit_sl_tp, plan_levels
   spr = float(DEFAULT_SPREAD_PIPS if spread_pips is None else spread_pips)
-  key = (fm.n, start, end, rr, atr_mult, max_hold_bars, round(spr, 4))
+  slip = float(DEFAULT_SLIPPAGE_PIPS if slippage_pips is None else slippage_pips)
+  key = (fm.n, start, end, rr, atr_mult, max_hold_bars, round(spr, 4), round(slip, 4))
   with _LABEL_LOCK:
     cached = LABEL_CACHE.get(key)
     if cached is not None:
@@ -276,24 +286,23 @@ def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
     av = atr_v[i]
     if np.isnan(av) or av <= 0:
       continue
-    entry = o[i + 1]
-    sl_d = atr_stop_distance(av, atr_mult, spr)
-    spr_px = spread_price(spr)
-    lsl, ltp = entry - sl_d, entry + sl_d * rr
-    ssl, stp = entry + sl_d, entry - sl_d * rr
+    _, lsl, ltp, _ = plan_levels(o[i + 1], 1, av, atr_mult, rr, spr, slip)
+    _, ssl, stp, _ = plan_levels(o[i + 1], -1, av, atr_mult, rr, spr, slip)
     j_end = min(i + 1 + max_hold, end)
 
     # Include the entry bar (i+1) — live SL is active from the fill tick.
     for j in range(i + 1, j_end):
-      if l[j] <= lsl:
+      reason, _ = hit_sl_tp(1, h[j], l[j], lsl, ltp, spr, slip)
+      if reason == "sl":
         break
-      if h[j] >= ltp:
+      if reason == "tp":
         long_win[i] = 1
         break
     for j in range(i + 1, j_end):
-      if h[j] + spr_px >= ssl:
+      reason, _ = hit_sl_tp(-1, h[j], l[j], ssl, stp, spr, slip)
+      if reason == "sl":
         break
-      if l[j] + spr_px <= stp:
+      if reason == "tp":
         short_win[i] = 1
         break
 
@@ -730,14 +739,14 @@ def backtest_mined(
   return_open: bool = False,
 ):
   from execution import (
-    adjust_entry_price, adjust_exit_price, atr_stop_distance, spread_price,
+    hit_sl_tp, manage_quote_high, manage_quote_low, market_exit_price,
+    plan_levels,
   )
   from mt5_bridge.history_sync import utc_to_broker_time
 
   if end_idx is None:
     end_idx = fm.n
   o, h, l, c, atr_v = fm.open, fm.high, fm.low, fm.close, fm.atr
-  spr_px = spread_price(spread_pips)
   trades = []
   i = max(start_idx, fm.warmup)
   in_trade = False
@@ -749,44 +758,44 @@ def backtest_mined(
     if in_trade:
       exit_price = c[i]
       hit_sl = hit_tp = False
+      qh = manage_quote_high(h[i], int(direction), spread_pips)
+      ql = manage_quote_low(l[i], int(direction), spread_pips)
 
       # Hybrid: trail chỉ sau khi gần TP (bảo vệ lợi nhuận, không cắt sớm)
+      # SELL đo lãi trên Ask vì đó là phía nó sẽ đóng lệnh (OHLC là Bid).
       if strat.exit_mode in ("trail", "hybrid") and not partial_done:
         act = strat.trail_activate_r
-        if direction == 1 and h[i] >= entry_price + risk * act:
+        if direction == 1 and qh >= entry_price + risk * act:
           trail_active = 1.0
-          sl = max(sl, h[i] - risk * strat.trail_distance_r)
-        elif direction == -1 and l[i] <= entry_price - risk * act:
+          sl = max(sl, qh - risk * strat.trail_distance_r)
+        elif direction == -1 and ql <= entry_price - risk * act:
           trail_active = 1.0
-          sl = min(sl, l[i] + risk * strat.trail_distance_r)
+          sl = min(sl, ql + risk * strat.trail_distance_r)
 
       # Partial TP
       if strat.exit_mode == "partial" and not partial_done:
-        if direction == 1 and h[i] >= entry_price + risk * strat.partial_at_r:
+        if direction == 1 and qh >= entry_price + risk * strat.partial_at_r:
           partial_done = 1.0
           sl = entry_price + risk * 0.1
-        elif direction == -1 and l[i] <= entry_price - risk * strat.partial_at_r:
+        elif direction == -1 and ql <= entry_price - risk * strat.partial_at_r:
           partial_done = 1.0
           sl = entry_price - risk * 0.1
 
-      if direction == 1:
-        if l[i] <= sl:
-          hit_sl, exit_price = True, sl
-        elif h[i] >= tp:
-          hit_tp, exit_price = True, tp
-      else:
-        # SELL closes on Ask (OHLC is Bid).
-        if h[i] + spr_px >= sl:
-          hit_sl, exit_price = True, sl
-        elif l[i] + spr_px <= tp:
-          hit_tp, exit_price = True, tp
+      reason, fill_px = hit_sl_tp(
+        int(direction), h[i], l[i], sl, tp, spread_pips, slippage_pips,
+      )
+      if reason == "sl":
+        hit_sl, exit_price = True, fill_px
+      elif reason == "tp":
+        hit_tp, exit_price = True, fill_px
 
       if hit_sl or hit_tp or (i - entry_idx) >= strat.max_hold_bars:
         reason = "tp" if hit_tp else ("trail" if trail_active and hit_sl else "sl")
         if not hit_sl and not hit_tp:
-          exit_price, reason = c[i], "timeout"
-
-        exit_price = adjust_exit_price(exit_price, int(direction), spread_pips, slippage_pips)
+          exit_price = market_exit_price(
+            c[i], int(direction), spread_pips, slippage_pips,
+          )
+          reason = "timeout"
 
         if strat.exit_mode == "partial" and partial_done:
           pnl_r = strat.partial_pct * strat.partial_at_r
@@ -823,15 +832,13 @@ def backtest_mined(
       if entries_by_broker_day.get(broker_day, 0) >= strat.max_trades_per_day:
         i += 1
         continue
-      entry_price = adjust_entry_price(o[entry_idx], int(sig), spread_pips, slippage_pips)
-      sl_d = atr_stop_distance(av, strat.atr_mult_sl, spread_pips)
+      entry_price, sl, tp, sl_d = plan_levels(
+        o[entry_idx], int(sig), av, strat.atr_mult_sl, strat.rr_ratio,
+        spread_pips, slippage_pips,
+      )
       direction = float(sig)
       risk = sl_d
       partial_done = trail_active = 0.0
-      if direction == 1:
-        sl, tp = entry_price - sl_d, entry_price + sl_d * strat.rr_ratio
-      else:
-        sl, tp = entry_price + sl_d, entry_price - sl_d * strat.rr_ratio
       in_trade = True
       entries_by_broker_day[broker_day] = entries_by_broker_day.get(broker_day, 0) + 1
       i = entry_idx
@@ -965,6 +972,21 @@ def score_strategy_metrics(
       if rr < 2.6:
         s -= (2.6 - rr) * 180
   return s
+
+
+def freq_floor_penalty(metrics: dict, weeks: float, space: MiningSearchSpace | None) -> float:
+  """Graded penalty for genomes below ``space.min_trades_per_week``.
+
+  Graded (not a hard reject) so evolution keeps a gradient toward denser books
+  instead of collapsing to the fallback genome when nothing clears the floor.
+  """
+  floor = float(getattr(space, "min_trades_per_week", 0.0) or 0.0)
+  if floor <= 0:
+    return 0.0
+  tpw = float(metrics.get("n_trades") or 0) / max(float(weeks), 1e-9)
+  if tpw >= floor:
+    return 0.0
+  return 500.0 * min(1.0, (floor - tpw) / floor)
 
 
 def _passes_best_gate(metrics: dict, selection_mode: str) -> bool:
@@ -1248,14 +1270,15 @@ def apply_breakthrough_filters(
   """Compose opt-in post-mine filters (surgery → anti-chase).
 
   ``for_scoring=True`` skips fixed anti-chase so genome ranking stays stable;
-  fixed gates are applied only on the final chosen strategy.
+  fixed gates are applied only on the final chosen strategy. Presets that set
+  ``anti_chase_score_with_veto`` keep the veto during ranking instead.
   """
   space = space or MiningSearchSpace()
   out = apply_edge_surgery(fm, strat, train_start, train_end, space)
   if space.anti_chase:
     mode = str(getattr(space, "anti_chase_mode", "calibrate") or "calibrate")
     if mode == "fixed":
-      if for_scoring:
+      if for_scoring and not getattr(space, "anti_chase_score_with_veto", False):
         # Rank genomes without the fixed veto; attach veto only on the final pick.
         out.anti_chase = False
         out.anti_chase_rsi_short_max = 100.0
@@ -1297,6 +1320,12 @@ def mine_strategy(
                 ("partial", {"partial_pct": 0.35, "partial_at_r": 1.5})]
   if getattr(space, "exit_modes_full_only", False):
     exit_modes = [("full", {})]
+
+  score_with_veto = (
+    bool(getattr(space, "anti_chase_score_with_veto", False))
+    and bool(space.anti_chase)
+    and str(getattr(space, "anti_chase_mode", "calibrate") or "calibrate") == "fixed"
+  )
 
   for rr in space.rr_ratios:
     for atr_m in space.atr_multipliers:
@@ -1360,6 +1389,8 @@ def mine_strategy(
                         name=f"v3_{exit_mode}_rr{rr}",
                         **exit_kw,
                       )
+                      if score_with_veto:
+                        strat = apply_fixed_anti_chase(strat, space)
                       sig = generate_signals_mined(fm, strat, train_start, train_end)
                       fit_trades = backtest_mined(fm, strat, sig, train_start, split, **_exec_cost_kwargs())
                       val_trades = backtest_mined(fm, strat, sig, split, train_end, **_exec_cost_kwargs())
@@ -1393,6 +1424,7 @@ def mine_strategy(
                         gate_m = comb
                       if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
                         s -= 80
+                      s -= freq_floor_penalty(comb, weeks, space)
 
                       if s > best_fallback_score:
                         best_fallback_score, best_fallback = s, strat

@@ -9,7 +9,7 @@ from config import (
   MIN_TRAIN_BARS, TRAIN_WEEKS,
 )
 from data_loader import get_train_window_indices, get_week_indices
-from execution import adjust_entry_price, atr_stop_distance
+from execution import plan_levels
 from feature_engine import FeatureMatrix
 from mt5_bridge.history_sync import utc_to_broker_time
 from optimizer import optimize_on_window
@@ -37,29 +37,33 @@ def _week_bounds_for_ts(ts: pd.Timestamp) -> tuple[pd.Timestamp, pd.Timestamp]:
 def _project_signal_levels(
   fm, strat, bar_idx: int, direction: int,
   spread_pips: float, slippage_pips: float,
+  *,
+  as_of_closed_bar: bool = False,
 ) -> dict | None:
   """Tính entry / SL / TP dự kiến cho tín hiệu tại bar_idx.
 
   Live bridge: bar tín hiệu có thể là bar cuối (chưa có bar kế). Khi đó ước
   lượng entry ≈ close bar tín hiệu; EA vẫn khớp ở open nến tiếp theo.
   SL = ATR×mult + 1 spread (Ask/Bid) để live không chết trong spread.
+  Entry theo phía quote thật: BUY ở Ask, SELL ở Bid — xem `entry_fill_price`.
+
+  ``as_of_closed_bar=True`` (Test lịch sử / Compare / decide): never read the
+  next bar's OHLC even if the FeatureMatrix still holds later rows.
   """
   entry_idx = bar_idx + 1
   av = fm.atr[bar_idx]
   if pd.isna(av) or av <= 0:
     return None
-  if entry_idx >= fm.n:
+  if as_of_closed_bar or entry_idx >= fm.n:
     raw_entry = float(fm.close[bar_idx])
     entry_time = str(fm.index[bar_idx] + pd.Timedelta(minutes=15))
   else:
     raw_entry = float(fm.open[entry_idx])
     entry_time = str(fm.index[entry_idx])
-  entry_price = adjust_entry_price(raw_entry, direction, spread_pips, slippage_pips)
-  sl_d = atr_stop_distance(av, strat.atr_mult_sl, spread_pips)
-  if direction == 1:
-    sl, tp = entry_price - sl_d, entry_price + sl_d * strat.rr_ratio
-  else:
-    sl, tp = entry_price + sl_d, entry_price - sl_d * strat.rr_ratio
+  entry_price, sl, tp, sl_d = plan_levels(
+    raw_entry, direction, av, strat.atr_mult_sl, strat.rr_ratio,
+    spread_pips, slippage_pips,
+  )
   risk_pips = sl_d * 10000
   return {
     "signal_time": str(fm.index[bar_idx]),

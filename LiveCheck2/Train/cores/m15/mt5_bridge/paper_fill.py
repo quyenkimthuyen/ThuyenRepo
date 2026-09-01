@@ -12,19 +12,24 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from execution import (
+  PIP as _PIP,
+  entry_fill_price,
+  hit_sl_tp,
+  manage_quote_high,
+  manage_quote_low,
+  market_exit_price,
+  rebase_levels,
+)
 from mt5_bridge.trade_journal import process_fill
 
 # FX majors 5-digit: Point≈0.00001, pip=0.0001
 _POINT = 1e-5
-_PIP = 1e-4
 
 
-def _spread_px() -> float:
-  try:
-    from config import DEFAULT_SPREAD_PIPS
-    return max(0.0, float(DEFAULT_SPREAD_PIPS)) * _PIP
-  except Exception:
-    return 0.0
+def _desk_costs() -> tuple[float, float]:
+  from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
+  return float(DEFAULT_SPREAD_PIPS), float(DEFAULT_SLIPPAGE_PIPS)
 
 
 def _desk_symbol() -> str:
@@ -93,7 +98,15 @@ class PaperBook:
   max_hold: int = 96
   last_signal_id: str = ""
   n_fills: int = 0
+  spread_pips: float | None = None
+  slippage_pips: float | None = None
   _fills: list[dict] = field(default_factory=list, repr=False)
+
+  def _costs(self) -> tuple[float, float]:
+    desk_spr, desk_slip = _desk_costs()
+    spr = desk_spr if self.spread_pips is None else float(self.spread_pips)
+    slip = desk_slip if self.slippage_pips is None else float(self.slippage_pips)
+    return spr, slip
 
   def queue_decision(self, decision: dict | None) -> None:
     """Queue BUY/SELL for open at the *next* bar's open."""
@@ -130,18 +143,21 @@ class PaperBook:
         emitted.append(close_fill)
     return emitted
 
-  def _open_from_decision(self, decision: dict, entry_price: float, bar_time: str) -> dict | None:
+  def _open_from_decision(self, decision: dict, raw_open: float, bar_time: str) -> dict | None:
     action = str(decision.get("action") or "").upper()
     if action not in ("BUY", "SELL"):
       return None
     sid = str(decision.get("signal_id") or "")
     if sid and sid == self.last_signal_id:
       return None
+    direction = 1 if action == "BUY" else -1
+    spr, slip = self._costs()
+    entry_price = entry_fill_price(float(raw_open), direction, spr, slip)
 
     planned = float(decision.get("entry") or 0.0)
-    sl = float(decision.get("sl") or 0.0)
-    tp = float(decision.get("tp") or 0.0)
-    if sl <= 0 or tp <= 0 or entry_price <= 0:
+    planned_sl = float(decision.get("sl") or 0.0)
+    planned_tp = float(decision.get("tp") or 0.0)
+    if planned_sl <= 0 or planned_tp <= 0 or entry_price <= 0:
       return None
 
     self.exit_mode = _exit_mode_code(decision.get("exit_mode"))
@@ -149,26 +165,10 @@ class PaperBook:
     self.trail_dist = float(decision.get("trail_distance_r") or 0.5)
     self.max_hold = int(decision.get("max_hold_bars") or 96)
 
-    planned_risk = abs(planned - sl) if planned > 0 else 0.0
     rr = float(decision.get("rr") or 0.0)
-    if rr <= 0.0 and planned_risk > 0.0 and planned > 0.0:
-      rr = abs(tp - planned) / planned_risk
-    if rr <= 0.0:
-      rr = 2.0
-
-    if planned_risk > 0.0:
-      if action == "BUY":
-        sl = entry_price - planned_risk
-        tp = entry_price + planned_risk * rr
-      else:
-        sl = entry_price + planned_risk
-        tp = entry_price - planned_risk * rr
-    elif planned > 0.0:
-      delta = entry_price - planned
-      sl += delta
-      tp += delta
-
-    sl_dist = abs(entry_price - sl)
+    sl, tp, sl_dist = rebase_levels(
+      direction, entry_price, planned, planned_sl, planned_tp, rr,
+    )
     if sl_dist <= 0.0 or sl_dist < 0.5 * _PIP:
       return None
 
@@ -225,20 +225,20 @@ class PaperBook:
     if not self.open:
       return None
     self.held += 1
-
-    spr = _spread_px()
-    bid_h, bid_l = high, low
-    ask_h, ask_l = high + spr, low + spr
+    spr, slip = self._costs()
+    direction = 1 if self.action == "BUY" else -1
+    qh = manage_quote_high(high, direction, spr)
+    ql = manage_quote_low(low, direction, spr)
 
     if self.exit_mode in (1, 2):
       if self.action == "BUY":
-        if bid_h >= self.entry + self.risk * self.trail_act:
-          nsl = bid_h - self.risk * self.trail_dist
+        if qh >= self.entry + self.risk * self.trail_act:
+          nsl = qh - self.risk * self.trail_dist
           if nsl > self.sl:
             self.sl = nsl
       else:
-        if ask_l <= self.entry - self.risk * self.trail_act:
-          nsl = ask_l + self.risk * self.trail_dist
+        if ql <= self.entry - self.risk * self.trail_act:
+          nsl = ql + self.risk * self.trail_dist
           if self.sl == 0 or nsl < self.sl:
             self.sl = nsl
 
@@ -247,19 +247,20 @@ class PaperBook:
       and abs(self.sl - self.sl_initial) > (_POINT * 0.5)
     )
 
-    if self.action == "BUY":
-      if self.sl > 0 and bid_l <= self.sl:
-        return self._close("trail" if trail_moved else "sl", self.sl, bar_time)
-      if self.tp > 0 and bid_h >= self.tp:
-        return self._close("tp", self.tp, bar_time)
-    else:
-      if self.sl > 0 and ask_h >= self.sl:
-        return self._close("trail" if trail_moved else "sl", self.sl, bar_time)
-      if self.tp > 0 and ask_l <= self.tp:
-        return self._close("tp", self.tp, bar_time)
+    reason, fill_px = hit_sl_tp(
+      direction, high, low, self.sl, self.tp, spr, slip,
+    )
+    if reason == "sl":
+      return self._close("trail" if trail_moved else "sl", float(fill_px), bar_time)
+    if reason == "tp":
+      return self._close("tp", float(fill_px), bar_time)
 
     if self.held - 1 >= self.max_hold:
-      return self._close("max_hold", close, bar_time)
+      return self._close(
+        "max_hold",
+        market_exit_price(close, direction, spr, slip),
+        bar_time,
+      )
     return None
 
   def _close(self, reason: str, exit_px: float, bar_time: str) -> dict:

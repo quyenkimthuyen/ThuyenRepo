@@ -104,6 +104,12 @@ BROKER_TIMEZONE = os.environ.get("EDGEMINER_BROKER_TIMEZONE", "Europe/Helsinki")
 # Inclusive lower bound for MT5 M15 cache / history export (broker wall-clock).
 # Priority: EDGEMINER_DATA_START env → data/data_start.json → default.
 DEFAULT_DATA_START = "2024-01-01 00:00"
+# Floor for the DATA_START picker. Owned here, next to the value it bounds: the
+# UI used to hardcode 2018-01-01, which then rejected a deliberately deeper
+# backfill (2015) that this module had already accepted and persisted, crashing
+# the home page. Retail FX M15 history rarely predates 2010, so this is the
+# realistic edge rather than an arbitrary one.
+MIN_DATA_START = "2010-01-01 00:00"
 DEFAULT_CHUNK_SIZE = 750
 _store_lock = threading.RLock()
 

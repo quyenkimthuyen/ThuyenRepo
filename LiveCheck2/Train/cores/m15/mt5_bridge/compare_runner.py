@@ -192,6 +192,23 @@ def _broker_date(ts: pd.Timestamp):
   return utc_to_broker_time(ts).date()
 
 
+def causal_replay_universe(
+  full: pd.DataFrame,
+  replay: pd.DataFrame,
+) -> pd.DataFrame:
+  """History through the last test bar — no OHLC after the Compare window.
+
+  Within-window future rows stay in the frame for FeatureMatrix cache speed;
+  ``decide_for_bar`` remine/scan/roc_5/entry are as-of the closed bar (Live).
+  """
+  if full is None or full.empty:
+    return full
+  if replay is None or replay.empty:
+    return full.iloc[0:0]
+  last = replay.index[-1]
+  return full.loc[full.index <= last]
+
+
 def slice_replay_frame(
   df: pd.DataFrame,
   date_from: str,
@@ -300,8 +317,9 @@ def run_compare(
       mt5_cache=cache_path,
       bridge_dir=mdir,
     )
-    # Prefill full history for remine (avoid per-bar parquet writes)
-    eng._df = full.copy()
+    # Lookback + test window only (no bars after date_to). Remine clips
+    # before week_start; decide is as-of the closed bar like Live.
+    eng.set_causal_universe(causal_replay_universe(full, replay))
     engines[mid] = eng
     books[mid] = PaperBook(bridge_dir=mdir, model_id=mid)
 

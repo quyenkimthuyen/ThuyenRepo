@@ -157,6 +157,18 @@ FILTER_FILLBOOK = {
 FILTER_WR50 = {
   "wr_gt": 49.99, "rr_gt": 2.0, "total_r_gt": 80.0, "max_dd_lt": 24.0, "n_ge": 40,
 }
+# EUR M15 (e21) live bar: WR>55 / RR>2.5 / Total R>100.
+# The three gates are not independent: clearing WR>55 at RR>2.5 already pins
+# EV = 0.55×2.5 − 0.45 = 0.925R/trade, so Total R>100 reduces to exactly n≥108.
+# On the 2026-only OOS (~35 weeks) that is ≥3.1 fills/week — see EUR_R100_HYPER.
+# n_ge 50 costs nothing under this bar (n≥108 is implied) and still blocks the
+# 6–23 trade snipers whose WR is inside a ±20 point confidence interval.
+FILTER_WR55 = {
+  "wr_gt": 54.99, "rr_gt": 2.5, "total_r_gt": 100.0, "max_dd_lt": 16.0, "n_ge": 50,
+}
+FILTER_WR55_SHORT_OOS = {
+  "wr_gt": 54.99, "rr_gt": 2.5, "total_r_gt": 45.0, "max_dd_lt": 16.0, "n_ge": 25,
+}
 G23_FILLBOOK_ROUNDS = [
   {
     # Re-learn 2025-h2 on new fills, hunt WR>50 on 2026 OOS.
@@ -275,6 +287,109 @@ G23_WR50_ROUNDS = [
   },
 ]
 
+# e21 wr50: live bar WR>55 / RR>2.5 / Total R>100 after fill-like SL.
+# Verify on 2026 only — the window closest to live conditions. Consequence to keep
+# in mind when reading results: WR>55 at RR>2.5 fixes EV at 0.55×2.5 − 0.45 =
+# 0.925R/trade, so Total R>100 is exactly n≥108. The 2026 OOS is ~34 weeks, hence
+# it needs ≥3.17 fills/week sustained — only the three high-frequency branches are
+# allowed to trade that often.
+#
+# Two learn windows, deliberately sharing one OOS window (oos_by_profile keys the
+# OOS per kb_profile, so this has to be stated on each era). Same OOS means the
+# only thing that varies is how much history the KB saw, which is the whole
+# question: 12 months carries more samples, 6 months sits closer to the 2026
+# regime and drags in less stale structure. Comparing them under different OOS
+# windows would confound length with period and answer neither.
+_E21_ERA_2025_FULL = {
+  "key": "2025-full",
+  "label": "2025 (12 tháng)",
+  "learn_from": "2025-01-01",
+  "learn_until": "2025-12-31",
+  "kb_profile": "era_2025_full",
+  "oos_from": "2026-01-01",
+  "oos_to": "2026-08-28",
+}
+_E21_ERA_2025_H2 = {
+  "key": "2025-h2",
+  "label": "2025 (6 tháng cuối)",
+  "learn_from": "2025-07-01",
+  "learn_until": "2025-12-31",
+  "kb_profile": "era_2025_h2",
+  "oos_from": "2026-01-01",
+  "oos_to": "2026-08-28",
+}
+# Retired as a grid axis on 2026-08-31: three independent draws all failed in
+# sample (-0.28 / -2.29 / -3.98 R at epoch 2, 29-46 trades), with zero overlap
+# against the 6-month era's 12 epoch results (worst +4.07 R, 138-159 trades). A
+# rule set that cannot fit the window it learned has no mechanism to work out of
+# sample, so spending 16 combos on it measures nothing. Kept in the catalog so
+# the finding stays reproducible via scripts/measure_kb_draws.py.
+_E21_ERA_2025_Q4 = {
+  "key": "2025-q4",
+  "label": "2025 (3 tháng cuối)",
+  "learn_from": "2025-10-01",
+  "learn_until": "2025-12-31",
+  "kb_profile": "era_2025_q4",
+  "oos_from": "2026-01-01",
+  "oos_to": "2026-08-28",
+}
+# Third point on the era-length curve, replacing the 3-month era. The curve is
+# not monotone: 12 months lost every combo to 6 months, but 3 months cannot even
+# fit its own window, so the optimum sits between 6 and 12 and that gap is what
+# needs sampling. Learn window still ends 2025-12-31 so the OOS stays identical
+# and length remains the only variable.
+_E21_ERA_2025_9M = {
+  "key": "2025-9m",
+  "label": "2025 (9 tháng cuối)",
+  "learn_from": "2025-04-01",
+  "learn_until": "2025-12-31",
+  "kb_profile": "era_2025_9m",
+  "oos_from": "2026-01-01",
+  "oos_to": "2026-08-28",
+}
+# One round only. The 2026-08-31 mining-space audit cut the lineup 8 → 4 after
+# proving the rest redundant by set containment (scripts/audit_mining_space.py), and
+# with 4 presets a second round would just re-run the same spaces on shifted
+# train weeks. The four span the knobs the miner reads as single values and so
+# cannot scan inside one preset: expectancy vs elite ranking, veto width, and the
+# frequency block. Everything scannable (RR, ATR, score, ML gate, rule breadth,
+# spacing, and now both session windows) is explored inside each preset.
+E21_WR50_ROUNDS = [
+  {
+    # 4 and 8 only: 6 and 9 sat between them without probing a different regime,
+    # and dropping the pair halves the round to 32 combos.
+    "weeks": [4, 8],
+    "presets": [
+      "eur_r100_hyper", "eur_r100_hyper_elite", "eur_r100_wide", "eur_r100_core",
+    ],
+    # Across the 324 combos already measured, OOS quality falls monotonically
+    # with KB epoch (median R +1.07 / +0.07 / -0.32 / -0.59 for epochs 1-4; best
+    # R 24.1 → 13.7). Deeper evolution just overfits the learn window, so cap at
+    # 2: halves the grid and drops the worse half.
+    "epochs": 2,
+    # Grid = weeks × presets × (kb_profiles × epochs), so the second era doubles
+    # the round to 32 combos and adds a second KB to learn up front.
+    # 2025-full dropped: it lost every one of its 16 combos to the 6-month era.
+    # 2025-q4 dropped: negative in sample on all three draws (see its comment).
+    # 2025-h2 stays as the in-run control so the 9-month era is measured against a
+    # result produced under identical presets, weeks, epochs and OOS.
+    "era_keys": ["2025-h2", "2025-9m"],
+    "oos_from": "2026-01-01",
+    "oos_to": "2026-08-28",
+    # False so the grid runs on the KB learned by the separate --kb-only pass and
+    # audited on 2026-08-31. Reset would discard it and re-evolve new genomes.
+    "reset_kb": False,
+    "catalog_eras": [
+      _E21_ERA_2025_FULL, _E21_ERA_2025_H2, _E21_ERA_2025_Q4, _E21_ERA_2025_9M,
+    ],
+    "filter_q": FILTER_WR55,
+  },
+]
+# Deliberately no legacy eur_wr55_* round here: that family ranks genomes with
+# anti_chase_score_with_veto=False and carries no trades/week floor, which is the
+# measured cause of the ~24R/year ceiling (89 signal candidates → 2 fills). Re-
+# running it would only re-confirm a known dead end.
+
 # Runtime mode set by main() / run_desk().
 _MODE = "densify"
 _FILLBOOK_ROUND = 1
@@ -282,11 +397,17 @@ _FILLBOOK_ROUND = 1
 _OOSWALK_ACTIVE_KEYS: list[str] = list(OOSWALK_ERA_KEYS)
 
 
-def _round_table() -> list[dict]:
+def _round_table(desk: str | None = None) -> list[dict]:
+  if _MODE == "wr50" and desk == "e21":
+    return E21_WR50_ROUNDS
   return G23_WR50_ROUNDS if _MODE == "wr50" else G23_FILLBOOK_ROUNDS
 
 
-def _round_filter() -> dict:
+def _round_filter(desk: str | None = None) -> dict:
+  if _MODE == "wr50" and desk == "e21":
+    rounds = _round_table(desk)
+    idx = max(0, min(int(_FILLBOOK_ROUND) - 1, len(rounds) - 1))
+    return dict(rounds[idx].get("filter_q") or FILTER_WR55)
   return dict(FILTER_WR50 if _MODE == "wr50" else FILTER_FILLBOOK)
 
 
@@ -395,17 +516,17 @@ def _profile_for(desk: str) -> dict:
       "era_keys": list(_OOSWALK_ACTIVE_KEYS),
       "filter_q": dict(FILTER_Q_OOSWALK),
     }
-  if desk == "g23" and _MODE in ("fillbook", "wr50"):
-    rounds = _round_table()
+  if (_MODE == "wr50" and desk in ("e21", "g23")) or (_MODE == "fillbook" and desk == "g23"):
+    rounds = _round_table(desk)
     idx = max(0, min(int(_FILLBOOK_ROUND) - 1, len(rounds) - 1))
     rnd = rounds[idx]
     return {
-      "label": f"g23 {_MODE} r{idx + 1}",
+      "label": f"{desk} {_MODE} r{idx + 1}",
       "weeks": list(rnd["weeks"]),
       "presets": list(rnd["presets"]),
       "epochs": int(rnd["epochs"]),
       "era_keys": list(rnd["era_keys"]),
-      "filter_q": _round_filter(),
+        "filter_q": _round_filter(desk),
     }
   if _MODE == "target60":
     if desk == "e21":
@@ -449,7 +570,7 @@ def _apply_fine_settings(desk: str) -> dict:
   s["learning_era_keys"] = list(prof["era_keys"])
   s["learning_loops"] = int(prof["epochs"])
   if _MODE in ("fillbook", "wr50"):
-    rounds = _round_table()
+    rounds = _round_table(desk)
     idx = max(0, min(int(_FILLBOOK_ROUND) - 1, len(rounds) - 1))
     rnd = rounds[idx]
     s["backtest_from"] = str(rnd.get("oos_from") or "2026-01-01")
@@ -624,7 +745,7 @@ def _run_grid(desk: str, *, workers: int) -> dict:
   t0 = time.time()
 
   def on_prog(done, total, label):
-    if done == 1 or done == total or done % 5 == 0:
+    if done == 0 or done == 1 or done == total or done % 5 == 0:
       _log(desk, f"Grid {done}/{total}: {label}")
 
   rows = run_grid(specs, objective=objective, on_progress=on_prog, workers=workers)
@@ -699,7 +820,11 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
   if not q_hits and _MODE == "target60":
     _log(desk, "No hits WR>60/R>100 — không promote (bar target60)")
   if not q_hits and _MODE in ("fillbook", "wr50"):
-    _log(desk, "No hits WR>50/RR>2/R>80 — không promote")
+    f = _round_filter(desk)
+    _log(
+      desk,
+      f"No hits WR>{f['wr_gt']}/RR>{f['rr_gt']}/R>{f['total_r_gt']} — không promote",
+    )
   if not q_hits and _MODE == "ooswalk":
     _log(desk, "No strict quality — ooswalk soft fallback WR>45 RR>2.1 R>22 DD<12")
     q_hits = [
@@ -774,7 +899,7 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
     if _MODE == "ooswalk":
       prefix = "OOSW"
     elif _MODE in ("fillbook", "wr50"):
-      prefix = "GBP"
+      prefix = "EUR" if desk == "e21" else "GBP"
     else:
       prefix = "M15Q" if track == "quality" else "M15R"
     label = f"{prefix} {preset} WR{wr:.0f} RR{rr:.2f} +{tot:.0f}R{oos_tag}"
@@ -853,7 +978,7 @@ def _promote_missed_from_latest(desk: str) -> list[dict]:
 
 def _log_closest(desk: str, rows: list[dict], *, n: int = 8) -> None:
   ok = [r for r in rows if not r.get("error")]
-  filt = _round_filter()
+  filt = _round_filter(desk)
   def _gap(r):
     wr = float(r.get("win_rate_pct") or 0)
     rr = float(r.get("avg_rr") or 0)
@@ -874,6 +999,81 @@ def _log_closest(desk: str, rows: list[dict], *, n: int = 8) -> None:
     )
 
 
+def roster_aggregate(
+  rows: list[dict], filt: dict, *, max_models: int = 4, leg_n_ge: int = 25,
+) -> dict:
+  """Aggregate the best roster of distinct models into one combined book.
+
+  A single walk-forward book on EUR M15 tops out near 40–60 trades even at the
+  eur_r100_* fill rate, so Total R>100 can be out of reach per model while a
+  live roster of distinct models reaches it — that is how the bridge actually
+  runs. WR and Total R aggregate exactly from per-row n and wins; RR is derived
+  from the summed expectancy; DD is the worst case (sum) because grid rows carry
+  no trade timestamps to interleave.
+
+  ``leg_n_ge`` is deliberately below ``filt["n_ge"]``: a roster leg is allowed to
+  be a smaller book because the combined n carries the statistics.
+  """
+  eligible = [
+    r for r in rows
+    if not r.get("error")
+    and float(r.get("win_rate_pct") or 0) > filt["wr_gt"]
+    and float(r.get("avg_rr") or 0) > filt["rr_gt"]
+    and int(r.get("n_trades") or 0) >= int(leg_n_ge)
+  ]
+  if not eligible:
+    return {"picks": [], "ok": False}
+  # One model per preset: the same preset across train_weeks/epoch trades the
+  # same setups, so stacking those would double-count a single edge.
+  by_preset: dict[str, dict] = {}
+  for r in sorted(eligible, key=lambda x: float(x.get("total_r") or 0), reverse=True):
+    by_preset.setdefault(str(r.get("mining_preset") or "?"), r)
+  picks = list(by_preset.values())[:max_models]
+
+  n_sum = sum(int(r.get("n_trades") or 0) for r in picks)
+  wins = sum(
+    round(float(r.get("win_rate_pct") or 0) / 100.0 * int(r.get("n_trades") or 0))
+    for r in picks
+  )
+  r_sum = sum(float(r.get("total_r") or 0) for r in picks)
+  losses = max(n_sum - wins, 0)
+  wr = (wins / n_sum * 100.0) if n_sum else 0.0
+  avg_win_r = (r_sum + losses) / max(wins, 1)
+  return {
+    "picks": picks,
+    "n_trades": n_sum,
+    "win_rate_pct": wr,
+    "avg_rr": avg_win_r,
+    "total_r": r_sum,
+    "max_drawdown_r": sum(float(r.get("max_drawdown_r") or 0) for r in picks),
+    "ok": bool(
+      wr > filt["wr_gt"] and avg_win_r > filt["rr_gt"] and r_sum > filt["total_r_gt"]
+    ),
+  }
+
+
+def _log_roster_stack(desk: str, rows: list[dict], *, max_models: int = 4) -> None:
+  filt = _round_filter(desk)
+  agg = roster_aggregate(rows, filt, max_models=max_models)
+  if not agg["picks"]:
+    _log(desk, "roster: không có combo nào đạt WR/RR đủ để gộp")
+    return
+  _log(
+    desk,
+    f"roster x{len(agg['picks'])} {'ĐẠT' if agg['ok'] else 'chưa đạt'} "
+    f"WR={agg['win_rate_pct']:.1f} RR≈{agg['avg_rr']:.2f} R={agg['total_r']:.1f} "
+    f"n={agg['n_trades']} DD≤{agg['max_drawdown_r']:.1f} "
+    f"· {', '.join(str(r.get('mining_preset')) for r in agg['picks'])}",
+  )
+  for r in agg["picks"]:
+    _log(
+      desk,
+      f"  roster leg WR={float(r.get('win_rate_pct') or 0):.1f} "
+      f"RR={float(r.get('avg_rr') or 0):.2f} R={float(r.get('total_r') or 0):.1f} "
+      f"n={r.get('n_trades')} · {r.get('mining_preset')} · {r.get('label')}",
+    )
+
+
 def run_desk(
   desk: str,
   *,
@@ -882,13 +1082,16 @@ def run_desk(
   skip_grid: bool,
   salvage: bool,
   mode: str = "densify",
+  kb_only: bool = False,
 ) -> dict:
   global _MODE, _FILLBOOK_ROUND
   _MODE = mode
   if desk not in ("e21", "g23"):
     raise ValueError(f"pipeline_m15_tune chỉ hỗ trợ e21,g23 — nhận {desk!r}")
-  if mode in ("boost", "explore", "refine", "fullera", "hybrid", "fillbook", "wr50") and desk != "g23":
+  if mode in ("boost", "explore", "refine", "fullera", "hybrid", "fillbook") and desk != "g23":
     raise ValueError(f"--mode {mode} chỉ hỗ trợ desk g23")
+  if mode == "wr50" and desk not in ("e21", "g23"):
+    raise ValueError("--mode wr50 chỉ hỗ trợ e21,g23")
   if mode == "target60" and desk not in ("e21", "g23"):
     raise ValueError("--mode target60 chỉ hỗ trợ e21,g23")
   if mode == "ooswalk" and desk not in ("e21", "g23"):
@@ -905,24 +1108,43 @@ def run_desk(
     last_run = {"run_id": None, "rows": []}
     created: list[dict] = []
     kb = {"learned": [], "skipped": []}
-    rounds = _round_table()
-    filt = _round_filter()
+    rounds = _round_table(desk)
     for i, rnd in enumerate(rounds):
       if i + 1 < start:
         continue
       _FILLBOOK_ROUND = i + 1
+      filt = _round_filter(desk)
       _apply_fine_settings(desk)
-      kb = _ensure_kb(desk, reset=bool(rnd.get("reset_kb")))
+      round_kb = _ensure_kb(desk, reset=bool(rnd.get("reset_kb")))
+      # Rounds can share eras, so union instead of overwrite.
+      for key in ("learned", "skipped"):
+        kb[key] = list(dict.fromkeys(kb[key] + round_kb[key]))
+      if kb_only:
+        _log(desk, f"{mode} round {i + 1}: --kb-only, dừng trước grid")
+        continue
       last_run = _run_grid(desk, workers=workers)
       hits = [r for r in (last_run.get("rows") or []) if _passes_q(r, filt)]
       _log(desk, f"{mode} round {i + 1} hits={len(hits)}")
       if not hits:
         _log_closest(desk, last_run.get("rows") or [])
+        _log_roster_stack(desk, last_run.get("rows") or [])
         continue
       created = _promote(desk, last_run, max_quality=3, max_high_r=0)
       break
+    if kb_only:
+      return {
+        "desk": desk,
+        "mode": mode,
+        "kb_only": True,
+        "kb": kb,
+        "rounds": len(rounds) - start + 1,
+      }
     if not created:
-      _log(desk, f"{mode}: chưa đạt WR>50 RR>2 R>80 sau mọi round")
+      f = _round_filter(desk)
+      _log(
+        desk,
+        f"{mode}: chưa đạt WR>{f['wr_gt']} RR>{f['rr_gt']} R>{f['total_r_gt']} sau mọi round",
+      )
     return {
       "desk": desk,
       "mode": mode,
@@ -936,6 +1158,8 @@ def run_desk(
     }
   _apply_fine_settings(desk)
   kb = _ensure_kb(desk, reset=reset_kb)
+  if kb_only:
+    return {"desk": desk, "mode": mode, "kb_only": True, "kb": kb}
   if skip_grid:
     from gui.grid_search_engine import load_latest_grid_run
     run = load_latest_grid_run() or {}
@@ -971,17 +1195,22 @@ def main() -> int:
     "densify", "boost", "explore", "refine", "fullera", "hybrid",
     "target60", "ooswalk", "fillbook", "wr50",
   ), default="densify",
-                  help="wr50/fillbook=g23 WR>50 R>80 RR>2; ooswalk=6m walk; target60=WR>60+R>100")
+                  help="wr50 e21=WR>55 RR>2.5 R>90; g23=WR>50 R>80 RR>2; fillbook=g23; target60=WR>60+R>100")
   ap.add_argument("--reset-kb", action="store_true")
   ap.add_argument("--workers", type=int, default=2,
                   help="Keep low while M5 tune shares the machine (default 2)")
   ap.add_argument("--promote-only", action="store_true")
+  ap.add_argument("--kb-only", action="store_true",
+                  help="Học KB cho mọi era rồi dừng trước Grid (dùng khi muốn "
+                       "tách hai pha để kiểm tra KB trước)")
   ap.add_argument("--no-salvage", action="store_true",
                   help="Skip promoting high-R books from previous latest grid")
   args = ap.parse_args()
   desks = [d.strip().lower() for d in args.desks.split(",") if d.strip()]
-  if args.mode in ("boost", "explore", "refine", "fullera", "hybrid", "fillbook", "wr50"):
+  if args.mode in ("boost", "explore", "refine", "fullera", "hybrid", "fillbook"):
     desks = [d for d in desks if d == "g23"] or ["g23"]
+  elif args.mode == "wr50":
+    desks = [d for d in desks if d in ("e21", "g23")] or ["e21"]
   summary = []
   rc = 0
   for desk in desks:
@@ -993,6 +1222,7 @@ def main() -> int:
         skip_grid=bool(args.promote_only),
         salvage=not bool(args.no_salvage),
         mode=str(args.mode),
+        kb_only=bool(args.kb_only),
       ))
     except Exception as exc:
       rc = 1

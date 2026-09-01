@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
+from execution import rebase_levels
+
 
 def rebase_paper_levels(
   *,
@@ -14,21 +16,15 @@ def rebase_paper_levels(
   rr: Optional[float] = None,
 ) -> Tuple[float, float, float]:
   """Return (sl, tp, risk) at fill_entry matching OOS geometry."""
-  action = action.upper()
+  direction = 1 if action.upper() == "BUY" else -1
+  if action.upper() not in ("BUY", "SELL"):
+    raise ValueError(action)
   planned_risk = abs(planned_entry - planned_sl)
   if planned_risk <= 0:
     raise ValueError("planned_risk must be > 0")
-  if rr is None or rr <= 0:
-    rr = abs(planned_tp - planned_entry) / planned_risk
-  if action == "BUY":
-    sl = fill_entry - planned_risk
-    tp = fill_entry + planned_risk * rr
-  elif action == "SELL":
-    sl = fill_entry + planned_risk
-    tp = fill_entry - planned_risk * rr
-  else:
-    raise ValueError(action)
-  return sl, tp, planned_risk
+  return rebase_levels(
+    direction, fill_entry, planned_entry, planned_sl, planned_tp, rr,
+  )
 
 
 def test_rebase_prevents_march18_style_r_explosion():

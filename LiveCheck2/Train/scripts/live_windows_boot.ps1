@@ -1,5 +1,9 @@
 # After Windows logon: start XM MT5, this desk's Streamlit app, then Live Bridge worker.
 # Registered per-desk when Live Trade / Bridge Start; removed on Stop.
+#
+# Keep this file ASCII-only. Windows PowerShell 5.1 (scheduled tasks) reads
+# BOM-less UTF-8 as ANSI; a Unicode dash then breaks parsing and the task
+# exits 1 with no log.
 [CmdletBinding()]
 param(
   [Parameter(Mandatory = $true)]
@@ -63,7 +67,7 @@ function Start-XmMt5IfNeeded {
   }
   $exe = Find-XmTerminalExe
   if (-not $exe) {
-    Write-Boot "XM Global MT5 not found — start terminal manually."
+    Write-Boot "XM Global MT5 not found - start terminal manually."
     return
   }
   Write-Boot "Starting MT5 $exe"
@@ -113,7 +117,8 @@ try {
   $env:TRAINAPP_ROOT = $AppRoot
   $env:TRAINAPP_DESK = $Desk
   $prevPy = $env:PYTHONPATH
-  $env:PYTHONPATH = ($AppRoot + ";" + (Join-Path $AppRoot "cores\m15"))
+  $corePath = Join-Path $AppRoot "cores\m15"
+  $env:PYTHONPATH = ($AppRoot + ";" + $corePath)
   if ($prevPy) { $env:PYTHONPATH = $env:PYTHONPATH + ";" + $prevPy }
   & $py -u $resume --desk $Desk
   Write-Boot "resume_live_worker exit $LASTEXITCODE"
@@ -122,3 +127,4 @@ try {
 }
 
 Write-Boot "boot end"
+exit 0

@@ -24,6 +24,8 @@ OOS_TO = "2026-08-07"
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
+
 OUT = ROOT / "results" / "research" / "m15_oos_unified"
 
 
@@ -140,8 +142,8 @@ def run_oos(model: dict) -> dict:
     df,
     use_learning=bool(model.get("use_kb", True)),
     train_weeks=int(model.get("train_weeks") or 3),
-    spread_pips=float(model.get("spread_pips") or 1.0),
-    slippage_pips=float(model.get("slippage_pips") or 0.3),
+    spread_pips=float(model.get("spread_pips") or DEFAULT_SPREAD_PIPS),
+    slippage_pips=float(model.get("slippage_pips") or DEFAULT_SLIPPAGE_PIPS),
     holdout_months=0,
     kb_profile=model.get("kb_profile"),
     kb_snapshot=model.get("kb_snapshot"),

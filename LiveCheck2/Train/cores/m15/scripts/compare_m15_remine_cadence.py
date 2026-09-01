@@ -18,6 +18,7 @@ from gui.trade_model import get_model_by_id, load_active_model_id
 from optimizer import get_knowledge_base, optimize_on_window, reset_kb_cache, set_kb_profile
 from strategy import compute_metrics
 from strategy_miner import backtest_mined, ensure_label_cache_for_df, generate_signals_mined
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 OUT = ROOT / "results" / "research" / "m15_remine_cadence.json"
 
@@ -133,8 +134,8 @@ def main() -> int:
       cadence_days=days,
       train_weeks=int(model["train_weeks"]),
       kb=kb,
-      spread_pips=float(model.get("spread_pips", 1.0)),
-      slippage_pips=float(model.get("slippage_pips", 0.3)),
+      spread_pips=float(model.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+      slippage_pips=float(model.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
       oos_start=oos_start,
       oos_end=oos_end,
     )
@@ -152,8 +153,8 @@ def main() -> int:
     "kb_snapshot": snapshot,
     "oos_from": str(oos_start),
     "oos_to": str(oos_end),
-    "spread_pips": float(model.get("spread_pips", 1.0)),
-    "slippage_pips": float(model.get("slippage_pips", 0.3)),
+    "spread_pips": float(model.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    "slippage_pips": float(model.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     "selection_rule": "Highest Total R / Max Drawdown with positive R and 7-10 trades/week",
     "results": results,
     "recommended_cadence_days": best["cadence_days"],

@@ -34,6 +34,33 @@ class _LevelsFm:
     self.warmup = 0
 
 
+def test_project_levels_as_of_closed_bar_ignores_next_open():
+  fm = _LevelsFm()
+  fm.open = fm.open.copy()
+  fm.open[1] = 1.18000
+  strat = MinedStrategy(atr_mult_sl=0.9, rr_ratio=3.0)
+  live_like = _project_signal_levels(
+    fm, strat, 0, -1, spread_pips=1.9, slippage_pips=0.3, as_of_closed_bar=True,
+  )
+  leaked = _project_signal_levels(
+    fm, strat, 0, -1, spread_pips=1.9, slippage_pips=0.3, as_of_closed_bar=False,
+  )
+  clip = _LevelsFm()
+  clip.n = 1
+  clip.open = clip.open[:1]
+  clip.high = clip.high[:1]
+  clip.low = clip.low[:1]
+  clip.close = clip.close[:1]
+  clip.atr = clip.atr[:1]
+  clip.hours = clip.hours[:1]
+  clip.index = clip.index[:1]
+  want = _project_signal_levels(
+    clip, strat, 0, -1, spread_pips=1.9, slippage_pips=0.3, as_of_closed_bar=True,
+  )
+  assert live_like["entry_px"] == want["entry_px"]
+  assert live_like["entry_px"] != leaked["entry_px"]
+
+
 def test_project_levels_sl_includes_spread():
   fm = _LevelsFm()
   strat = MinedStrategy(atr_mult_sl=0.9, rr_ratio=3.0)
@@ -59,8 +86,9 @@ def test_project_levels_eur_sell_survives_11_15_wick():
 
 
 def test_paper_fill_sell_sl_on_entry_bar(tmp_path: Path, monkeypatch):
-  monkeypatch.setattr("mt5_bridge.paper_fill._spread_px", lambda: 0.00019)
-  book = PaperBook(bridge_dir=tmp_path, model_id="tm_sl")
+  book = PaperBook(
+    bridge_dir=tmp_path, model_id="tm_sl", spread_pips=1.9, slippage_pips=0.3,
+  )
   book.queue_decision({
     "action": "SELL",
     "signal_id": "sig_entry_sl",

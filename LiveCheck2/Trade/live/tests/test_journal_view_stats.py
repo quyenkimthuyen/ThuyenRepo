@@ -180,3 +180,35 @@ def test_historyfeed_paper_profit_is_r_not_money():
   assert s["total_r"] == pytest.approx(3.0)
   assert s["wins"] == 1
   assert s["losses"] == 1
+
+
+def test_period_bounds_follow_replay_cursor():
+  from datetime import datetime
+
+  from journal_view import period_bounds
+
+  now = datetime(2026, 8, 14, 7, 45)
+  start, end = period_bounds("today", now=now)
+  assert start.date().isoformat() == "2026-08-14"
+  assert end is not None and end.date().isoformat() == "2026-08-15"
+  w0, w1 = period_bounds("week", now=now)
+  assert w0.date().isoformat() == "2026-08-10"
+  assert w1 is not None and w1.date().isoformat() == "2026-08-17"
+  m0, m1 = period_bounds("month", now=now)
+  assert m0.date().isoformat() == "2026-08-01"
+  assert m1 is not None and m1.date().isoformat() == "2026-09-01"
+
+
+def test_filter_trades_today_uses_now_not_wall_clock():
+  from datetime import datetime
+
+  from journal_view import filter_trades_by_period
+
+  trades = [
+    _closed(exit_time="2026.08.14 08:00", result="WIN", r=1.0, profit=10),
+    _closed(exit_time="2026.08.30 08:00", result="WIN", r=1.0, profit=10),
+  ]
+  asof = datetime(2026, 8, 14, 12, 0)
+  day = filter_trades_by_period(trades, "today", now=asof)
+  assert len(day) == 1
+  assert str(day[0]["exit_time"]).startswith("2026.08.14")

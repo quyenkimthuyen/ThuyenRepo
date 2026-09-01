@@ -22,6 +22,7 @@ from optimizer import reset_kb_cache
 from run_backtest import run_walk_forward
 from strategy import Trade, compute_metrics
 from strategy_miner import mining_search_space_from_dict
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 
 OUT_DIR = ROOT / "results" / "research" / "m15_strategy_optimization"
 REPORTS_DIR = OUT_DIR / "reports"
@@ -182,7 +183,7 @@ def _save_incremental(payload: dict) -> None:
 
 def _run_batch(
   variants: list[Variant], df: pd.DataFrame, model: dict,
-  spread: float = 1.0, slippage: float = 0.3,
+  spread: float = DEFAULT_SPREAD_PIPS, slippage: float = DEFAULT_SLIPPAGE_PIPS,
 ) -> list[dict]:
   rows = []
   with ProcessPoolExecutor(max_workers=min(4, len(variants))) as pool:

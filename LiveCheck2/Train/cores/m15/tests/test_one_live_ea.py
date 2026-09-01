@@ -50,6 +50,8 @@ def test_cycle_uses_loss_guard_on_history_replay():
   assert "if not is_sim:\n    trip = check_and_apply_loss_guard" not in body.replace("\r", "")
   assert "load_config() if not is_sim else {}" not in body
   assert "eng.decide_for_bar(bar)" in body
+  assert "_pin_replay_universe" in body
+  assert "_clear_replay_universe" in body
 
 
 def test_decide_for_bar_has_no_sim_branch():
