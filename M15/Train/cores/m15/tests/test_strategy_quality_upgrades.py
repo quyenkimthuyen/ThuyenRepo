@@ -349,6 +349,13 @@ def test_g23_fill_aware_defaults(monkeypatch):
   wait = mining_search_space_from_dict(get_preset("gbp_fill_ss_wait"))
   assert wait.confirm_wait_bars == 8
   assert wait.min_bars_between == (8,)
+  tight = mining_search_space_from_dict(get_preset("gbp_fill_ss_tight"))
+  assert tight.confirm_r == pytest.approx(0.13)
+  assert tight.confirm_wait_bars == 6
+  dense = mining_search_space_from_dict(get_preset("gbp_fill_ss_dense"))
+  assert dense.confirm_r == pytest.approx(0.10)
+  assert dense.confirm_wait_bars == 10
+  assert dense.min_bars_between == (6,)
   assert s["learning_era_keys"] == ["2025-full"]
   assert s["grid_objective"] == "quality"
   assert s["backtest_from"] == "2026-01-01"

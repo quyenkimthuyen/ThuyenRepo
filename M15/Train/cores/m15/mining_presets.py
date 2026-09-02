@@ -567,6 +567,24 @@ GBP_FILL_SS_WAIT = {
   "min_bars_between": [8],
   "target_trades_per_week": 7.5,
 }
+# Around ss_vol 6w h2 ep1 WR50 +36.8R n=42: slightly tighter confirm, hunt WR>50 with n still ≥40.
+GBP_FILL_SS_TIGHT = {
+  **GBP_FILL_SS_VOL,
+  "confirm_r": 0.13,
+  "confirm_wait_bars": 6,
+  "confirm_cancel_r": 0.58,
+  "min_bars_between": [8],
+  "target_trades_per_week": 7.0,
+}
+# Looser than ss_vol — more fills / a second DNA if n is the bottleneck on 2024 eras.
+GBP_FILL_SS_DENSE = {
+  **GBP_FILL_SS_VOL,
+  "confirm_r": 0.10,
+  "confirm_wait_bars": 10,
+  "confirm_cancel_r": 0.78,
+  "min_bars_between": [6],
+  "target_trades_per_week": 9.0,
+}
 
 # App-recommended direction after Bid/Ask fills (BUY Ask / SELL Bid).
 # Elite OR-quality (RR 3.2–4) was fit on half-spread lab fills — do not
@@ -587,6 +605,8 @@ GBP_FILL_CURATED: tuple[str, ...] = (
   "gbp_fill_ss_lab",
   "gbp_fill_ss_more",
   "gbp_fill_ss_vol",
+  "gbp_fill_ss_tight",
+  "gbp_fill_ss_dense",
   "gbp_fill_ss_wait",
   "gbp_fill_sparkstop",
 )
@@ -662,6 +682,8 @@ PRESET_LABELS: dict[str, str] = {
   "gbp_fill_ss_lab": "GBP Bid/Ask · label 1.0R + stop (khuyến nghị)",
   "gbp_fill_ss_more": "GBP sparkstop · confirm 0.15 wait6",
   "gbp_fill_ss_vol": "GBP sparkstop · nới confirm + 8 lệnh/tuần",
+  "gbp_fill_ss_tight": "GBP sparkstop · confirm 0.13 wait6 (săn WR)",
+  "gbp_fill_ss_dense": "GBP sparkstop · confirm 0.10 wait10 (thêm n)",
   "gbp_fill_ss_wait": "GBP sparkstop · wait 8 nến",
   "gbp_fill_sniper": "GBP fill sniper · WR-first",
   "gbp_fill_flow": "GBP fill flow · volume + RR>2",
@@ -864,6 +886,16 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "intent": "Chờ confirm lâu hơn — bắt lệnh chậm, giữ WR ss_more",
     "knobs": "label 1.0 · confirm 0.14 · wait 8 · cancel 0.65 · gap 8 · TPW 7.5",
     "tradeoff": "n↑ nếu confirm trễ · miss nếu fake chết sớm",
+  },
+  "gbp_fill_ss_tight": {
+    "intent": "Siết nhẹ ss_vol — săn WR>50 khi n đã đạt cổng 40",
+    "knobs": "label 1.0 · confirm 0.13 · wait 6 · cancel 0.58 · gap 8 · TPW 7",
+    "tradeoff": "n có thể tụt dưới 40 · WR↑ nếu fake chết trong 6 nến",
+  },
+  "gbp_fill_ss_dense": {
+    "intent": "Nới hơn ss_vol — thêm DNA khi era 2024 n mỏng",
+    "knobs": "label 1.0 · confirm 0.10 · wait 10 · cancel 0.78 · gap 6 · TPW 9",
+    "tradeoff": "n↑ · WR có thể tụt dưới 50 nếu confirm quá lỏng",
   },
   "gbp_fill_sniper": {
     "intent": "GBP fill-aware, ưu tiên WR",
@@ -1113,6 +1145,8 @@ PRESETS: dict[str, dict] = {
   "gbp_fill_ss_lab": deepcopy(GBP_FILL_SS_LAB),
   "gbp_fill_ss_more": deepcopy(GBP_FILL_SS_MORE),
   "gbp_fill_ss_vol": deepcopy(GBP_FILL_SS_VOL),
+  "gbp_fill_ss_tight": deepcopy(GBP_FILL_SS_TIGHT),
+  "gbp_fill_ss_dense": deepcopy(GBP_FILL_SS_DENSE),
   "gbp_fill_ss_wait": deepcopy(GBP_FILL_SS_WAIT),
   "gbp_fill_sniper": deepcopy(GBP_FILL_SNIPER),
   "gbp_fill_flow": deepcopy(GBP_FILL_FLOW),
