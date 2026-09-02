@@ -75,23 +75,48 @@ LEGACY_KB_PROFILE_MAP = {
 DEFAULT_SETTINGS = {
   "id": "default",
   "label": "Cài đặt mặc định",
-  "strategy_train_weeks": [3, 6, 9],
+  "strategy_train_weeks": [8, 12],
   "learning_eras": [dict(e) for e in DEFAULT_LEARNING_ERAS],
-  "learning_era_keys": [e["key"] for e in DEFAULT_LEARNING_ERAS],
-  "learning_loops": 4,
+  "learning_era_keys": ["2025-full"],
+  "learning_loops": 3,
   "backtest_from": "2026-01-01",
   "backtest_to": "2026-12-31",
   "spread_pips": DEFAULT_SPREAD_PIPS,
   "slippage_pips": DEFAULT_SLIPPAGE_PIPS,
-  "grid_objective": "risk_adjusted",
-  # Opt-in mining direction for Grid — default = elite_or_quality.
-  "mining_presets": ["elite_or_quality"],
+  "grid_objective": "quality",
+  # EUR Bid/Ask fill-aware. Desk g23 override in default_settings_for_desk().
+  "mining_presets": ["eur_fill_ss_lab"],
   "updated_at": None,
 }
 
 TRAIN_WEEK_OPTIONS = [3, 4, 5, 6, 7, 8, 9, 12]
 # Compatibility import for removed comparison views.
 TRAIN_MONTH_OPTIONS = TRAIN_WEEK_OPTIONS
+
+
+def default_settings_for_desk() -> dict:
+  """Reset-target for the running desk (EUR Bid/Ask vs GBP)."""
+  import os
+  from mining_presets import recommended_preset
+
+  out = dict(DEFAULT_SETTINGS)
+  out["learning_eras"] = [dict(e) for e in DEFAULT_LEARNING_ERAS] + [
+    dict(e) for e in OOS_WALKFORWARD_ERAS
+  ]
+  out["learning_era_keys"] = ["2025-full"]
+  out["backtest_from"] = "2026-01-01"
+  out["backtest_to"] = "2026-12-31"
+  out["spread_pips"] = float(DEFAULT_SPREAD_PIPS)
+  out["slippage_pips"] = float(DEFAULT_SLIPPAGE_PIPS)
+  out["mining_presets"] = [recommended_preset()]
+  out["grid_objective"] = "quality"
+  out["learning_loops"] = 3
+  desk = (os.environ.get("TRAINAPP_DESK") or "").strip().lower()
+  if desk.startswith("g"):
+    out["strategy_train_weeks"] = [4, 5, 6]
+  else:
+    out["strategy_train_weeks"] = [8, 12]
+  return out
 
 
 def _slug(text: str, *, fallback: str = "era") -> str:
@@ -167,11 +192,11 @@ def _sanitize_settings(data: dict) -> dict:
   out["learning_era_keys"] = eras or [e["key"] for e in catalog]
   out["learning_loops"] = max(1, min(12, int(out.get("learning_loops") or 4)))
   try:
-    from mining_presets import RECOMMENDED_PRESET, list_presets
+    from mining_presets import list_presets, recommended_preset
     known = set(list_presets())
     raw_presets = out.get("mining_presets")
     if raw_presets is None:
-      presets = [RECOMMENDED_PRESET]
+      presets = [recommended_preset()]
     else:
       presets = [p for p in list(raw_presets or []) if p in known]
     out["mining_presets"] = presets
@@ -437,6 +462,7 @@ def format_settings_summary(settings: dict | None = None) -> str:
   return (
     f"Học chiến lược: **{trains}** · Giai đoạn học: **{eras}** · "
     f"Vòng học: **{s.get('learning_loops', 4)}** · Kiểm chứng: **{oos}** · "
+    f"Fill Bid/Ask: **{s.get('spread_pips')} / {s.get('slippage_pips')} pip** · "
     f"Mining: **{msp}**"
   )
 
@@ -474,7 +500,7 @@ def grid_build_kwargs(settings: dict | None = None) -> dict:
     if of and ot:
       oos_by_profile[e["kb_profile"]] = (str(of)[:10], str(ot)[:10])
   return {
-    "train_weeks": list(s.get("strategy_train_weeks") or [3, 6, 9]),
+    "train_weeks": list(s.get("strategy_train_weeks") or [8, 12]),
     "kb_profiles": kb_profiles,
     "include_kb_off": False,
     "epoch_mode": "selected",

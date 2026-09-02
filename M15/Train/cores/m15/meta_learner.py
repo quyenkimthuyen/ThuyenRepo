@@ -196,8 +196,9 @@ def _mine_strategy_learning_impl(
       seed_strat.rr_ratio, seed_strat.atr_mult_sl, seed_strat.max_hold_bars,
     )
 
+  lab = float(getattr(space, "label_rr", 0.0) or 0.0)
   long_wins, short_wins = _label_outcomes(
-    fm, train_start, train_end, rr, atr_m, max_hold,
+    fm, train_start, train_end, (lab if lab > 0 else rr), atr_m, max_hold,
     tp_ignores_spread_buffer=bool(getattr(space, "tp_ignores_spread_buffer", False)),
   )
   ml = _fit_ml_with_experience(fm, train_start, train_end, long_wins, short_wins, kb, as_of=as_of)

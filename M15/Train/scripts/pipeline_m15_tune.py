@@ -189,7 +189,34 @@ E21_FILLGEOM_PRESETS = [
 E21_FILLGEOM_EPOCHS = 3
 E21_FILLGEOM_ERA_KEYS = ["2025-full", "2025-h2"]
 
-_FILL_E21_MODES = ("filladapt", "fillrefine", "fillkeep", "fillgeom")
+# e21 fillspark: label 1.2R + pending stop confirm. 2×4×3×1 = 24.
+# Do not swap Active unless quality hits.
+E21_FILLSPARK_WEEKS = [8, 12]
+E21_FILLSPARK_PRESETS = [
+  "eur_fill_spark",
+  "eur_fill_stop",
+  "eur_fill_sparkstop",
+  "eur_fill_overlap",
+]
+E21_FILLSPARK_EPOCHS = 3
+E21_FILLSPARK_ERA_KEYS = ["2025-full"]
+
+# e21 fillspark2: densify sparkstop WR50 +38R — more n for R, keep confirm.
+# 2×4×3×1 = 24. Promote only if beats sparkstop floor. Never set_active.
+E21_FILLSPARK2_WEEKS = [8, 12]
+E21_FILLSPARK2_PRESETS = [
+  "eur_fill_ss_more",
+  "eur_fill_ss_wait",
+  "eur_fill_ss_lab",
+  "eur_fill_ss_wr",
+]
+E21_FILLSPARK2_EPOCHS = 3
+E21_FILLSPARK2_ERA_KEYS = ["2025-full"]
+FILTER_FILLSPARK2 = {
+  "wr_gt": 45.0, "rr_gt": 2.20, "total_r_gt": 38.0, "max_dd_lt": 8.0,
+}
+
+_FILL_E21_MODES = ("filladapt", "fillrefine", "fillkeep", "fillgeom", "fillspark", "fillspark2")
 
 # Stricter than previous fine (WR45/RR2.2) — aim to beat live actives.
 FILTER_Q = {"wr_gt": 48.0, "rr_gt": 2.30, "total_r_gt": 40.0, "max_dd_lt": 9.0}
@@ -491,6 +518,24 @@ def _profile_for(desk: str) -> dict:
       "era_keys": list(E21_FILLGEOM_ERA_KEYS),
       "filter_q": dict(FILTER_FILLADAPT),
     }
+  if desk == "e21" and _MODE == "fillspark":
+    return {
+      "label": "e21 fillspark label 1.2R + stop confirm",
+      "weeks": list(E21_FILLSPARK_WEEKS),
+      "presets": list(E21_FILLSPARK_PRESETS),
+      "epochs": int(E21_FILLSPARK_EPOCHS),
+      "era_keys": list(E21_FILLSPARK_ERA_KEYS),
+      "filter_q": dict(FILTER_FILLADAPT),
+    }
+  if desk == "e21" and _MODE == "fillspark2":
+    return {
+      "label": "e21 fillspark2 densify WR/R",
+      "weeks": list(E21_FILLSPARK2_WEEKS),
+      "presets": list(E21_FILLSPARK2_PRESETS),
+      "epochs": int(E21_FILLSPARK2_EPOCHS),
+      "era_keys": list(E21_FILLSPARK2_ERA_KEYS),
+      "filter_q": dict(FILTER_FILLSPARK2),
+    }
   if _MODE == "target60":
     if desk == "e21":
       return {
@@ -772,7 +817,14 @@ def _run_grid(desk: str, *, workers: int) -> dict:
 
 def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3) -> list[dict]:
   from gui.grid_search_engine import _score
-  from gui.trade_model import create_trade_model
+  from gui.trade_model import create_trade_model, load_active_model_id
+
+  prev_active = None
+  if _MODE in _FILL_E21_MODES:
+    try:
+      prev_active = load_active_model_id()
+    except Exception:
+      prev_active = None
 
   rows = [r for r in (run.get("rows") or []) if not r.get("error")]
   objective = str(run.get("objective") or FINE_OBJECTIVE)
@@ -801,7 +853,11 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
   if not q_hits and _MODE in ("fillbook", "wr50"):
     _log(desk, "No hits WR>50/RR>2/R>80 — không promote")
   if not q_hits and _MODE in _FILL_E21_MODES:
-    _log(desk, "No hits WR>40/RR>2/R>35/DD<12 — không promote (giữ roster cũ)")
+    _log(
+      desk,
+      f"No hits WR>{fq['wr_gt']}/RR>{fq['rr_gt']}/R>{fq['total_r_gt']}/DD<{fq['max_dd_lt']} "
+      "— không promote (giữ roster cũ)",
+    )
   if not q_hits and _MODE == "ooswalk":
     _log(desk, "No strict quality — ooswalk soft fallback WR>45 RR>2.1 R>22 DD<12")
     q_hits = [
@@ -892,6 +948,7 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
       run_id=run.get("run_id"),
       label=label,
       set_active=do_active,
+      build_report=_MODE not in _FILL_E21_MODES,
     )
     created.append(model)
     if do_active:
@@ -909,6 +966,14 @@ def _promote(desk: str, run: dict, *, max_quality: int = 4, max_high_r: int = 3)
 
   if not created:
     _log(desk, "Không promote được model nào")
+  if prev_active:
+    try:
+      from gui.trade_model import load_active_model_id, set_active_trade_model
+      if load_active_model_id() != prev_active:
+        set_active_trade_model(prev_active)
+        _log(desk, f"restore Active {prev_active}")
+    except Exception as exc:
+      _log(desk, f"WARN restore Active: {exc}")
   return created
 
 
@@ -1079,9 +1144,9 @@ def main() -> int:
   ap.add_argument("--mode", choices=(
     "densify", "boost", "explore", "refine", "fullera", "hybrid",
     "target60", "ooswalk", "fillbook", "wr50", "filladapt", "fillrefine", "fillkeep",
-    "fillgeom",
+    "fillgeom", "fillspark", "fillspark2",
   ), default="densify",
-                  help="fillgeom=e21 TP không nhân spread; fillkeep=old eras; wr50/fillbook=g23")
+                  help="fillspark2=densify sparkstop WR/R; fillspark=stop-confirm")
   ap.add_argument("--reset-kb", action="store_true")
   ap.add_argument("--workers", type=int, default=2,
                   help="Keep low while M5 tune shares the machine (default 2)")

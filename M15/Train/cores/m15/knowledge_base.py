@@ -180,6 +180,9 @@ class KnowledgeBase:
       "anti_chase_logic": str(getattr(strat, "anti_chase_logic", "or")),
       "tp_ignores_spread_buffer": bool(getattr(strat, "tp_ignores_spread_buffer", False)),
       "min_atr_spread_ratio": float(getattr(strat, "min_atr_spread_ratio", 0.0) or 0.0),
+      "confirm_r": float(getattr(strat, "confirm_r", 0.0) or 0.0),
+      "confirm_wait_bars": int(getattr(strat, "confirm_wait_bars", 4) or 4),
+      "confirm_cancel_r": float(getattr(strat, "confirm_cancel_r", 0.5) or 0.5),
     }
 
   def dict_to_strategy(self, g: dict):
@@ -216,6 +219,9 @@ class KnowledgeBase:
       anti_chase_logic=str(g.get("anti_chase_logic", "or")),
       tp_ignores_spread_buffer=bool(g.get("tp_ignores_spread_buffer", False)),
       min_atr_spread_ratio=float(g.get("min_atr_spread_ratio", 0.0) or 0.0),
+      confirm_r=float(g.get("confirm_r", 0.0) or 0.0),
+      confirm_wait_bars=int(g.get("confirm_wait_bars", 4) or 4),
+      confirm_cancel_r=float(g.get("confirm_cancel_r", 0.5) or 0.5),
       name=name,
     )
 

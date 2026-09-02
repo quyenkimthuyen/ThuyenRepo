@@ -712,7 +712,7 @@ def render(embedded: bool = False):
       "Tên Trade Model", key="gs_any_tm_name",
       on_change=preference_callback("gs_any_tm_name", "grid.model_name"),
     )
-    restore_widget("gs_any_tm_active", True, preference_key="grid.set_active")
+    restore_widget("gs_any_tm_active", False, preference_key="grid.set_active")
     set_active = st.checkbox(
       "Đặt làm model đang dùng", key="gs_any_tm_active",
       on_change=preference_callback("gs_any_tm_active", "grid.set_active"),

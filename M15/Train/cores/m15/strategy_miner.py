@@ -101,6 +101,9 @@ class MinedStrategy:
   # TP uses ATR×mult×RR; SL still ATR×mult + 1 spread (live Ask/Bid).
   tp_ignores_spread_buffer: bool = False
   min_atr_spread_ratio: float = 0.0
+  confirm_r: float = 0.0
+  confirm_wait_bars: int = 4
+  confirm_cancel_r: float = 0.5
   ml_scorer: MLScorer | None = None
   name: str = "mined_v3"
 
@@ -162,6 +165,12 @@ class MiningSearchSpace:
   tp_ignores_spread_buffer: bool = False
   # 0 = off. Skip entries when ATR < ratio × spread (quiet bars, spread tax dominates).
   min_atr_spread_ratio: float = 0.0
+  # 0 = labels use the genome RR. >0 = mine rules/ML on an easier follow-through RR.
+  label_rr: float = 0.0
+  # 0 = market at next open. >0 = BUY/SELL stop: fill only after confirm_r of follow-through.
+  confirm_r: float = 0.0
+  confirm_wait_bars: int = 4
+  confirm_cancel_r: float = 0.5
   # 0 = desk default (MAX_TRADES_PER_DAY). 1 = first signal of the day only.
   max_trades_per_day: int = 0
   # both | long | short — applied on the chosen genome (train-safe).
@@ -235,6 +244,9 @@ def constrain_strategy_to_space(
     strat.allow_short = False
   strat.tp_ignores_spread_buffer = bool(getattr(space, "tp_ignores_spread_buffer", False))
   strat.min_atr_spread_ratio = float(getattr(space, "min_atr_spread_ratio", 0.0) or 0.0)
+  strat.confirm_r = float(getattr(space, "confirm_r", 0.0) or 0.0)
+  strat.confirm_wait_bars = int(getattr(space, "confirm_wait_bars", 4) or 4)
+  strat.confirm_cancel_r = float(getattr(space, "confirm_cancel_r", 0.5) or 0.5)
   return strat
 
 
@@ -325,6 +337,41 @@ def _bar_spread_points(fm, i: int, last_pts: float) -> tuple[float, float]:
     except (TypeError, ValueError):
       pts = 0.0
   return carry_spread_points(pts, last_pts)
+
+
+def _confirm_stop_fill(
+  fm, start_j: int, end_idx: int, direction: int, ref_price: float, sl_d: float,
+  confirm_r: float, cancel_r: float, wait_bars: int,
+  spread_pips: float, last_pts: float,
+) -> tuple[int, float, float] | None:
+  """Pending stop: fill after follow-through, cancel if price dies first.
+
+  Same-bar confirm+cancel → skip (path unknown). Live-like BUY/SELL stop.
+  """
+  from execution import spread_from_quote
+  wait_n = max(1, int(wait_bars or 1))
+  last = min(start_j + wait_n, end_idx - 1)
+  if sl_d <= 0 or confirm_r <= 0:
+    return None
+  confirm_px = ref_price + direction * sl_d * float(confirm_r)
+  cancel_px = ref_price - direction * sl_d * float(cancel_r)
+  pts = last_pts
+  for j in range(start_j, last):
+    pts, _ = _bar_spread_points(fm, j, pts)
+    spr = spread_from_quote(spread_pips, pts)
+    bid_h, bid_l = float(fm.high[j]), float(fm.low[j])
+    if direction > 0:
+      if bid_l <= cancel_px:
+        return None
+      if bid_h >= confirm_px:
+        return (j, confirm_px, pts)
+    else:
+      ask_h, ask_l = bid_h + spr, bid_l + spr
+      if ask_h >= cancel_px:
+        return None
+      if ask_l <= confirm_px:
+        return (j, confirm_px, pts)
+  return None
 
 
 def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
@@ -928,14 +975,29 @@ def backtest_mined(
         i += 1
         continue
       entry_pts, last_pts = _bar_spread_points(fm, entry_idx, last_pts)
-      entry_price = adjust_entry_price(
-        o[entry_idx], int(sig), spread_pips, slippage_pips, spread_points=entry_pts,
-      )
       sl_d, tp_d = stop_and_target_distances(
         av, strat.atr_mult_sl, strat.rr_ratio, spread_pips, entry_pts,
         tp_ignores_spread_buffer=bool(getattr(strat, "tp_ignores_spread_buffer", False)),
       )
       direction = float(sig)
+      ref_price = adjust_entry_price(
+        o[entry_idx], int(sig), spread_pips, slippage_pips, spread_points=entry_pts,
+      )
+      confirm_r = float(getattr(strat, "confirm_r", 0.0) or 0.0)
+      if confirm_r > 0:
+        hit = _confirm_stop_fill(
+          fm, entry_idx, end_idx, int(direction), ref_price, sl_d,
+          confirm_r,
+          float(getattr(strat, "confirm_cancel_r", 0.5) or 0.5),
+          int(getattr(strat, "confirm_wait_bars", 4) or 4),
+          spread_pips, last_pts,
+        )
+        if hit is None:
+          i += 1
+          continue
+        entry_idx, entry_price, last_pts = hit
+      else:
+        entry_price = ref_price
       risk = sl_d
       partial_done = trail_active = 0.0
       if direction == 1:
@@ -943,7 +1005,8 @@ def backtest_mined(
       else:
         sl, tp = entry_price + sl_d, entry_price - tp_d
       in_trade = True
-      entries_by_broker_day[broker_day] = entries_by_broker_day.get(broker_day, 0) + 1
+      fill_day = utc_to_broker_time(fm.index[entry_idx]).strftime("%Y-%m-%d")
+      entries_by_broker_day[fill_day] = entries_by_broker_day.get(fill_day, 0) + 1
       i = entry_idx
       continue
     i += 1
@@ -1385,6 +1448,9 @@ def apply_breakthrough_filters(
     out.allow_short = False
   out.tp_ignores_spread_buffer = bool(getattr(space, "tp_ignores_spread_buffer", False))
   out.min_atr_spread_ratio = float(getattr(space, "min_atr_spread_ratio", 0.0) or 0.0)
+  out.confirm_r = float(getattr(space, "confirm_r", 0.0) or 0.0)
+  out.confirm_wait_bars = int(getattr(space, "confirm_wait_bars", 4) or 4)
+  out.confirm_cancel_r = float(getattr(space, "confirm_cancel_r", 0.5) or 0.5)
   return out
 
 
@@ -1407,12 +1473,16 @@ def mine_strategy(
   exit_modes = _exit_modes_for_space(space)
   tp_geom = bool(getattr(space, "tp_ignores_spread_buffer", False))
   min_atr_r = float(getattr(space, "min_atr_spread_ratio", 0.0) or 0.0)
+  label_rr = float(getattr(space, "label_rr", 0.0) or 0.0)
+  confirm_r = float(getattr(space, "confirm_r", 0.0) or 0.0)
+  confirm_wait = int(getattr(space, "confirm_wait_bars", 4) or 4)
+  confirm_cancel = float(getattr(space, "confirm_cancel_r", 0.5) or 0.5)
 
   for rr in space.rr_ratios:
     for atr_m in space.atr_multipliers:
       for max_hold in space.max_hold_bars:
         long_wins, short_wins = _label_outcomes(
-          fm, train_start, train_end, rr, atr_m, max_hold,
+          fm, train_start, train_end, (label_rr if label_rr > 0 else rr), atr_m, max_hold,
           tp_ignores_spread_buffer=tp_geom,
         )
 
@@ -1470,6 +1540,9 @@ def mine_strategy(
                         exit_mode=exit_mode, ml_scorer=ml,
                         tp_ignores_spread_buffer=tp_geom,
                         min_atr_spread_ratio=min_atr_r,
+                        confirm_r=confirm_r,
+                        confirm_wait_bars=confirm_wait,
+                        confirm_cancel_r=confirm_cancel,
                         name=f"v3_{exit_mode}_rr{rr}",
                         **exit_kw,
                       )
