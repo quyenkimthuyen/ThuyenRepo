@@ -1432,7 +1432,7 @@ def _render_history_sync() -> None:
   with h1:
     if history.get("state") in ("requesting", "receiving"):
       st.progress(
-        received / max(available, 1),
+        min(1.0, max(0.0, received / max(available, 1))),
         text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến {tf_label()}",
       )
     elif history_data.get("bars"):

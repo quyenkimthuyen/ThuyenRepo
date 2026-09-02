@@ -39,6 +39,24 @@ def _now() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
+def parse_feed_bar_time(raw: Any) -> datetime | None:
+  """Parse EA ``last_bar`` / ``bar_time`` (``YYYY.MM.DD HH:MM`` or ISO)."""
+  s = str(raw or "").strip()
+  if len(s) < 16:
+    return None
+  s = s.replace(".", "-", 2)
+  for n, fmt in ((19, "%Y-%m-%d %H:%M:%S"), (16, "%Y-%m-%d %H:%M")):
+    try:
+      return datetime.strptime(s[:n], fmt)
+    except ValueError:
+      continue
+  try:
+    dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+  except ValueError:
+    return None
+  return dt.replace(tzinfo=None) if dt.tzinfo is not None else dt
+
+
 def _parse_ea_version(raw: Any) -> tuple[int, ...]:
   parts: list[int] = []
   for p in str(raw or "").split("."):
@@ -718,6 +736,27 @@ def history_feed_active(bridge_dir: Path) -> bool:
 
 def any_history_feed_active() -> bool:
   return any(history_feed_active(p) for p in live_bridge_dirs())
+
+
+def feed_asof_now() -> datetime | None:
+  """Latest HistoryFeed bar time while Replay is running; else None (wall clock)."""
+  if not (is_replay_running() or any_history_feed_active()):
+    return None
+  latest: datetime | None = None
+  for bdir in live_bridge_dirs():
+    sc = _read(bdir / "sim_control.json") or {}
+    bar = _read(bdir / "bar.json") or {}
+    raw = ""
+    if isinstance(sc, dict):
+      raw = str(sc.get("last_bar") or "")
+    if not raw and isinstance(bar, dict):
+      raw = str(bar.get("bar_time") or "")
+    dt = parse_feed_bar_time(raw)
+    if dt is None:
+      continue
+    if latest is None or dt > latest:
+      latest = dt
+  return latest
 
 
 def sim_bridge_dirs() -> list[Path]:

@@ -20,7 +20,7 @@ def _task_progress_fragment():
   status = get_task_status()
   if status["running"]:
     st.progress(
-      status["done"] / max(status["total"], 1),
+      min(1.0, max(0.0, status["done"] / max(status["total"], 1))),
       text=(
         f"⏳ {status['job_label']} — {status['done']}/{status['total']} "
         f"({status['pct']}%) · {status['progress_text'] or '…'}"

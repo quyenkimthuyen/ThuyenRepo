@@ -58,7 +58,7 @@ def _grid_progress_fragment():
   status = get_grid_status()
   if status["running"] or status.get("status") == "interrupted":
     st.progress(
-      status["done"] / max(status["total"], 1),
+      min(1.0, max(0.0, status["done"] / max(status["total"], 1))),
       text=(
         f"⏳ Grid Search — {status['done']}/{status['total']} "
         f"({status['pct']}%) · {status['current_label'] or '…'}"

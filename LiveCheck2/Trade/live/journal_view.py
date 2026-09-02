@@ -85,8 +85,9 @@ def journal_summary_many(
   bridge_dirs: list[Path],
   *,
   period: str = "all",
+  now: datetime | None = None,
 ) -> dict[str, Any]:
-  trades = filter_trades_by_period(load_trades_many(bridge_dirs), period)
+  trades = filter_trades_by_period(load_trades_many(bridge_dirs), period, now=now)
   closed = [t for t in trades if _is_closed(t)]
   r_vals = [r for t in closed if (r := _trade_r(t)) is not None]
   wins = sum(1 for t in closed if _trade_result(t) == "WIN")
@@ -114,9 +115,10 @@ def stats_by_model_many(
   bridge_dirs: list[Path],
   *,
   period: str = "all",
+  now: datetime | None = None,
 ) -> list[dict[str, Any]]:
   all_trades = load_trades_many(bridge_dirs)
-  trades = filter_trades_by_period(all_trades, period)
+  trades = filter_trades_by_period(all_trades, period, now=now)
   labels = _label_map()
   markets: dict[str, tuple[str, str]] = {}
   groups: dict[str, list[dict]] = {}
@@ -376,22 +378,53 @@ def _now_local() -> datetime:
   return datetime.now().astimezone()
 
 
-def period_bounds(period: str | None) -> tuple[datetime | None, datetime | None]:
-  """Inclusive start (local), exclusive end (None = open-ended)."""
+_STATS_ASOF: datetime | None = None
+
+
+def set_stats_asof(now: datetime | None) -> None:
+  """Replay cursor for D/W/M. ``None`` = wall clock."""
+  global _STATS_ASOF
+  _STATS_ASOF = now
+
+
+def _as_local(dt: datetime) -> datetime:
+  if dt.tzinfo is None:
+    tz = _now_local().tzinfo
+    return dt.replace(tzinfo=tz) if tz is not None else dt
+  return dt.astimezone()
+
+
+def _effective_now(now: datetime | None = None) -> datetime:
+  if now is not None:
+    return _as_local(now)
+  if _STATS_ASOF is not None:
+    return _as_local(_STATS_ASOF)
+  return _now_local()
+
+
+def period_bounds(
+  period: str | None,
+  *,
+  now: datetime | None = None,
+) -> tuple[datetime | None, datetime | None]:
+  """Inclusive start, exclusive end (local). ``now`` = Replay as-of or wall clock."""
   p = (period or "all").lower().strip()
-  now = _now_local()
+  ts = _effective_now(now)
   if p in ("today", "day"):
-    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    return start, None
+    start = ts.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start, start + timedelta(days=1)
   if p in ("week", "this_week"):
-    # Monday 00:00 local
-    start = (now - timedelta(days=now.weekday())).replace(
+    start = (ts - timedelta(days=ts.weekday())).replace(
       hour=0, minute=0, second=0, microsecond=0,
     )
-    return start, None
+    return start, start + timedelta(days=7)
   if p in ("month", "this_month"):
-    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    return start, None
+    start = ts.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if start.month == 12:
+      end = start.replace(year=start.year + 1, month=1)
+    else:
+      end = start.replace(month=start.month + 1)
+    return start, end
   return None, None  # all
 
 
@@ -423,8 +456,9 @@ def filter_trades_by_period(
   period: str | None = "all",
   *,
   closed_only: bool = False,
+  now: datetime | None = None,
 ) -> list[dict]:
-  start, end = period_bounds(period)
+  start, end = period_bounds(period, now=now)
   out = []
   for t in trades:
     if closed_only and not _is_closed(t):
@@ -476,8 +510,9 @@ def journal_summary(
   bridge_dir: Path | None = None,
   *,
   period: str = "all",
+  now: datetime | None = None,
 ) -> dict[str, Any]:
-  trades = filter_trades_by_period(load_trades(bridge_dir), period)
+  trades = filter_trades_by_period(load_trades(bridge_dir), period, now=now)
   closed = [t for t in trades if _is_closed(t)]
   r_vals = [r for t in closed if (r := _trade_r(t)) is not None]
   wins = sum(1 for t in closed if _trade_result(t) == "WIN")
@@ -503,10 +538,11 @@ def stats_by_model(
   *,
   period: str = "all",
   include_roster: bool = True,
+  now: datetime | None = None,
 ) -> list[dict[str, Any]]:
   """Per-model summary for a period (today / week / month / all)."""
   all_trades = load_trades(bridge_dir)
-  trades = filter_trades_by_period(all_trades, period)
+  trades = filter_trades_by_period(all_trades, period, now=now)
   labels = _label_map()
 
   groups: dict[str, list[dict]] = {}

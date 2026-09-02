@@ -1,0 +1,3177 @@
+{
+  "run_id": "gs_20260830_091624",
+  "updated_at": "2026-08-30T09:16:24+07:00",
+  "objective": "quality",
+  "config": {
+    "train_weeks": [
+      4,
+      5,
+      6
+    ],
+    "kb_profiles": [
+      "era_2024_h1"
+    ],
+    "include_kb_off": false,
+    "epoch_mode": "selected",
+    "selected_epochs": {
+      "era_2024_h1": [
+        1,
+        2,
+        3
+      ]
+    },
+    "oos_from": "2024-07-01",
+    "oos_to": "2026-08-28",
+    "oos_by_profile": {
+      "era_2024_h1": [
+        "2024-07-01",
+        "2026-08-28"
+      ]
+    },
+    "spread_pips": 2.3,
+    "slippage_pips": 0.3,
+    "max_runs": 200,
+    "mining_presets": [
+      "gbp_wr50_surg",
+      "gbp_wr50_1td",
+      "gbp_wr50_short",
+      "gbp_wr50_london"
+    ],
+    "settings_signature": "4,5,6|2024-h1=2024-01-01:2024-06-30:era_2024_h1:2024-07-01:2026-08-28|3|2024-07-01|2026-08-28|2.3|0.3|msp:gbp_wr50_1td,gbp_wr50_london,gbp_wr50_short,gbp_wr50_surg",
+    "learning_era_keys": [
+      "2024-h1"
+    ],
+    "learning_loops": 3,
+    "source": "pipeline_m15_tune",
+    "timeframe": "M15",
+    "filter_quality": {
+      "wr_gt": 49.99,
+      "rr_gt": 2.0,
+      "total_r_gt": 80.0,
+      "max_dd_lt": 24.0,
+      "n_ge": 40
+    },
+    "filter_high_r": {
+      "wr_gt": 40.0,
+      "rr_gt": 2.1,
+      "total_r_gt": 70.0,
+      "max_dd_lt": 16.0,
+      "n_ge": 80
+    },
+    "mode": "wr50",
+    "fine_tune": {
+      "weeks": [
+        4,
+        5,
+        6
+      ],
+      "presets": [
+        "gbp_wr50_surg",
+        "gbp_wr50_1td",
+        "gbp_wr50_short",
+        "gbp_wr50_london"
+      ],
+      "epochs": 3,
+      "era_keys": [
+        "2024-h1"
+      ],
+      "objective": "quality",
+      "label": "g23 wr50 r3"
+    }
+  },
+  "n_runs": 36,
+  "best": {
+    "key": "240e2cc8ccac",
+    "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+    "train_weeks": 4,
+    "use_kb": true,
+    "kb_profile": "era_2024_h1",
+    "kb_snapshot": 1,
+    "oos_from": "2024-07-01",
+    "oos_to": "2026-08-28",
+    "mining_preset": "gbp_wr50_1td",
+    "mining_search_space": {
+      "rr_ratios": [
+        2.4,
+        2.8,
+        3.2
+      ],
+      "atr_multipliers": [
+        0.85,
+        1.05
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "min_bars_between": [
+        12
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.6,
+        1.0,
+        1.6,
+        2.2
+      ],
+      "min_rules_matches": [
+        1,
+        2
+      ],
+      "ml_probability_thresholds": [
+        0.36,
+        0.4,
+        0.44,
+        0.48
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": false,
+      "target_trades_per_week": 4.5,
+      "drawdown_penalty": 0.6,
+      "loss_streak_penalty": 1.2,
+      "selection_mode": "expectancy_frontier",
+      "edge_surgery": true,
+      "edge_surgery_min_hour_trades": 4,
+      "edge_surgery_max_hour_wr": 0.48,
+      "edge_surgery_dominant_side_ratio": 0.6,
+      "edge_surgery_hours": true,
+      "anti_chase": true,
+      "anti_chase_mode": "fixed",
+      "anti_chase_fixed_rsi": 55.0,
+      "anti_chase_fixed_vwap": 1.5,
+      "anti_chase_rsi_caps": [
+        60.0,
+        62.0,
+        65.0,
+        68.0,
+        100.0
+      ],
+      "anti_chase_min_tpw": 5.0,
+      "anti_chase_use_vwap": true,
+      "anti_chase_vwap_caps": [
+        1.5,
+        2.0,
+        2.5,
+        99.0
+      ],
+      "anti_chase_logic": "or",
+      "exit_modes_full_only": true,
+      "max_trades_per_day": 1,
+      "force_side": "both"
+    },
+    "n_trades": 149,
+    "win_rate_pct": 27.52,
+    "avg_rr": 2.066,
+    "total_r": -27.692,
+    "max_drawdown_r": 35.95,
+    "profit_factor": 0.794,
+    "trades_per_week": 1.32,
+    "error": null,
+    "risk_adjusted": -1000000000000.0
+  },
+  "rows": [
+    {
+      "key": "240e2cc8ccac",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_1td",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 1,
+        "force_side": "both"
+      },
+      "n_trades": 149,
+      "win_rate_pct": 27.52,
+      "avg_rr": 2.066,
+      "total_r": -27.692,
+      "max_drawdown_r": 35.95,
+      "profit_factor": 0.794,
+      "trades_per_week": 1.32,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "6af3d3be8ce2",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_surg",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_surg",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 187,
+      "win_rate_pct": 25.67,
+      "avg_rr": 2.163,
+      "total_r": -41.332,
+      "max_drawdown_r": 48.7,
+      "profit_factor": 0.664,
+      "trades_per_week": 1.65,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "5dd52f551d0a",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_surg",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_surg",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 203,
+      "win_rate_pct": 33.0,
+      "avg_rr": 2.207,
+      "total_r": 13.98,
+      "max_drawdown_r": 21.34,
+      "profit_factor": 1.033,
+      "trades_per_week": 1.8,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "33c6ef59c38c",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_surg",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_surg",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 200,
+      "win_rate_pct": 27.0,
+      "avg_rr": 2.222,
+      "total_r": -30.618,
+      "max_drawdown_r": 40.1,
+      "profit_factor": 0.793,
+      "trades_per_week": 1.77,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "54cd0442f319",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_1td",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 1,
+        "force_side": "both"
+      },
+      "n_trades": 162,
+      "win_rate_pct": 25.93,
+      "avg_rr": 2.205,
+      "total_r": -32.215,
+      "max_drawdown_r": 39.22,
+      "profit_factor": 0.742,
+      "trades_per_week": 1.43,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "d7ed805e1904",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_1td",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 1,
+        "force_side": "both"
+      },
+      "n_trades": 174,
+      "win_rate_pct": 27.59,
+      "avg_rr": 2.214,
+      "total_r": -23.207,
+      "max_drawdown_r": 33.08,
+      "profit_factor": 0.838,
+      "trades_per_week": 1.54,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "f8bf1c452b43",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_london",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_london",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            8,
+            16
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 150,
+      "win_rate_pct": 32.0,
+      "avg_rr": 2.146,
+      "total_r": 1.168,
+      "max_drawdown_r": 15.01,
+      "profit_factor": 0.98,
+      "trades_per_week": 1.33,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "97dfcb26230a",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_london",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_london",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            8,
+            16
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 148,
+      "win_rate_pct": 29.05,
+      "avg_rr": 2.263,
+      "total_r": -9.109,
+      "max_drawdown_r": 14.58,
+      "profit_factor": 0.918,
+      "trades_per_week": 1.31,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "4d7ff8ef7e1c",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_short",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_short",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "short"
+      },
+      "n_trades": 107,
+      "win_rate_pct": 12.15,
+      "avg_rr": 2.449,
+      "total_r": -71.311,
+      "max_drawdown_r": 72.92,
+      "profit_factor": 0.321,
+      "trades_per_week": 0.95,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "8e635d4d37e2",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_short",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_short",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "short"
+      },
+      "n_trades": 47,
+      "win_rate_pct": 19.15,
+      "avg_rr": 2.436,
+      "total_r": -18.415,
+      "max_drawdown_r": 24.14,
+      "profit_factor": 0.561,
+      "trades_per_week": 0.42,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "4f03cb5e1bc6",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_london",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_london",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            8,
+            16
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 150,
+      "win_rate_pct": 32.0,
+      "avg_rr": 2.244,
+      "total_r": 6.753,
+      "max_drawdown_r": 15.75,
+      "profit_factor": 1.004,
+      "trades_per_week": 1.33,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "228b34ccecfb",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_surg",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_surg",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 197,
+      "win_rate_pct": 29.95,
+      "avg_rr": 2.209,
+      "total_r": -9.006,
+      "max_drawdown_r": 21.91,
+      "profit_factor": 0.868,
+      "trades_per_week": 1.74,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "674de3608779",
+      "label": "Học 4 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_short",
+      "train_weeks": 4,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_short",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "short"
+      },
+      "n_trades": 45,
+      "win_rate_pct": 17.78,
+      "avg_rr": 2.277,
+      "total_r": -21.452,
+      "max_drawdown_r": 28.28,
+      "profit_factor": 0.45,
+      "trades_per_week": 0.4,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "871b44da3f36",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_surg",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_surg",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 200,
+      "win_rate_pct": 31.0,
+      "avg_rr": 2.25,
+      "total_r": 1.768,
+      "max_drawdown_r": 21.32,
+      "profit_factor": 0.963,
+      "trades_per_week": 1.77,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "1c9e82d468c7",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_surg",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_surg",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 213,
+      "win_rate_pct": 32.39,
+      "avg_rr": 2.341,
+      "total_r": 20.544,
+      "max_drawdown_r": 16.63,
+      "profit_factor": 1.049,
+      "trades_per_week": 1.88,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "c496bac96f27",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_1td",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 1,
+        "force_side": "both"
+      },
+      "n_trades": 189,
+      "win_rate_pct": 30.16,
+      "avg_rr": 2.162,
+      "total_r": -10.358,
+      "max_drawdown_r": 23.88,
+      "profit_factor": 0.881,
+      "trades_per_week": 1.67,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "77ee7f853167",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_1td",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 1,
+        "force_side": "both"
+      },
+      "n_trades": 194,
+      "win_rate_pct": 31.44,
+      "avg_rr": 2.203,
+      "total_r": 1.611,
+      "max_drawdown_r": 18.47,
+      "profit_factor": 0.993,
+      "trades_per_week": 1.72,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "fbc970d0aeab",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_1td",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 1,
+        "force_side": "both"
+      },
+      "n_trades": 198,
+      "win_rate_pct": 33.84,
+      "avg_rr": 2.296,
+      "total_r": 26.846,
+      "max_drawdown_r": 16.14,
+      "profit_factor": 1.171,
+      "trades_per_week": 1.75,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "d20e2e84b442",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_london",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_london",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            8,
+            16
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 156,
+      "win_rate_pct": 31.41,
+      "avg_rr": 2.188,
+      "total_r": 0.269,
+      "max_drawdown_r": 17.64,
+      "profit_factor": 0.981,
+      "trades_per_week": 1.38,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "dffcc191a6c3",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_london",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_london",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            8,
+            16
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 151,
+      "win_rate_pct": 35.76,
+      "avg_rr": 2.203,
+      "total_r": 25.903,
+      "max_drawdown_r": 14.68,
+      "profit_factor": 1.19,
+      "trades_per_week": 1.34,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "98da2ef1afc9",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_short",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_short",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "short"
+      },
+      "n_trades": 94,
+      "win_rate_pct": 15.96,
+      "avg_rr": 1.806,
+      "total_r": -59.359,
+      "max_drawdown_r": 60.58,
+      "profit_factor": 0.369,
+      "trades_per_week": 0.83,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "1f75333e0733",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_london",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_london",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            8,
+            16
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 155,
+      "win_rate_pct": 32.9,
+      "avg_rr": 2.263,
+      "total_r": 13.473,
+      "max_drawdown_r": 17.27,
+      "profit_factor": 1.07,
+      "trades_per_week": 1.37,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "f49c846d76be",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_short",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_short",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "short"
+      },
+      "n_trades": 25,
+      "win_rate_pct": 16.0,
+      "avg_rr": 1.962,
+      "total_r": -15.285,
+      "max_drawdown_r": 16.43,
+      "profit_factor": 0.529,
+      "trades_per_week": 0.22,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "da8e65ef47c8",
+      "label": "Học 5 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_short",
+      "train_weeks": 5,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_short",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "short"
+      },
+      "n_trades": 26,
+      "win_rate_pct": 15.38,
+      "avg_rr": 2.045,
+      "total_r": -16.082,
+      "max_drawdown_r": 16.01,
+      "profit_factor": 0.528,
+      "trades_per_week": 0.23,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "208f99864713",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_surg",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_surg",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 192,
+      "win_rate_pct": 29.17,
+      "avg_rr": 2.21,
+      "total_r": -14.389,
+      "max_drawdown_r": 37.44,
+      "profit_factor": 0.809,
+      "trades_per_week": 1.7,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "c8542dfecedb",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_surg",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_surg",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 212,
+      "win_rate_pct": 29.72,
+      "avg_rr": 2.231,
+      "total_r": -9.907,
+      "max_drawdown_r": 34.12,
+      "profit_factor": 0.91,
+      "trades_per_week": 1.88,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "c0f20716ddb3",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_1td",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 1,
+        "force_side": "both"
+      },
+      "n_trades": 157,
+      "win_rate_pct": 31.85,
+      "avg_rr": 2.222,
+      "total_r": 4.841,
+      "max_drawdown_r": 34.73,
+      "profit_factor": 0.955,
+      "trades_per_week": 1.39,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "b68e43b81c02",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_surg",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_surg",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "n_trades": 214,
+      "win_rate_pct": 29.91,
+      "avg_rr": 2.229,
+      "total_r": -8.626,
+      "max_drawdown_r": 36.41,
+      "profit_factor": 0.852,
+      "trades_per_week": 1.89,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "7808d0948ad2",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_1td",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 1,
+        "force_side": "both"
+      },
+      "n_trades": 182,
+      "win_rate_pct": 29.67,
+      "avg_rr": 2.312,
+      "total_r": -3.732,
+      "max_drawdown_r": 33.97,
+      "profit_factor": 0.907,
+      "trades_per_week": 1.61,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "237cb724cd5b",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_1td",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2024-07-01",
+      "oos_to": "2026-08-28",
+      "mining_preset": "gbp_wr50_1td",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.85,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.48,
+        "edge_surgery_dominant_side_ratio": 0.6,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "max_trades_per_day": 1,
+        "force_side": "both"
+      },
+      "n_trades": 184,
+      "win_rate_pct": 29.89,
+      "avg_rr": 2.191,
+      "total_r": -10.041,
+      "max_drawdown_r": 36.8,
+      "profit_factor": 0.925,
+      "trades_per_week": 1.63,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "c4d773b7766a",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_short",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "error": "A process in the process pool was terminated abruptly while the future was running or pending."
+    },
+    {
+      "key": "86b6962b92c1",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_short",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "error": "A process in the process pool was terminated abruptly while the future was running or pending."
+    },
+    {
+      "key": "9df0623edc9c",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_short",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "error": "A process in the process pool was terminated abruptly while the future was running or pending."
+    },
+    {
+      "key": "16e462483a3e",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 1 · Kiểm chứng 2024–2026 · preset gbp_wr50_london",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 1,
+      "error": "A process in the process pool was terminated abruptly while the future was running or pending."
+    },
+    {
+      "key": "a16b8e4dce29",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 2 · Kiểm chứng 2024–2026 · preset gbp_wr50_london",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 2,
+      "error": "A process in the process pool was terminated abruptly while the future was running or pending."
+    },
+    {
+      "key": "4195015a57a2",
+      "label": "Học 6 tuần · Học 2024 (6 tháng đầu) · vòng 3 · Kiểm chứng 2024–2026 · preset gbp_wr50_london",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2024_h1",
+      "kb_snapshot": 3,
+      "error": "A process in the process pool was terminated abruptly while the future was running or pending."
+    }
+  ]
+}
