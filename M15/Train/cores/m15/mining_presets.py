@@ -363,6 +363,59 @@ EUR_FILL_VOL = {
   "min_atr_spread_ratio": 5.0,
 }
 
+# Surprise: learn follow-through (label 1.2R) + pending stop confirm. Not another RR grid.
+EUR_FILL_SPARK = {
+  **EUR_FILL_BOOK,
+  "label_rr": 1.2,
+  "include_session_regime_rules": True,
+}
+EUR_FILL_STOP = {
+  **EUR_FILL_BOOK,
+  "confirm_r": 0.20,
+  "confirm_wait_bars": 4,
+  "confirm_cancel_r": 0.50,
+}
+EUR_FILL_SPARKSTOP = {
+  **EUR_FILL_STOP,
+  "label_rr": 1.2,
+  "include_session_regime_rules": True,
+}
+EUR_FILL_OVERLAP = {
+  **EUR_FILL_BOOK,
+  "session_ranges": [[13, 16]],
+  "label_rr": 1.2,
+  "include_session_regime_rules": True,
+}
+
+# Densify sparkstop (WR50 +38R n=44): more fills for R, keep confirm quality.
+EUR_FILL_SS_MORE = {
+  **EUR_FILL_SPARKSTOP,
+  "confirm_r": 0.15,
+  "confirm_wait_bars": 6,
+  "confirm_cancel_r": 0.60,
+  "target_trades_per_week": 6.0,
+}
+EUR_FILL_SS_WAIT = {
+  **EUR_FILL_SPARKSTOP,
+  "confirm_r": 0.18,
+  "confirm_wait_bars": 8,
+  "confirm_cancel_r": 0.55,
+}
+EUR_FILL_SS_LAB = {
+  **EUR_FILL_SPARKSTOP,
+  "label_rr": 1.0,
+  "confirm_r": 0.16,
+  "confirm_wait_bars": 5,
+  "target_trades_per_week": 5.5,
+}
+EUR_FILL_SS_WR = {
+  **EUR_FILL_SPARKSTOP,
+  "confirm_r": 0.24,
+  "confirm_wait_bars": 3,
+  "confirm_cancel_r": 0.42,
+  "target_trades_per_week": 4.0,
+}
+
 # Post-fill GBP (SL = ATR×mult + 1 spread, entry-bar + ask): old RR 3.2–4.0
 # puts TP too far. Modest RR>2 + more fills so OOS 2026 can clear R>80 at WR>50.
 GBP_FILL_BOOK = {
@@ -468,19 +521,34 @@ GBP_WR50_LONDON_1TD = {
   "max_trades_per_day": 1,
 }
 
-# App-recommended direction (WR-first quality book; used by Settings default).
-RECOMMENDED_PRESET = "elite_or_quality"
+# App-recommended direction after Bid/Ask fills (BUY Ask / SELL Bid).
+# Elite OR-quality (RR 3.2–4) was fit on half-spread lab fills — do not
+# re-offer it as the EUR default.
+RECOMMENDED_PRESET = "eur_fill_ss_lab"
 
-# Shown in Settings UI — trimmed 2026-08-10 (drop near-duplicate elite / frontier).
-# Keep: default quality · R-balance · gentle edge · niche elite · baseline neo.
-# See docs/mining_space_audit.md.
-CURATED_PRESETS: tuple[str, ...] = (
-  "elite_or_quality",
-  "anti_chase_fixed_70",
-  "edge_gentle",
-  "elite_55_4",
-  "baseline",
+# EUR Settings catalog: fill-aware DNA only (RR/ATR + confirm that survived Bid/Ask).
+EUR_FILL_CURATED: tuple[str, ...] = (
+  "eur_fill_ss_lab",
+  "eur_fill_sparkstop",
+  "eur_fill_book",
+  "eur_fill_ss_more",
+  "eur_fill_ss_wr",
 )
+
+# GBP Settings catalog — fill-aware + WR50 family already used on g23.
+GBP_FILL_CURATED: tuple[str, ...] = (
+  "gbp_fill_book",
+  "gbp_fill_wr",
+  "gbp_fill_sniper",
+  "gbp_fill_flow",
+  "gbp_wr50_tight",
+  "gbp_wr50_elite",
+  "gbp_wr50_short_1td",
+  "gbp_wr50_short_london",
+)
+
+# Default Settings UI list (no desk / EUR).
+CURATED_PRESETS: tuple[str, ...] = EUR_FILL_CURATED
 
 # Lost A/B vs baseline / redundant vs curated — hidden from Settings.
 # Still in PRESETS for CLI / regression / old Trade Models.
@@ -523,7 +591,7 @@ PRESET_LABELS: dict[str, str] = {
   "elite_60_3": "Elite WR60 · RR3.5–4",
   "elite_60_3_vwap": "Elite WR60 · VWAP",
   "elite_55_4": "Elite WR60 · RR4 (ít lệnh)",
-  "elite_or_quality": "Elite OR-quality (khuyến nghị)",
+  "elite_or_quality": "Elite OR-quality (fill cũ — không dùng EUR Bid/Ask)",
   "elite_60_35": "Elite RSI60 · RR3.5",
   "eur_fill_wide": "EUR fill · SL rộng TP gần",
   "eur_fill_book": "EUR fill-aware · RR 2.2–3",
@@ -537,6 +605,14 @@ PRESET_LABELS: dict[str, str] = {
   "eur_fill_reach": "EUR fill · TP ATR×RR 2.6–3.4",
   "eur_fill_bank": "EUR fill · hybrid bank 1.5R",
   "eur_fill_vol": "EUR fill · ATR≥5×spread",
+  "eur_fill_spark": "EUR fill · label 1.2R + session",
+  "eur_fill_stop": "EUR fill · stop confirm 0.2R",
+  "eur_fill_sparkstop": "EUR fill · label 1.2R + stop",
+  "eur_fill_overlap": "EUR fill · overlap 13–16",
+  "eur_fill_ss_more": "EUR sparkstop · confirm 0.15 wait6",
+  "eur_fill_ss_wait": "EUR sparkstop · wait 8 nến",
+  "eur_fill_ss_lab": "EUR Bid/Ask · label 1.0R + stop (khuyến nghị)",
+  "eur_fill_ss_wr": "EUR sparkstop · confirm 0.24",
   "gbp_fill_book": "GBP fill-aware · WR>50 R>80",
   "gbp_fill_sniper": "GBP fill sniper · WR-first",
   "gbp_fill_flow": "GBP fill flow · volume + RR>2",
@@ -586,9 +662,9 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "tradeoff": "Ít void hơn OR · gần giữ Total R",
   },
   "elite_or_quality": {
-    "intent": "Ưu tiên WR/DD — hướng khuyến nghị app",
+    "intent": "Lab fill cũ (nửa spread) — RR 3.2–4 sụp trên BUY Ask / SELL Bid",
     "knobs": "void RSI≥58 OR VWAP≥1.5 · RR 3.2–4 · exit full · elite_frontier",
-    "tradeoff": "WR/DD tốt · ít lệnh (~2/tuần) · Total R thấp hơn baseline",
+    "tradeoff": "OOS lạc quan WR~62 · remine fill mới đỉnh ~WR33 — không khuyến nghị EUR",
   },
   "elite_60_3": {
     "intent": "Elite WR-first, chỉ RSI void (không VWAP)",
@@ -670,6 +746,46 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "knobs": "min ATR ≥ 5×spread · TP ATR-only · DNA fill_book",
     "tradeoff": "Ít lệnh Asia yên · WR↑ nếu spread chiếm SL",
   },
+  "eur_fill_spark": {
+    "intent": "Học follow-through 1.2R, vào vẫn RR book — rules giàu hơn trên fill",
+    "knobs": "label_rr=1.2 · session/regime binaries · DNA fill_book",
+    "tradeoff": "Nhiều label dương · có thể bắn setup yếu hơn full TP",
+  },
+  "eur_fill_stop": {
+    "intent": "BUY/SELL stop: chỉ fill khi giá xác nhận 0.2R, hủy nếu chết 0.5R",
+    "knobs": "confirm 0.2R · wait 4 nến · cancel 0.5R · DNA fill_book",
+    "tradeoff": "Bỏ giả / lệnh không chạy · n↓ · miss winner không pullback",
+  },
+  "eur_fill_sparkstop": {
+    "intent": "Label 1.2R + stop confirm — chọn hướng rồi đợi xác nhận",
+    "knobs": "label_rr=1.2 · confirm 0.2R · session/regime",
+    "tradeoff": "Ít lệnh hơn spark · WR↑ nếu fake là loser",
+  },
+  "eur_fill_overlap": {
+    "intent": "Chỉ overlap London/NY 13–16 + label 1.2R",
+    "knobs": "session 13–16 · label_rr=1.2 · regime binaries",
+    "tradeoff": "Bỏ Asia/London open · n thấp",
+  },
+  "eur_fill_ss_more": {
+    "intent": "Nới confirm — thêm lệnh quanh sparkstop WR50",
+    "knobs": "confirm 0.15 · wait 6 · cancel 0.60 · TPW 6 · label 1.2",
+    "tradeoff": "n↑ Total R↑ · WR có thể thấp hơn 50",
+  },
+  "eur_fill_ss_wait": {
+    "intent": "Chờ confirm lâu hơn — bắt lệnh chậm",
+    "knobs": "confirm 0.18 · wait 8 nến · cancel 0.55",
+    "tradeoff": "n↑ nếu confirm trễ · giữ WR nếu fake chết sớm",
+  },
+  "eur_fill_ss_lab": {
+    "intent": "EUR Bid/Ask — hướng khuyến nghị: label 1.0R + stop confirm",
+    "knobs": "label_rr=1.0 · confirm 0.16 · wait 5 · RR 2.2–3.0 · ATR 1.05/1.25",
+    "tradeoff": "Lab fill mới WR56 +43R n=41 · confirm là pending (chưa market nến sau)",
+  },
+  "eur_fill_ss_wr": {
+    "intent": "Siết confirm — săn WR>50",
+    "knobs": "confirm 0.24 · wait 3 · cancel 0.42 · TPW 4",
+    "tradeoff": "n↓ · WR↑ · R có thể thấp hơn sparkstop",
+  },
   "gbp_fill_book": {
     "intent": "GBP sau fill thật — WR>50 và Total R>80",
     "knobs": "RR 2.4–3.2 · ATR 0.85/1.05 · RSI<60 OR VWAP<1.8 · TPW 5 · exit full",
@@ -750,13 +866,28 @@ def preset_blurb(name: str) -> dict[str, str]:
   return dict(PRESET_BLURBS.get(name) or {})
 
 
+def _desk_id() -> str:
+  import os
+  return (os.environ.get("TRAINAPP_DESK") or "").strip().lower()
+
+
+def recommended_preset() -> str:
+  """Desk-aware default mining direction (EUR Bid/Ask vs GBP fill)."""
+  desk = _desk_id()
+  if desk.startswith("g"):
+    return "gbp_fill_book"
+  return RECOMMENDED_PRESET
+
+
 def recommended_presets() -> list[str]:
-  return [RECOMMENDED_PRESET]
+  return [recommended_preset()]
 
 
 def list_curated_presets() -> list[str]:
   """Presets offered in Settings UI (excludes deprecated losers)."""
-  return [n for n in CURATED_PRESETS if n in PRESETS]
+  desk = _desk_id()
+  names = GBP_FILL_CURATED if desk.startswith("g") else EUR_FILL_CURATED
+  return [n for n in names if n in PRESETS]
 
 
 def list_active_presets() -> list[str]:
@@ -843,6 +974,10 @@ def _summarize_space_knobs(space: dict | None) -> str:
     bits.append(f"exit:{lock}")
   elif ss.get("exit_modes_full_only"):
     bits.append("exit:full")
+  if float(ss.get("label_rr") or 0) > 0:
+    bits.append(f"labelRR{ss.get('label_rr')}")
+  if float(ss.get("confirm_r") or 0) > 0:
+    bits.append(f"stop{ss.get('confirm_r')}R")
   return " · ".join(bits) if bits else "baseline knobs"
 
 
@@ -891,6 +1026,14 @@ PRESETS: dict[str, dict] = {
   "eur_fill_reach": deepcopy(EUR_FILL_REACH),
   "eur_fill_bank": deepcopy(EUR_FILL_BANK),
   "eur_fill_vol": deepcopy(EUR_FILL_VOL),
+  "eur_fill_spark": deepcopy(EUR_FILL_SPARK),
+  "eur_fill_stop": deepcopy(EUR_FILL_STOP),
+  "eur_fill_sparkstop": deepcopy(EUR_FILL_SPARKSTOP),
+  "eur_fill_overlap": deepcopy(EUR_FILL_OVERLAP),
+  "eur_fill_ss_more": deepcopy(EUR_FILL_SS_MORE),
+  "eur_fill_ss_wait": deepcopy(EUR_FILL_SS_WAIT),
+  "eur_fill_ss_lab": deepcopy(EUR_FILL_SS_LAB),
+  "eur_fill_ss_wr": deepcopy(EUR_FILL_SS_WR),
   "gbp_fill_book": deepcopy(GBP_FILL_BOOK),
   "gbp_fill_sniper": deepcopy(GBP_FILL_SNIPER),
   "gbp_fill_flow": deepcopy(GBP_FILL_FLOW),

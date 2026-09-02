@@ -7,6 +7,7 @@ import streamlit as st
 
 from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from gui.app_settings import (
+  TRAIN_WEEK_OPTIONS,
   add_learning_era,
   format_settings_summary,
   get_learning_era_catalog,
@@ -48,10 +49,10 @@ def _era_option(era: dict) -> str:
 
 def _init_widget_state(settings: dict, era_options: list[str], option_to_key: dict[str, str]) -> None:
   from mining_presets import (
-    RECOMMENDED_PRESET,
     list_curated_presets,
     list_presets,
     preset_label,
+    recommended_preset,
   )
 
   known = list_presets()
@@ -61,24 +62,25 @@ def _init_widget_state(settings: dict, era_options: list[str], option_to_key: di
     if name in known and name not in option_names:
       option_names.append(name)
   mining_options = [preset_label(n) for n in option_names]
-  saved = list(settings.get("mining_presets") or [RECOMMENDED_PRESET])
+  saved = list(settings.get("mining_presets") or [recommended_preset()])
+  week_opts = set(TRAIN_WEEK_OPTIONS)
   defaults = {
     "settings_train_weeks": [
-      t for t in settings.get("strategy_train_weeks", [3, 6, 9])
-      if t in (3, 6, 9)
+      t for t in settings.get("strategy_train_weeks", [8, 12])
+      if t in week_opts
     ],
     "settings_era_labels": [
       opt for opt in era_options
       if option_to_key.get(opt) in (settings.get("learning_era_keys") or [])
     ],
-    "settings_learning_loops": int(settings.get("learning_loops") or 4),
+    "settings_learning_loops": int(settings.get("learning_loops") or 3),
     "settings_backtest_from": _date_value(settings.get("backtest_from", ""), "2026-01-01"),
     "settings_backtest_to": _date_value(settings.get("backtest_to", ""), "2026-12-31"),
     "settings_spread": float(settings.get("spread_pips", DEFAULT_SPREAD_PIPS)),
     "settings_slip": float(settings.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     "settings_mining_presets": [
       preset_label(n) for n in saved if n in known
-    ] or [preset_label(RECOMMENDED_PRESET)],
+    ] or [preset_label(recommended_preset())],
     "settings_new_era_label": "",
     "settings_new_era_from": date(2024, 1, 1),
     "settings_new_era_until": date(2025, 12, 31),
@@ -94,7 +96,7 @@ def _init_widget_state(settings: dict, era_options: list[str], option_to_key: di
   picked = st.session_state.get("settings_mining_presets") or []
   st.session_state["settings_mining_presets"] = [
     opt for opt in picked if opt in mining_options
-  ] or [preset_label(RECOMMENDED_PRESET)]
+  ] or [preset_label(recommended_preset())]
 
 
 
@@ -147,7 +149,7 @@ def render(embedded: bool = False):
   st.markdown("#### Chiến lược")
   train_weeks = st.multiselect(
     "Cửa sổ học chiến lược (tuần)",
-    [3, 6, 9],
+    TRAIN_WEEK_OPTIONS,
     key="settings_train_weeks",
     help=HELP["train_weeks"],
   )
@@ -250,22 +252,48 @@ def render(embedded: bool = False):
   )
 
   st.markdown("#### Mining search space")
+  import os
+  from mining_presets import curated_preset_catalog, preset_label, recommended_preset
+  desk = (os.environ.get("TRAINAPP_DESK") or "").strip().lower()
+  is_gbp = desk.startswith("g")
+  rec = recommended_preset()
+  spread_txt = f"{float(DEFAULT_SPREAD_PIPS):g} / {float(DEFAULT_SLIPPAGE_PIPS):g} pip"
+  if is_gbp:
+    fill_cap = (
+      f"Lab fill **BUY Ask / SELL Bid**, SL = ATR×mult + 1 spread, desk **{spread_txt}**. "
+      "Preset Elite RR 3.2–4 (fill cũ nửa spread) **không** dùng làm mặc định GBP."
+    )
+    mining_help = (
+      "Hướng **GBP Bid/Ask**: RR 2.4–3.2, ATR 0.85/1.05, `gbp_fill_book`. "
+      "Bỏ trống = miner baseline cũ (không khuyến nghị)."
+    )
+    rec_cap = (
+      f"Khuyến nghị GBP: **fill-aware RR vừa** (`{rec}`). "
+      "Trade Model active mang search space riêng cho Live / remine."
+    )
+  else:
+    fill_cap = (
+      f"Lab fill **BUY Ask / SELL Bid**, SL = ATR×mult + 1 spread, desk **{spread_txt}**. "
+      "Preset Elite RR 3.2–4 (fill cũ nửa spread) **không** còn trong catalog EUR."
+    )
+    mining_help = (
+      "Hướng **EUR Bid/Ask**: RR 2.2–3.0, ATR 1.05/1.25, label 1.0R + stop confirm. "
+      "Bỏ trống = miner baseline cũ (không khuyến nghị)."
+    )
+    rec_cap = (
+      "Khuyến nghị EUR: **label 1.0R + stop confirm** (`eur_fill_ss_lab`). "
+      "Trade Model active mang search space riêng cho Live / remine."
+    )
+  st.caption(fill_cap)
   mining_option_names = st.session_state.get("_settings_mining_option_names") or []
-  from mining_presets import curated_preset_catalog, preset_label
   mining_options = [preset_label(n) for n in mining_option_names]
   mining_picked = st.multiselect(
     "Preset mining (Grid Search)",
     mining_options,
     key="settings_mining_presets",
-    help=(
-      "Hướng **Elite OR-quality**: void SHORT khi RSI≥58 hoặc VWAP≥1.5, "
-      "RR ladder 3.2–4.0, exit full only. Bỏ trống = miner baseline cũ."
-    ),
+    help=mining_help,
   )
-  st.caption(
-    "Khuyến nghị: **Elite OR-quality** (WR ~71% / RR ~2.8 trên OOS gần nhất). "
-    "Trade Model active mang search space riêng cho Live / remine."
-  )
+  st.caption(rec_cap)
   with st.expander("Chi tiết preset — ý định & trade-off", expanded=False):
     catalog = curated_preset_catalog()
     if catalog:
@@ -355,8 +383,8 @@ def render(embedded: bool = False):
   )
 
   if st.button("↺ Khôi phục mặc định", key="settings_reset"):
-    from gui.app_settings import DEFAULT_SETTINGS, save_settings
-    save_settings(dict(DEFAULT_SETTINGS))
+    from gui.app_settings import default_settings_for_desk, save_settings
+    save_settings(default_settings_for_desk())
     for key in SETTING_WIDGET_KEYS:
       st.session_state.pop(key, None)
     st.toast("Đã khôi phục cài đặt mặc định")

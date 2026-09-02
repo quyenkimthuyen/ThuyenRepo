@@ -176,7 +176,10 @@ def test_elite_frontier_rewards_wr60_rr3():
 
 
 def test_elite_presets_opt_in():
-  from mining_presets import RECOMMENDED_PRESET, get_preset, preset_label
+  from mining_presets import (
+    CURATED_PRESETS, DEPRECATED_PRESETS, EUR_FILL_CURATED, RECOMMENDED_PRESET,
+    get_preset, list_curated_presets, preset_label, recommended_preset,
+  )
   from strategy_miner import mining_search_space_from_dict
 
   space = mining_search_space_from_dict(get_preset("elite_60_3"))
@@ -186,24 +189,23 @@ def test_elite_presets_opt_in():
   assert space.anti_chase is True
   assert space.anti_chase_fixed_rsi == 58.0
   assert MiningSearchSpace().exit_modes_full_only is False
-  assert RECOMMENDED_PRESET == "elite_or_quality"
-  eoq = mining_search_space_from_dict(get_preset(RECOMMENDED_PRESET))
+  assert RECOMMENDED_PRESET == "eur_fill_ss_lab"
+  assert recommended_preset() == "eur_fill_ss_lab"
+  lab = mining_search_space_from_dict(get_preset(RECOMMENDED_PRESET))
+  assert lab.label_rr == 1.0
+  assert lab.confirm_r == pytest.approx(0.16)
+  assert lab.rr_ratios == (2.2, 2.6, 3.0)
+  assert "Bid/Ask" in preset_label(RECOMMENDED_PRESET)
+  eoq = mining_search_space_from_dict(get_preset("elite_or_quality"))
   assert eoq.anti_chase_use_vwap is True
   assert eoq.anti_chase_logic == "or"
   assert eoq.rr_ratios == (3.2, 3.5, 4.0)
-  assert "OR-quality" in preset_label(RECOMMENDED_PRESET)
-  from mining_presets import CURATED_PRESETS, DEPRECATED_PRESETS, list_curated_presets
+  assert "fill cũ" in preset_label("elite_or_quality")
   assert RECOMMENDED_PRESET in CURATED_PRESETS
   assert "wr_rr_frontier" in DEPRECATED_PRESETS
   assert "wr_rr_frontier" not in list_curated_presets()
-  assert "elite_or_quality" in list_curated_presets()
-  assert list_curated_presets() == [
-    "elite_or_quality",
-    "anti_chase_fixed_70",
-    "edge_gentle",
-    "elite_55_4",
-    "baseline",
-  ]
+  assert "elite_or_quality" not in list_curated_presets()
+  assert list_curated_presets() == list(EUR_FILL_CURATED)
   assert "elite_60_3_vwap" in DEPRECATED_PRESETS
   assert "frontier_rr_hi" not in list_curated_presets()
 
@@ -245,6 +247,26 @@ def test_eur_fill_presets_wider_sl_closer_tp():
   assert bank.trail_activate_r == 1.5
   vol = mining_search_space_from_dict(get_preset("eur_fill_vol"))
   assert vol.min_atr_spread_ratio == 5.0
+  spark = mining_search_space_from_dict(get_preset("eur_fill_spark"))
+  assert spark.label_rr == 1.2
+  assert spark.include_session_regime_rules is True
+  stop = mining_search_space_from_dict(get_preset("eur_fill_stop"))
+  assert stop.confirm_r == 0.20
+  assert stop.confirm_wait_bars == 4
+  both = mining_search_space_from_dict(get_preset("eur_fill_sparkstop"))
+  assert both.label_rr == 1.2
+  assert both.confirm_r == 0.20
+  overlap = mining_search_space_from_dict(get_preset("eur_fill_overlap"))
+  assert overlap.session_ranges == ((13, 16),)
+  more = mining_search_space_from_dict(get_preset("eur_fill_ss_more"))
+  assert more.confirm_r == 0.15
+  assert more.confirm_wait_bars == 6
+  wait = mining_search_space_from_dict(get_preset("eur_fill_ss_wait"))
+  assert wait.confirm_wait_bars == 8
+  lab = mining_search_space_from_dict(get_preset("eur_fill_ss_lab"))
+  assert lab.label_rr == 1.0
+  wrp = mining_search_space_from_dict(get_preset("eur_fill_ss_wr"))
+  assert wrp.confirm_r == 0.24
 
 
 def test_exit_modes_lock_and_tp_geometry():
@@ -281,21 +303,43 @@ def test_preset_blurbs_and_direction_line():
   )
 
   blurb = preset_blurb(RECOMMENDED_PRESET)
-  assert "WR" in blurb["intent"] or "ưu tiên" in blurb["intent"].lower()
+  intent = (blurb.get("intent") or "").lower()
+  assert "bid/ask" in intent or "khuyến nghị" in intent or "wr" in intent
   assert blurb.get("knobs") and blurb.get("tradeoff")
   catalog = curated_preset_catalog()
   assert catalog and all("Ý định" in row for row in catalog)
   assert match_preset_name(get_preset(RECOMMENDED_PRESET)) == RECOMMENDED_PRESET
   line = space_direction_line(get_preset(RECOMMENDED_PRESET))
-  assert "Elite OR-quality" in line
+  assert "Bid/Ask" in line or "label 1.0" in line.lower()
   assert "Baseline miner" in space_direction_line(None)
 
 
 def test_app_settings_default_mining_preset():
   from gui.app_settings import DEFAULT_SETTINGS, _sanitize_settings
-  assert DEFAULT_SETTINGS["mining_presets"] == ["elite_or_quality"]
+  assert DEFAULT_SETTINGS["mining_presets"] == ["eur_fill_ss_lab"]
+  assert DEFAULT_SETTINGS["strategy_train_weeks"] == [8, 12]
   cleaned = _sanitize_settings({"learning_eras": DEFAULT_SETTINGS["learning_eras"]})
-  assert cleaned["mining_presets"] == ["elite_or_quality"]
+  assert cleaned["mining_presets"] == ["eur_fill_ss_lab"]
+
+
+def test_g23_fill_aware_defaults(monkeypatch):
+  monkeypatch.setenv("TRAINAPP_DESK", "g23")
+  from gui.app_settings import default_settings_for_desk
+  from mining_presets import GBP_FILL_CURATED, get_preset, list_curated_presets, recommended_preset
+  from strategy_miner import mining_search_space_from_dict
+
+  assert recommended_preset() == "gbp_fill_book"
+  assert list(list_curated_presets()) == list(GBP_FILL_CURATED)
+  book = mining_search_space_from_dict(get_preset("gbp_fill_book"))
+  assert book.rr_ratios == (2.4, 2.8, 3.2)
+  assert max(book.rr_ratios) <= 3.2
+  assert book.atr_multipliers == (0.85, 1.05)
+  s = default_settings_for_desk()
+  assert s["mining_presets"] == ["gbp_fill_book"]
+  assert s["strategy_train_weeks"] == [4, 5, 6]
+  assert s["learning_era_keys"] == ["2025-full"]
+  assert s["grid_objective"] == "quality"
+  assert s["backtest_from"] == "2026-01-01"
 
 
 def test_anti_chase_prefers_low_rsi_shorts():

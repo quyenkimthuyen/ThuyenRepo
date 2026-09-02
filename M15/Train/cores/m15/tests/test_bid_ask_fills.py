@@ -160,3 +160,43 @@ class _BtFm:
 
 def _bt_fm(n: int = 6) -> _BtFm:
   return _BtFm(n)
+
+
+def test_confirm_stop_fills_on_follow_through():
+  n = 8
+  fm = _bt_fm(n)
+  fm.atr[:] = 0.001
+  fm.high[:] = 1.10005
+  fm.low[:] = 1.09995
+  fm.high[1] = 1.10025  # 0.2R above Bid open with spread=0
+  fm.high[4] = 1.10300  # TP
+  signals = np.zeros(n, dtype=np.int8)
+  signals[0] = 1
+  strat = MinedStrategy(
+    atr_mult_sl=1.0, rr_ratio=2.0, max_hold_bars=96, max_trades_per_day=2,
+    session_filter=False, min_bars_between=1, exit_mode="full", anti_chase=False,
+    confirm_r=0.20, confirm_wait_bars=4, confirm_cancel_r=0.50,
+  )
+  trades = backtest_mined(fm, strat, signals, 0, n, spread_pips=0.0, slippage_pips=0.0)
+  assert len(trades) == 1
+  assert trades[0].entry_price == pytest.approx(1.10 + 0.20 * 0.001)
+  assert trades[0].exit_reason == "tp"
+
+
+def test_confirm_stop_skips_when_price_dies_first():
+  n = 8
+  fm = _bt_fm(n)
+  fm.atr[:] = 0.001
+  fm.high[:] = 1.10005
+  fm.low[:] = 1.09995
+  fm.low[1] = 1.09940  # 0.6R adverse before confirm
+  signals = np.zeros(n, dtype=np.int8)
+  signals[0] = 1
+  strat = MinedStrategy(
+    atr_mult_sl=1.0, rr_ratio=2.0, max_hold_bars=96, max_trades_per_day=2,
+    session_filter=False, min_bars_between=1, exit_mode="full", anti_chase=False,
+    confirm_r=0.20, confirm_wait_bars=4, confirm_cancel_r=0.50,
+  )
+  trades = backtest_mined(fm, strat, signals, 0, n, spread_pips=0.0, slippage_pips=0.0)
+  assert trades == []
+

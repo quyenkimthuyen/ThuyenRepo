@@ -77,6 +77,9 @@ def full_strategy_dict(s: MinedStrategy) -> dict:
     "anti_chase_logic": str(getattr(s, "anti_chase_logic", "or")),
     "tp_ignores_spread_buffer": bool(getattr(s, "tp_ignores_spread_buffer", False)),
     "min_atr_spread_ratio": float(getattr(s, "min_atr_spread_ratio", 0.0) or 0.0),
+    "confirm_r": float(getattr(s, "confirm_r", 0.0) or 0.0),
+    "confirm_wait_bars": int(getattr(s, "confirm_wait_bars", 4) or 4),
+    "confirm_cancel_r": float(getattr(s, "confirm_cancel_r", 0.5) or 0.5),
     "long_rules": rules_to_list(s.long_rules),
     "short_rules": rules_to_list(s.short_rules),
   }
@@ -128,6 +131,9 @@ def strategy_from_dict(g: dict) -> MinedStrategy:
     anti_chase_logic=str(g.get("anti_chase_logic", "or")),
     tp_ignores_spread_buffer=bool(g.get("tp_ignores_spread_buffer", False)),
     min_atr_spread_ratio=float(g.get("min_atr_spread_ratio", 0.0) or 0.0),
+    confirm_r=float(g.get("confirm_r", 0.0) or 0.0),
+    confirm_wait_bars=int(g.get("confirm_wait_bars", 4) or 4),
+    confirm_cancel_r=float(g.get("confirm_cancel_r", 0.5) or 0.5),
     ml_scorer=None,
     name=str(g.get("name", "scheduled")),
   )
@@ -170,8 +176,9 @@ def attach_ml_scorer(
   else:
     max_hold = int(getattr(strat, "max_hold_bars", max_hold) or max_hold)
 
+  lab = float(getattr(space, "label_rr", 0.0) or 0.0)
   long_wins, short_wins = _label_outcomes(
-    fm, train_start, train_end, rr, atr_m, max_hold,
+    fm, train_start, train_end, (lab if lab > 0 else rr), atr_m, max_hold,
     tp_ignores_spread_buffer=bool(getattr(space, "tp_ignores_spread_buffer", False)),
   )
   if isinstance(kb, KnowledgeBase):
