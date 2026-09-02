@@ -107,7 +107,7 @@ def main() -> int:
   for (sym, tf), rows in book_list:
     print(f"## Seed {sym} {tf}", flush=True)
     subprocess.run(
-      [PY, str(SEED), "--symbol", sym, "--timeframe", tf],
+      [PY, str(SEED), "--symbol", sym, "--timeframe", tf, "--allow-lab"],
       cwd=str(SPLIT),
       check=False,
     )

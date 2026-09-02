@@ -445,7 +445,7 @@ def start_bridge(
         raise RuntimeError(
           "Live preflight failed — decision path broken before Start.\n"
           f"{preflight.get('error') or 'see live/results/live_preflight.json'}\n"
-          "Fix packages/schedule/OHLC, or run Replay · Live-like first."
+          "Fix packages/schedule, or wait for the EA to write bars.json / history_sync."
         )
   elif skip_preflight:
     preflight_mode = "skip"

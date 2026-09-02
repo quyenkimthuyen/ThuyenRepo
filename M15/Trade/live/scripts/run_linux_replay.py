@@ -156,7 +156,7 @@ def main() -> int:
     mod = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(mod)
-    info = mod.seed(symbol, timeframe, src=args.parquet)
+    info = mod.seed(symbol, timeframe, src=args.parquet, allow_lab=args.parquet is None)
     print(f"[replay] seeded cache ← {info['source']}", flush=True)
 
   cache = RESULTS_DIR / "data" / f"mt5_{symbol.lower()}_{timeframe.lower()}.parquet"

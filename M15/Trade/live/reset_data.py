@@ -250,7 +250,7 @@ def reset_live_data(
         groups = group_models_by_book(rows)
       for (sym, tf), _ in groups.items():
         try:
-          info = mod.seed(sym, tf)
+          info = mod.seed(sym, tf, allow_lab=True, force=True)
           summary["reseed"].append({
             "symbol": sym, "timeframe": tf, "bars": info.get("bars"), "sha256": info.get("sha256"),
           })

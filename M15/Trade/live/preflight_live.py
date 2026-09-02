@@ -138,6 +138,10 @@ def preflight_enabled_books(*, sim: bool = False) -> dict[str, Any]:
     if cache is None or not Path(cache).exists():
       book_entry["ok"] = False
       book_entry["error"] = "missing_ohlc_cache"
+      book_entry["ohlc_hint"] = (
+        "Start the EA so it writes bars.json; workers fill parquet via history_sync. "
+        "Do not copy Train parquet into Live."
+      )
       err = getattr(_seed_cache, "last_error", "") or ""
       if err:
         book_entry["seed_error"] = err
@@ -237,8 +241,10 @@ def preflight_enabled_books(*, sim: bool = False) -> dict[str, Any]:
 
 
 def preflight_packages_ready(*, sim: bool = False) -> dict[str, Any]:
-  """Fast Start gate: roster + schedule packages + OHLC cache (no remine).
+  """Fast Start gate: roster + schedule packages (no remine).
 
+  OHLC is Trade-owned (EA bars.json / history_sync). Missing parquet is a
+  warning, not a Start blocker — workers fill cache after EA deploy.
   Full ``preflight_enabled_books`` remine can hang the UI for minutes with
   multi-model books; workers remine on the first live bar instead.
   """
@@ -287,13 +293,14 @@ def preflight_packages_ready(*, sim: bool = False) -> dict[str, Any]:
     if not cache.exists():
       seeded = _seed_cache(sym, tf)
       cache = Path(seeded) if seeded else cache
-    if not cache.exists():
-      book_entry["ok"] = False
-      book_entry["error"] = "missing_ohlc_cache"
+    if cache.exists():
+      book_entry["ohlc"] = "ready"
+    else:
+      # Do not block Start: workers request EA history_sync after deploy.
+      book_entry["ohlc"] = "pending_ea"
       err = getattr(_seed_cache, "last_error", "") or ""
       if err:
         book_entry["seed_error"] = err
-      all_ok = False
     for row in rows:
       iid = str(row.get("install_id") or "")
       mid = str(row.get("model_id") or "")

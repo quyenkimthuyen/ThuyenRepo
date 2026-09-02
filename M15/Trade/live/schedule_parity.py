@@ -58,7 +58,7 @@ def seed_exact(symbol: str, timeframe: str) -> Path:
   mod = importlib.util.module_from_spec(spec)
   assert spec.loader is not None
   spec.loader.exec_module(mod)
-  info = mod.seed(symbol, timeframe)
+  info = mod.seed(symbol, timeframe, allow_lab=True, force=True)
   return Path(info["dest"])
 
 

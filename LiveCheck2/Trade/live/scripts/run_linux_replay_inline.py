@@ -54,7 +54,7 @@ def _seed(symbol: str, timeframe: str, src: Path | None) -> Path:
   mod = importlib.util.module_from_spec(spec)
   assert spec.loader is not None
   spec.loader.exec_module(mod)
-  info = mod.seed(symbol, timeframe, src=src)
+  info = mod.seed(symbol, timeframe, src=src, allow_lab=src is None)
   print(f"[inline] seeded ← {info['source']}", flush=True)
   return Path(info["dest"])
 
