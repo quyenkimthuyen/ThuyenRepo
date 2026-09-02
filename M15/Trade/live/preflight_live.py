@@ -50,9 +50,14 @@ def _seed_cache(symbol: str, timeframe: str) -> Path | None:
     assert spec.loader is not None
     spec.loader.exec_module(mod)
     info = mod.seed(symbol, timeframe)
-    return Path(info["dest"])
-  except Exception:
+    dest = Path(info["dest"])
+    return dest if dest.exists() else (cache if cache.exists() else None)
+  except Exception as exc:
+    _seed_cache.last_error = f"{type(exc).__name__}: {exc}"  # type: ignore[attr-defined]
     return cache if cache.exists() else None
+
+
+_seed_cache.last_error = ""  # type: ignore[attr-defined]
 
 
 def _last_bar_from_parquet(cache: Path) -> dict[str, Any] | None:
@@ -133,6 +138,9 @@ def preflight_enabled_books(*, sim: bool = False) -> dict[str, Any]:
     if cache is None or not Path(cache).exists():
       book_entry["ok"] = False
       book_entry["error"] = "missing_ohlc_cache"
+      err = getattr(_seed_cache, "last_error", "") or ""
+      if err:
+        book_entry["seed_error"] = err
       all_ok = False
       books_out.append(book_entry)
       continue
@@ -282,6 +290,9 @@ def preflight_packages_ready(*, sim: bool = False) -> dict[str, Any]:
     if not cache.exists():
       book_entry["ok"] = False
       book_entry["error"] = "missing_ohlc_cache"
+      err = getattr(_seed_cache, "last_error", "") or ""
+      if err:
+        book_entry["seed_error"] = err
       all_ok = False
     for row in rows:
       iid = str(row.get("install_id") or "")

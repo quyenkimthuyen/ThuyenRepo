@@ -1,0 +1,155 @@
+{
+  "meta": {
+    "model_id": "tm_wr41r21dd3_b74c811e",
+    "source": "live_remine",
+    "n_weeks": 2
+  },
+  "weekly": [
+    {
+      "week_start": "2025-12-29",
+      "strategy": {
+        "name": "Forge RR3 full 2L2S atr+sweep #7EEA|chase:fixed_or_rsi<60+vwap<1.8",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 3.0,
+        "atr_mult": 1.25,
+        "score_threshold": 0.6,
+        "atr_mult_sl": 1.25,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": true,
+        "anti_chase_rsi_short_max": 60.0,
+        "anti_chase_rsi_long_min": 40.0,
+        "anti_chase_vwap_short_max": 1.8,
+        "anti_chase_logic": "or",
+        "tp_ignores_spread_buffer": false,
+        "min_atr_spread_ratio": 0.0,
+        "confirm_r": 0.16,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.5,
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.1040975122046964
+          },
+          {
+            "feat": "pullback_long",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.055887057704447046
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "atr_pct",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.9703369744579657,
+            "w": 0.7250351608788108
+          },
+          {
+            "feat": "sweep_high_fade",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.05639359474916997
+          }
+        ]
+      },
+      "train_start_idx": 45706,
+      "train_end_idx": 49402
+    },
+    {
+      "week_start": "2026-08-31",
+      "strategy": {
+        "name": "Forge RR2.6 full 2L2S atr+pullback #DEFD|chase:fixed_or_rsi<60+vwap<1.8",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.6,
+        "atr_mult": 1.25,
+        "score_threshold": 0.6,
+        "atr_mult_sl": 1.25,
+        "rr_ratio": 2.6,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": true,
+        "anti_chase_rsi_short_max": 60.0,
+        "anti_chase_rsi_long_min": 40.0,
+        "anti_chase_vwap_short_max": 1.8,
+        "anti_chase_logic": "or",
+        "tp_ignores_spread_buffer": false,
+        "min_atr_spread_ratio": 0.0,
+        "confirm_r": 0.16,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.5,
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.13604235083506944
+          },
+          {
+            "feat": "pullback_long",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.11692002497660739
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "atr_pct",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.9862708006443597,
+            "w": 0.827535170726047
+          },
+          {
+            "feat": "sweep_high_fade",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.07543806560724534
+          }
+        ]
+      },
+      "train_start_idx": 62222,
+      "train_end_idx": 66062
+    }
+  ]
+}

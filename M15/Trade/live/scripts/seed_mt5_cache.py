@@ -24,6 +24,12 @@ DESK_DATA_CANDIDATES = (
   "results/data/mt5_{sym}_{tf}.parquet",
 )
 MIN_PARQUET_BYTES = 1024
+TRAIN_DESK_BY_BOOK = {
+  ("EURUSD", "M15"): "e21",
+  ("GBPUSD", "M15"): "g23",
+  ("EURUSD", "M5"): "e21",
+  ("GBPUSD", "M5"): "g23",
+}
 
 
 def _now() -> str:
@@ -43,6 +49,43 @@ def _looks_like_parquet(path: Path) -> bool:
     return False
 
 
+def train_runtime_candidates(symbol: str, timeframe: str) -> list[Path]:
+  """TrainApp runtime parquet: e21 EUR / g23 GBP under Train/runtime/<desk>/data."""
+  sym = normalize_symbol(symbol)
+  tf = normalize_timeframe(timeframe)
+  name = f"mt5_{sym.lower()}_{tf.lower()}.parquet"
+  desk_id = TRAIN_DESK_BY_BOOK.get((sym, tf))
+  roots = [FINAL / "Train"]
+  parent = FINAL.parent
+  for extra in (
+    parent / "LiveCheck2" / "Train",
+    parent / "LiveCheck" / "TrainApp2",
+    parent / "M15" / "Train",
+  ):
+    if extra not in roots:
+      roots.append(extra)
+  out: list[Path] = []
+  seen: set[str] = set()
+
+  def _add(path: Path) -> None:
+    key = str(path)
+    if key in seen:
+      return
+    seen.add(key)
+    out.append(path)
+
+  if desk_id:
+    for root in roots:
+      _add(root / "runtime" / desk_id / "data" / name)
+  for root in roots:
+    runtime = root / "runtime"
+    if not runtime.is_dir():
+      continue
+    for path in runtime.glob(f"*/data/{name}"):
+      _add(path)
+  return out
+
+
 def find_source(symbol: str, timeframe: str, src: Path | None = None) -> Path:
   if src:
     p = Path(src)
@@ -54,9 +97,13 @@ def find_source(symbol: str, timeframe: str, src: Path | None = None) -> Path:
   sym = normalize_symbol(symbol).lower()
   tf = normalize_timeframe(timeframe).lower()
   candidates: list[Path] = []
-  desk = resolve_host_desk(symbol, timeframe)
-  for tmpl in DESK_DATA_CANDIDATES:
-    candidates.append(desk / tmpl.format(sym=sym, tf=tf))
+  try:
+    desk = resolve_host_desk(symbol, timeframe)
+    for tmpl in DESK_DATA_CANDIDATES:
+      candidates.append(desk / tmpl.format(sym=sym, tf=tf))
+  except (FileNotFoundError, ValueError):
+    pass
+  candidates.extend(train_runtime_candidates(symbol, timeframe))
   # Final_app sibling desks + nearby backtest trees
   for root in (FINAL, FINAL.parent / "backtest", FINAL.parent / "backtestM5"):
     if not root.exists():
@@ -68,7 +115,7 @@ def find_source(symbol: str, timeframe: str, src: Path | None = None) -> Path:
   if not good:
     raise FileNotFoundError(
       f"No readable parquet for {symbol} {timeframe}. Pass --src PATH or place "
-      f"mt5_{sym}_{tf}.parquet under the host desk data/."
+      f"mt5_{sym}_{tf}.parquet under Train/runtime/e21|g23/data/."
     )
   # Prefer largest (usually longest history)
   return max(good, key=lambda p: p.stat().st_size)
