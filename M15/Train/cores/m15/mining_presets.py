@@ -521,6 +521,53 @@ GBP_WR50_LONDON_1TD = {
   "max_trades_per_day": 1,
 }
 
+# GBP Bid/Ask: fill_book on 4–6w printed WR15–29, n=17–26, R<0 (gs_20260902_095825).
+# Same EUR lesson — not more RR. Label easier + stop confirm; SL must clear 2.3 spread.
+GBP_FILL_SPARKSTOP = {
+  **GBP_FILL_BOOK,
+  "rr_ratios": [2.2, 2.6, 3.0],
+  "atr_multipliers": [1.05, 1.25],
+  "label_rr": 1.2,
+  "confirm_r": 0.20,
+  "confirm_wait_bars": 4,
+  "confirm_cancel_r": 0.50,
+  "include_session_regime_rules": True,
+  "target_trades_per_week": 5.5,
+}
+GBP_FILL_SS_LAB = {
+  **GBP_FILL_SPARKSTOP,
+  "label_rr": 1.0,
+  "confirm_r": 0.16,
+  "confirm_wait_bars": 5,
+  "target_trades_per_week": 6.0,
+}
+GBP_FILL_SS_MORE = {
+  **GBP_FILL_SPARKSTOP,
+  "confirm_r": 0.15,
+  "confirm_wait_bars": 6,
+  "confirm_cancel_r": 0.60,
+  "target_trades_per_week": 6.5,
+}
+# ss_more 8w ep2: WR56 +16R PF3 n=16 — quality needs n≥40. Loosen fill rate, keep confirm.
+GBP_FILL_SS_VOL = {
+  **GBP_FILL_SS_MORE,
+  "label_rr": 1.0,
+  "confirm_r": 0.12,
+  "confirm_wait_bars": 8,
+  "confirm_cancel_r": 0.70,
+  "min_bars_between": [8],
+  "target_trades_per_week": 8.0,
+}
+GBP_FILL_SS_WAIT = {
+  **GBP_FILL_SS_MORE,
+  "label_rr": 1.0,
+  "confirm_r": 0.14,
+  "confirm_wait_bars": 8,
+  "confirm_cancel_r": 0.65,
+  "min_bars_between": [8],
+  "target_trades_per_week": 7.5,
+}
+
 # App-recommended direction after Bid/Ask fills (BUY Ask / SELL Bid).
 # Elite OR-quality (RR 3.2–4) was fit on half-spread lab fills — do not
 # re-offer it as the EUR default.
@@ -535,16 +582,13 @@ EUR_FILL_CURATED: tuple[str, ...] = (
   "eur_fill_ss_wr",
 )
 
-# GBP Settings catalog — fill-aware + WR50 family already used on g23.
+# GBP Settings catalog — Bid/Ask confirm first; book/WR50 kept as contrast.
 GBP_FILL_CURATED: tuple[str, ...] = (
-  "gbp_fill_book",
-  "gbp_fill_wr",
-  "gbp_fill_sniper",
-  "gbp_fill_flow",
-  "gbp_wr50_tight",
-  "gbp_wr50_elite",
-  "gbp_wr50_short_1td",
-  "gbp_wr50_short_london",
+  "gbp_fill_ss_lab",
+  "gbp_fill_ss_more",
+  "gbp_fill_ss_vol",
+  "gbp_fill_ss_wait",
+  "gbp_fill_sparkstop",
 )
 
 # Default Settings UI list (no desk / EUR).
@@ -614,6 +658,11 @@ PRESET_LABELS: dict[str, str] = {
   "eur_fill_ss_lab": "EUR Bid/Ask · label 1.0R + stop (khuyến nghị)",
   "eur_fill_ss_wr": "EUR sparkstop · confirm 0.24",
   "gbp_fill_book": "GBP fill-aware · WR>50 R>80",
+  "gbp_fill_sparkstop": "GBP Bid/Ask · label 1.2R + stop",
+  "gbp_fill_ss_lab": "GBP Bid/Ask · label 1.0R + stop (khuyến nghị)",
+  "gbp_fill_ss_more": "GBP sparkstop · confirm 0.15 wait6",
+  "gbp_fill_ss_vol": "GBP sparkstop · nới confirm + 8 lệnh/tuần",
+  "gbp_fill_ss_wait": "GBP sparkstop · wait 8 nến",
   "gbp_fill_sniper": "GBP fill sniper · WR-first",
   "gbp_fill_flow": "GBP fill flow · volume + RR>2",
   "gbp_fill_wr": "GBP fill WR-first · London",
@@ -791,6 +840,31 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "knobs": "RR 2.4–3.2 · ATR 0.85/1.05 · RSI<60 OR VWAP<1.8 · TPW 5 · exit full",
     "tradeoff": "TP gần hơn elite cũ (SL đã +spread) · nhiều lệnh hơn sniper",
   },
+  "gbp_fill_sparkstop": {
+    "intent": "GBP Bid/Ask — label 1.2R rồi đợi giá xác nhận, không market Ask nến tín hiệu",
+    "knobs": "label_rr=1.2 · confirm 0.2R · wait 4 · RR 2.2–3.0 · ATR 1.05/1.25",
+    "tradeoff": "Bỏ giả / lệnh không chạy · n↓ vs fill_book nếu confirm siết",
+  },
+  "gbp_fill_ss_lab": {
+    "intent": "GBP Bid/Ask — hướng khuyến nghị: cùng DNA EUR ss_lab, SL đủ lớn hơn spread 2.3",
+    "knobs": "label_rr=1.0 · confirm 0.16 · wait 5 · RR 2.2–3.0 · ATR 1.05/1.25 · TPW 6",
+    "tradeoff": "Confirm là pending (chưa market nến sau) · n có thể mỏng trên OOS ngắn",
+  },
+  "gbp_fill_ss_more": {
+    "intent": "Nới confirm — thêm lệnh quanh ss_lab khi n GBP quá mỏng",
+    "knobs": "confirm 0.15 · wait 6 · cancel 0.60 · TPW 6.5 · label 1.2",
+    "tradeoff": "n↑ · WR có thể thấp hơn ss_lab",
+  },
+  "gbp_fill_ss_vol": {
+    "intent": "Đẩy n về cổng quality (≥40) từ ss_more WR56 n=16",
+    "knobs": "label 1.0 · confirm 0.12 · wait 8 · cancel 0.70 · gap 8 nến · TPW 8",
+    "tradeoff": "n↑ mạnh · WR có thể tụt dưới 50 nếu confirm quá lỏng",
+  },
+  "gbp_fill_ss_wait": {
+    "intent": "Chờ confirm lâu hơn — bắt lệnh chậm, giữ WR ss_more",
+    "knobs": "label 1.0 · confirm 0.14 · wait 8 · cancel 0.65 · gap 8 · TPW 7.5",
+    "tradeoff": "n↑ nếu confirm trễ · miss nếu fake chết sớm",
+  },
   "gbp_fill_sniper": {
     "intent": "GBP fill-aware, ưu tiên WR",
     "knobs": "RR 2.5–3.5 · RSI<58 OR VWAP<1.5 · TPW 4 · exit full",
@@ -875,7 +949,7 @@ def recommended_preset() -> str:
   """Desk-aware default mining direction (EUR Bid/Ask vs GBP fill)."""
   desk = _desk_id()
   if desk.startswith("g"):
-    return "gbp_fill_book"
+    return "gbp_fill_ss_lab"
   return RECOMMENDED_PRESET
 
 
@@ -1035,6 +1109,11 @@ PRESETS: dict[str, dict] = {
   "eur_fill_ss_lab": deepcopy(EUR_FILL_SS_LAB),
   "eur_fill_ss_wr": deepcopy(EUR_FILL_SS_WR),
   "gbp_fill_book": deepcopy(GBP_FILL_BOOK),
+  "gbp_fill_sparkstop": deepcopy(GBP_FILL_SPARKSTOP),
+  "gbp_fill_ss_lab": deepcopy(GBP_FILL_SS_LAB),
+  "gbp_fill_ss_more": deepcopy(GBP_FILL_SS_MORE),
+  "gbp_fill_ss_vol": deepcopy(GBP_FILL_SS_VOL),
+  "gbp_fill_ss_wait": deepcopy(GBP_FILL_SS_WAIT),
   "gbp_fill_sniper": deepcopy(GBP_FILL_SNIPER),
   "gbp_fill_flow": deepcopy(GBP_FILL_FLOW),
   "gbp_fill_wr": deepcopy(GBP_FILL_WR),

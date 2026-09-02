@@ -328,15 +328,27 @@ def test_g23_fill_aware_defaults(monkeypatch):
   from mining_presets import GBP_FILL_CURATED, get_preset, list_curated_presets, recommended_preset
   from strategy_miner import mining_search_space_from_dict
 
-  assert recommended_preset() == "gbp_fill_book"
+  assert recommended_preset() == "gbp_fill_ss_lab"
   assert list(list_curated_presets()) == list(GBP_FILL_CURATED)
+  lab = mining_search_space_from_dict(get_preset("gbp_fill_ss_lab"))
+  assert lab.label_rr == 1.0
+  assert lab.confirm_r == pytest.approx(0.16)
+  assert lab.rr_ratios == (2.2, 2.6, 3.0)
+  assert lab.atr_multipliers == (1.05, 1.25)
   book = mining_search_space_from_dict(get_preset("gbp_fill_book"))
   assert book.rr_ratios == (2.4, 2.8, 3.2)
   assert max(book.rr_ratios) <= 3.2
-  assert book.atr_multipliers == (0.85, 1.05)
   s = default_settings_for_desk()
-  assert s["mining_presets"] == ["gbp_fill_book"]
-  assert s["strategy_train_weeks"] == [4, 5, 6]
+  assert s["mining_presets"] == ["gbp_fill_ss_lab"]
+  assert s["strategy_train_weeks"] == [6, 8]
+  vol = mining_search_space_from_dict(get_preset("gbp_fill_ss_vol"))
+  assert vol.label_rr == 1.0
+  assert vol.confirm_r == pytest.approx(0.12)
+  assert vol.confirm_wait_bars == 8
+  assert vol.min_bars_between == (8,)
+  wait = mining_search_space_from_dict(get_preset("gbp_fill_ss_wait"))
+  assert wait.confirm_wait_bars == 8
+  assert wait.min_bars_between == (8,)
   assert s["learning_era_keys"] == ["2025-full"]
   assert s["grid_objective"] == "quality"
   assert s["backtest_from"] == "2026-01-01"

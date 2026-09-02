@@ -264,11 +264,11 @@ def render(embedded: bool = False):
       "Preset Elite RR 3.2–4 (fill cũ nửa spread) **không** dùng làm mặc định GBP."
     )
     mining_help = (
-      "Hướng **GBP Bid/Ask**: RR 2.4–3.2, ATR 0.85/1.05, `gbp_fill_book`. "
+      "Hướng **GBP Bid/Ask**: RR 2.2–3.0, ATR 1.05/1.25, label 1.0R + stop confirm. "
       "Bỏ trống = miner baseline cũ (không khuyến nghị)."
     )
     rec_cap = (
-      f"Khuyến nghị GBP: **fill-aware RR vừa** (`{rec}`). "
+      f"Khuyến nghị GBP: **label 1.0R + stop confirm** (`{rec}`). "
       "Trade Model active mang search space riêng cho Live / remine."
     )
   else:

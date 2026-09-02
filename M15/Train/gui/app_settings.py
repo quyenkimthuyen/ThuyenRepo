@@ -113,7 +113,8 @@ def default_settings_for_desk() -> dict:
   out["learning_loops"] = 3
   desk = (os.environ.get("TRAINAPP_DESK") or "").strip().lower()
   if desk.startswith("g"):
-    out["strategy_train_weeks"] = [4, 5, 6]
+    # 4–5w fill_book n mỏng R<0; 12w confirm n=6–10. Densify 6+8 quanh ss_more.
+    out["strategy_train_weeks"] = [6, 8]
   else:
     out["strategy_train_weeks"] = [8, 12]
   return out
