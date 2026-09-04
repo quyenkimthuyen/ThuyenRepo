@@ -2,15 +2,15 @@
   "epoch_count": 1,
   "rule_stats": {
     "long|macd_hist|lt|-0.1837": {
-      "wins": 26,
-      "losses": 63,
-      "total_r": 6.999999999999834,
+      "wins": 27,
+      "losses": 62,
+      "total_r": 5.000000000000157,
       "uses": 89
     },
     "long|sweep_low_fade|eq1|0.5": {
-      "wins": 26,
-      "losses": 64,
-      "total_r": 4.999999999999547,
+      "wins": 27,
+      "losses": 63,
+      "total_r": 3.9999999999998286,
       "uses": 90
     },
     "short|sweep_high_fade|eq1|0.5": {
@@ -704,14 +704,14 @@
           "direction": "long",
           "op": "lt",
           "threshold": -0.18368877511103573,
-          "weight": 4.94049956598816
+          "weight": 5.153373967939939
         },
         {
           "feature": "sweep_low_fade",
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 1.294309107091523
+          "weight": 1.355055056159486
         }
       ],
       "short_rules": [
@@ -769,14 +769,14 @@
           "direction": "long",
           "op": "lt",
           "threshold": -0.18368877511103573,
-          "weight": 1.9432507517079545
+          "weight": 2.0445691312723326
         },
         {
           "feature": "sweep_low_fade",
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 1.6483963431870898
+          "weight": 1.7466283472388608
         }
       ],
       "short_rules": [
@@ -899,14 +899,14 @@
           "direction": "long",
           "op": "lt",
           "threshold": -0.2018079207217997,
-          "weight": 4.216583619983375
+          "weight": 4.318876765241626
         },
         {
           "feature": "sweep_low_fade",
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 1.4065515937252178
+          "weight": 1.478770951539295
         }
       ],
       "short_rules": [
@@ -964,14 +964,14 @@
           "direction": "long",
           "op": "lt",
           "threshold": -0.18368877511103573,
-          "weight": 6.500771589091197
+          "weight": 6.858064415938102
         },
         {
           "feature": "sweep_low_fade",
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 2.366250958224792
+          "weight": 2.514922444260002
         }
       ],
       "short_rules": [
@@ -1036,7 +1036,7 @@
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 1.0630398712442062
+          "weight": 1.0878396664749985
         }
       ],
       "short_rules": [
@@ -1151,6 +1151,71 @@
       "confirm_cancel_r": 0.5
     },
     {
+      "fitness": 394.3088297989949,
+      "name": "Forge RR2 full 2L2S macd+sweep #FCA0",
+      "long_rules": [
+        {
+          "feature": "macd_hist",
+          "direction": "long",
+          "op": "lt",
+          "threshold": -0.18368877511103573,
+          "weight": 5.152538355041786
+        },
+        {
+          "feature": "sweep_low_fade",
+          "direction": "long",
+          "op": "eq1",
+          "threshold": 0.5,
+          "weight": 1.3803632247283146
+        }
+      ],
+      "short_rules": [
+        {
+          "feature": "sweep_high_fade",
+          "direction": "short",
+          "op": "eq1",
+          "threshold": 0.5,
+          "weight": 0.2560000000000015
+        },
+        {
+          "feature": "pullback_short",
+          "direction": "short",
+          "op": "eq1",
+          "threshold": 0.5,
+          "weight": 0.3134527214519849
+        }
+      ],
+      "score_threshold": 0.6174919434461745,
+      "atr_mult_sl": 1.0479981343693379,
+      "rr_ratio": 2.0,
+      "min_rules_match": 1,
+      "ml_prob_min": 0.48400326673160526,
+      "exit_mode": "full",
+      "partial_pct": 0.35,
+      "partial_at_r": 1.5,
+      "trail_activate_r": 1.0,
+      "trail_distance_r": 0.5,
+      "max_trades_per_day": 2,
+      "max_hold_bars": 96,
+      "min_bars_between": 12,
+      "session_filter": true,
+      "session_start_hour": 7,
+      "session_end_hour": 20,
+      "blocked_hours": [],
+      "allow_long": true,
+      "allow_short": true,
+      "anti_chase": false,
+      "anti_chase_rsi_short_max": 100.0,
+      "anti_chase_rsi_long_min": 0.0,
+      "anti_chase_vwap_short_max": 99.0,
+      "anti_chase_logic": "or",
+      "tp_ignores_spread_buffer": false,
+      "min_atr_spread_ratio": 0.0,
+      "confirm_r": 0.0,
+      "confirm_wait_bars": 4,
+      "confirm_cancel_r": 0.5
+    },
+    {
       "fitness": 378.2522207833859,
       "name": "Forge RR2.5 full 2L2S macd+sweep #6D2F",
       "long_rules": [
@@ -1159,14 +1224,14 @@
           "direction": "long",
           "op": "lt",
           "threshold": -0.18368877511103573,
-          "weight": 3.5873497688396614
+          "weight": 3.666783107908728
         },
         {
           "feature": "sweep_low_fade",
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 1.0597005165775117
+          "weight": 1.0853860187808324
         }
       ],
       "short_rules": [
@@ -1216,71 +1281,6 @@
       "confirm_cancel_r": 0.5
     },
     {
-      "fitness": 370.0794631389936,
-      "name": "Forge RR3 full 2L2S macd+sweep #C399",
-      "long_rules": [
-        {
-          "feature": "macd_hist",
-          "direction": "long",
-          "op": "lt",
-          "threshold": -0.18368877511103573,
-          "weight": 5.152538355041786
-        },
-        {
-          "feature": "sweep_low_fade",
-          "direction": "long",
-          "op": "eq1",
-          "threshold": 0.5,
-          "weight": 1.3803632247283146
-        }
-      ],
-      "short_rules": [
-        {
-          "feature": "sweep_high_fade",
-          "direction": "short",
-          "op": "eq1",
-          "threshold": 0.5,
-          "weight": 0.2560000000000015
-        },
-        {
-          "feature": "pullback_short",
-          "direction": "short",
-          "op": "eq1",
-          "threshold": 0.5,
-          "weight": 0.34723381783469454
-        }
-      ],
-      "score_threshold": 0.6391638669331685,
-      "atr_mult_sl": 0.9741124674164937,
-      "rr_ratio": 3.0,
-      "min_rules_match": 1,
-      "ml_prob_min": 0.48400326673160526,
-      "exit_mode": "full",
-      "partial_pct": 0.35,
-      "partial_at_r": 1.5,
-      "trail_activate_r": 1.0,
-      "trail_distance_r": 0.5,
-      "max_trades_per_day": 2,
-      "max_hold_bars": 96,
-      "min_bars_between": 12,
-      "session_filter": true,
-      "session_start_hour": 7,
-      "session_end_hour": 20,
-      "blocked_hours": [],
-      "allow_long": true,
-      "allow_short": true,
-      "anti_chase": false,
-      "anti_chase_rsi_short_max": 100.0,
-      "anti_chase_rsi_long_min": 0.0,
-      "anti_chase_vwap_short_max": 99.0,
-      "anti_chase_logic": "or",
-      "tp_ignores_spread_buffer": false,
-      "min_atr_spread_ratio": 0.0,
-      "confirm_r": 0.0,
-      "confirm_wait_bars": 4,
-      "confirm_cancel_r": 0.5
-    },
-    {
       "fitness": 180.72779179070312,
       "name": "Forge RR3 full 2L2S macd+sweep #E939",
       "long_rules": [
@@ -1289,14 +1289,14 @@
           "direction": "long",
           "op": "lt",
           "threshold": -0.18368877511103573,
-          "weight": 2.76611842105263
+          "weight": 2.8332236842105267
         },
         {
           "feature": "sweep_low_fade",
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 1.5440996609792659
+          "weight": 1.5817482194347745
         }
       ],
       "short_rules": [
@@ -1354,14 +1354,14 @@
           "direction": "long",
           "op": "lt",
           "threshold": -0.20034987181972283,
-          "weight": 3.693618262948777
+          "weight": 3.787197265139732
         },
         {
           "feature": "sweep_low_fade",
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 0.9764225648122499
+          "weight": 1.0336425250063328
         }
       ],
       "short_rules": [
@@ -1419,14 +1419,14 @@
           "direction": "long",
           "op": "lt",
           "threshold": -0.18368877511103573,
-          "weight": 5.2172357964151495
+          "weight": 5.349416137009873
         },
         {
           "feature": "sweep_low_fade",
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 1.5182597897775836
+          "weight": 1.5583852270788494
         }
       ],
       "short_rules": [
@@ -4941,7 +4941,7 @@
         "confluence_long": 0.25,
         "confluence_short": 0.5
       },
-      "long_win": 0,
+      "long_win": 1,
       "short_win": 0,
       "entry_time": "2024-11-01 18:00:00"
     },
@@ -7550,72 +7550,72 @@
     {
       "key": "long|macd_hist|lt|-0.1837",
       "entry_time": "2024-10-28 17:15:00",
-      "r": -0.9999999999999115
+      "r": -0.9999999999999483
     },
     {
       "key": "long|sweep_low_fade|eq1|0.5",
       "entry_time": "2024-10-28 17:15:00",
-      "r": -0.9999999999999115
+      "r": -0.9999999999999483
     },
     {
       "key": "long|macd_hist|lt|-0.1837",
       "entry_time": "2024-10-29 05:00:00",
-      "r": 3.0000000000000187
+      "r": 1.9999999999999658
     },
     {
       "key": "long|macd_hist|lt|-0.1837",
       "entry_time": "2024-10-29 13:45:00",
-      "r": 3.000000000000098
+      "r": 2.000000000000043
     },
     {
       "key": "long|sweep_low_fade|eq1|0.5",
       "entry_time": "2024-10-29 13:45:00",
-      "r": 3.000000000000098
+      "r": 2.000000000000043
     },
     {
       "key": "long|macd_hist|lt|-0.1837",
       "entry_time": "2024-10-30 05:00:00",
-      "r": 2.9999999999999143
+      "r": 2.0000000000000657
     },
     {
       "key": "long|sweep_low_fade|eq1|0.5",
       "entry_time": "2024-10-30 05:00:00",
-      "r": 2.9999999999999143
+      "r": 2.0000000000000657
     },
     {
       "key": "long|macd_hist|lt|-0.1837",
       "entry_time": "2024-10-30 12:45:00",
-      "r": 3.0000000000000457
+      "r": 2.0000000000000795
     },
     {
       "key": "long|sweep_low_fade|eq1|0.5",
       "entry_time": "2024-10-30 12:45:00",
-      "r": 3.0000000000000457
+      "r": 2.0000000000000795
     },
     {
       "key": "long|macd_hist|lt|-0.1837",
       "entry_time": "2024-10-31 12:15:00",
-      "r": -1.0000000000000637
+      "r": -0.9999999999999659
     },
     {
       "key": "long|macd_hist|lt|-0.1837",
       "entry_time": "2024-10-31 15:45:00",
-      "r": 2.9999999999999725
+      "r": 2.0000000000000404
     },
     {
       "key": "long|sweep_low_fade|eq1|0.5",
       "entry_time": "2024-10-31 15:45:00",
-      "r": 2.9999999999999725
+      "r": 2.0000000000000404
     },
     {
       "key": "long|macd_hist|lt|-0.1837",
       "entry_time": "2024-11-01 18:00:00",
-      "r": -1.0000000000000675
+      "r": 2.000000000000053
     },
     {
       "key": "long|sweep_low_fade|eq1|0.5",
       "entry_time": "2024-11-01 18:00:00",
-      "r": -1.0000000000000675
+      "r": 2.000000000000053
     },
     {
       "key": "long|macd_hist|lt|-0.1837",
@@ -7971,22 +7971,22 @@
   "epoch_history": [
     {
       "epoch": 1,
-      "timestamp": "2026-09-02T06:38:09.491060+00:00",
+      "timestamp": "2026-09-04T12:31:20.311178+00:00",
       "n_trades": 108,
       "trades_per_week": 5.14,
-      "win_rate_pct": 27.78,
-      "avg_rr": 2.7,
-      "profit_factor": 1.015,
-      "total_pips": 13.27,
-      "total_r": 3.0,
-      "year_win_rate_pct": 27.78,
-      "year_avg_rr": 2.7,
-      "year_total_r": 3.0,
+      "win_rate_pct": 28.7,
+      "avg_rr": 2.516,
+      "profit_factor": 1.002,
+      "total_pips": 1.33,
+      "total_r": 1.0,
+      "year_win_rate_pct": 28.7,
+      "year_avg_rr": 2.516,
+      "year_total_r": 1.0,
       "genomes_in_kb": 22,
       "rules_tracked": 7,
       "ml_samples": 108
     }
   ],
   "best_fitness_ever": 1109.8866666666606,
-  "updated_at": "2026-09-02T06:38:09.491252+00:00"
+  "updated_at": "2026-09-04T12:31:20.311914+00:00"
 }

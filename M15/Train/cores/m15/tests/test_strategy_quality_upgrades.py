@@ -206,6 +206,9 @@ def test_elite_presets_opt_in():
   assert "wr_rr_frontier" not in list_curated_presets()
   assert "elite_or_quality" not in list_curated_presets()
   assert list_curated_presets() == list(EUR_FILL_CURATED)
+  assert "eur_fill_ss_more" in EUR_FILL_CURATED
+  assert "eur_fill_ss_bank" in DEPRECATED_PRESETS
+  assert "eur_fill_ss_more_hyb24" not in list_curated_presets()
   assert "elite_60_3_vwap" in DEPRECATED_PRESETS
   assert "frontier_rr_hi" not in list_curated_presets()
 
@@ -261,6 +264,37 @@ def test_eur_fill_presets_wider_sl_closer_tp():
   more = mining_search_space_from_dict(get_preset("eur_fill_ss_more"))
   assert more.confirm_r == 0.15
   assert more.confirm_wait_bars == 6
+  plus = mining_search_space_from_dict(get_preset("eur_fill_ss_plus"))
+  assert plus.confirm_r == pytest.approx(0.15)
+  assert plus.confirm_wait_bars == 6
+  assert plus.min_bars_between == (8,)
+  assert plus.max_hold_bars == (128,)
+  runp = mining_search_space_from_dict(get_preset("eur_fill_ss_run"))
+  assert runp.confirm_r == pytest.approx(0.15)
+  assert runp.rr_ratios == (2.6, 3.0, 3.4)
+  assert runp.max_hold_bars == (128,)
+  eur_bank = mining_search_space_from_dict(get_preset("eur_fill_ss_bank"))
+  assert eur_bank.exit_mode_lock == "hybrid"
+  assert eur_bank.trail_activate_r == pytest.approx(1.3)
+  assert eur_bank.confirm_r == pytest.approx(0.15)
+  eur_clip = mining_search_space_from_dict(get_preset("eur_fill_ss_clip"))
+  assert eur_clip.tp_ignores_spread_buffer is True
+  assert eur_clip.confirm_wait_bars == 6
+  hyb24 = mining_search_space_from_dict(get_preset("eur_fill_ss_more_hyb24"))
+  assert hyb24.confirm_r == pytest.approx(0.15)
+  assert hyb24.exit_modes_full_only is True
+  assert hyb24.exit_mode_lock == ""
+  assert hyb24.oos_exit_mode == "hybrid"
+  assert hyb24.oos_trail_activate_r == pytest.approx(2.4)
+  assert hyb24.oos_trail_distance_r == pytest.approx(0.40)
+  ghyb = mining_search_space_from_dict(get_preset("gbp_fill_ss_tight_hyb24"))
+  assert ghyb.confirm_r == pytest.approx(0.13)
+  assert ghyb.oos_exit_mode == "hybrid"
+  assert ghyb.oos_trail_activate_r == pytest.approx(2.4)
+  lab_plus = mining_search_space_from_dict(get_preset("eur_fill_ss_lab_plus"))
+  assert lab_plus.confirm_r == pytest.approx(0.16)
+  assert lab_plus.min_bars_between == (8,)
+  assert lab_plus.max_hold_bars == (128,)
   wait = mining_search_space_from_dict(get_preset("eur_fill_ss_wait"))
   assert wait.confirm_wait_bars == 8
   lab = mining_search_space_from_dict(get_preset("eur_fill_ss_lab"))
@@ -271,7 +305,8 @@ def test_eur_fill_presets_wider_sl_closer_tp():
 
 def test_exit_modes_lock_and_tp_geometry():
   from execution import PIP, stop_and_target_distances
-  from strategy_miner import MiningSearchSpace, _exit_modes_for_space
+  from mining_presets import get_preset
+  from strategy_miner import MiningSearchSpace, _exit_modes_for_space, mining_search_space_from_dict
 
   atr, mult, rr, spr = 0.0010, 1.05, 2.6, 1.9
   sl_taxed, tp_taxed = stop_and_target_distances(atr, mult, rr, spr)
@@ -290,6 +325,25 @@ def test_exit_modes_lock_and_tp_geometry():
     exit_modes_full_only=True, exit_mode_lock="hybrid", trail_activate_r=1.5,
   ))
   assert hyb == [("hybrid", {"trail_activate_r": 1.5, "trail_distance_r": 0.6})]
+  late = _exit_modes_for_space(mining_search_space_from_dict(get_preset("eur_fill_ss_more_hyb24")))
+  assert [m for m, _ in late] == ["full"]
+
+
+def test_oos_exit_overlay_keeps_mined_full_exits():
+  from mining_presets import get_preset
+  from strategy_miner import (
+    MinedStrategy, apply_oos_exit_overlay, mining_search_space_from_dict,
+  )
+
+  space = mining_search_space_from_dict(get_preset("eur_fill_ss_more_hyb24"))
+  strat = MinedStrategy(exit_mode="full", rr_ratio=2.6, trail_activate_r=1.8)
+  over = apply_oos_exit_overlay(strat, space)
+  assert strat.exit_mode == "full"
+  assert over.exit_mode == "hybrid"
+  assert over.trail_activate_r == pytest.approx(2.4)
+  assert over.trail_distance_r == pytest.approx(0.40)
+  assert apply_oos_exit_overlay(strat, None) is strat
+  assert apply_oos_exit_overlay(strat, mining_search_space_from_dict(get_preset("eur_fill_ss_more"))).exit_mode == "full"
 
 
 def test_preset_blurbs_and_direction_line():
@@ -314,12 +368,25 @@ def test_preset_blurbs_and_direction_line():
   assert "Baseline miner" in space_direction_line(None)
 
 
-def test_app_settings_default_mining_preset():
-  from gui.app_settings import DEFAULT_SETTINGS, _sanitize_settings
-  assert DEFAULT_SETTINGS["mining_presets"] == ["eur_fill_ss_lab"]
-  assert DEFAULT_SETTINGS["strategy_train_weeks"] == [8, 12]
+def test_app_settings_default_mining_preset(monkeypatch):
+  monkeypatch.setenv("TRAINAPP_DESK", "e21")
+  from gui.app_settings import DEFAULT_SETTINGS, _sanitize_settings, default_settings_for_desk
+  assert DEFAULT_SETTINGS["mining_presets"] == ["eur_fill_ss_more"]
+  assert DEFAULT_SETTINGS["strategy_train_weeks"] == [8]
+  assert DEFAULT_SETTINGS["learning_era_keys"] == ["2025-h1"]
+  assert DEFAULT_SETTINGS["oos_window_keys"] == ["2026-h1"]
+  assert DEFAULT_SETTINGS["backtest_to"] == "2026-06-30"
   cleaned = _sanitize_settings({"learning_eras": DEFAULT_SETTINGS["learning_eras"]})
-  assert cleaned["mining_presets"] == ["eur_fill_ss_lab"]
+  assert cleaned["mining_presets"] == ["eur_fill_ss_more"]
+  assert cleaned["oos_window_keys"] == ["2026-h1"]
+  assert [w["key"] for w in cleaned["oos_windows"]] == ["2026-h1", "2025-h2"]
+  s = default_settings_for_desk()
+  assert s["mining_presets"] == ["eur_fill_ss_more"]
+  assert s["strategy_train_weeks"] == [8]
+  assert s["learning_era_keys"] == ["2025-h1"]
+  assert s["oos_window_keys"] == ["2026-h1"]
+  assert s["backtest_from"] == "2026-01-01"
+  assert s["backtest_to"] == "2026-06-30"
 
 
 def test_g23_fill_aware_defaults(monkeypatch):
@@ -330,6 +397,8 @@ def test_g23_fill_aware_defaults(monkeypatch):
 
   assert recommended_preset() == "gbp_fill_ss_lab"
   assert list(list_curated_presets()) == list(GBP_FILL_CURATED)
+  assert "gbp_fill_ss_tight" in GBP_FILL_CURATED
+  assert "gbp_fill_ss_dense" not in list_curated_presets()
   lab = mining_search_space_from_dict(get_preset("gbp_fill_ss_lab"))
   assert lab.label_rr == 1.0
   assert lab.confirm_r == pytest.approx(0.16)
@@ -339,8 +408,8 @@ def test_g23_fill_aware_defaults(monkeypatch):
   assert book.rr_ratios == (2.4, 2.8, 3.2)
   assert max(book.rr_ratios) <= 3.2
   s = default_settings_for_desk()
-  assert s["mining_presets"] == ["gbp_fill_ss_lab"]
-  assert s["strategy_train_weeks"] == [6, 8]
+  assert s["mining_presets"] == ["gbp_fill_ss_tight"]
+  assert s["strategy_train_weeks"] == [6]
   vol = mining_search_space_from_dict(get_preset("gbp_fill_ss_vol"))
   assert vol.label_rr == 1.0
   assert vol.confirm_r == pytest.approx(0.12)
@@ -352,13 +421,41 @@ def test_g23_fill_aware_defaults(monkeypatch):
   tight = mining_search_space_from_dict(get_preset("gbp_fill_ss_tight"))
   assert tight.confirm_r == pytest.approx(0.13)
   assert tight.confirm_wait_bars == 6
+  tight_n = mining_search_space_from_dict(get_preset("gbp_fill_ss_tight_n"))
+  assert tight_n.confirm_r == pytest.approx(0.13)
+  assert tight_n.confirm_wait_bars == 6
+  assert tight_n.min_bars_between == (6,)
+  assert tight_n.max_hold_bars == (128,)
   dense = mining_search_space_from_dict(get_preset("gbp_fill_ss_dense"))
   assert dense.confirm_r == pytest.approx(0.10)
   assert dense.confirm_wait_bars == 10
   assert dense.min_bars_between == (6,)
-  assert s["learning_era_keys"] == ["2025-full"]
+  gplus = mining_search_space_from_dict(get_preset("gbp_fill_ss_plus"))
+  assert gplus.confirm_r == pytest.approx(0.12)
+  assert gplus.confirm_wait_bars == 8
+  assert gplus.min_bars_between == (6,)
+  assert gplus.max_hold_bars == (128,)
+  grun = mining_search_space_from_dict(get_preset("gbp_fill_ss_run"))
+  assert grun.confirm_r == pytest.approx(0.12)
+  assert grun.rr_ratios == (2.6, 3.0, 3.4)
+  bank = mining_search_space_from_dict(get_preset("eur_fill_ss_bank"))
+  assert bank.exit_mode_lock == "hybrid"
+  assert bank.trail_activate_r == pytest.approx(1.3)
+  assert bank.confirm_r == pytest.approx(0.15)
+  clip = mining_search_space_from_dict(get_preset("eur_fill_ss_clip"))
+  assert clip.tp_ignores_spread_buffer is True
+  assert clip.confirm_r == pytest.approx(0.15)
+  gbank = mining_search_space_from_dict(get_preset("gbp_fill_ss_bank"))
+  assert gbank.exit_mode_lock == "hybrid"
+  assert gbank.confirm_r == pytest.approx(0.12)
+  gclip = mining_search_space_from_dict(get_preset("gbp_fill_ss_clip"))
+  assert gclip.tp_ignores_spread_buffer is True
+  assert s["learning_era_keys"] == ["2025-h2"]
+  assert s["oos_window_keys"] == ["2026-h1"]
+  assert [w["key"] for w in s["oos_windows"]] == ["2026-h1", "2025-h2"]
   assert s["grid_objective"] == "quality"
   assert s["backtest_from"] == "2026-01-01"
+  assert s["backtest_to"] == "2026-06-30"
 
 
 def test_anti_chase_prefers_low_rsi_shorts():

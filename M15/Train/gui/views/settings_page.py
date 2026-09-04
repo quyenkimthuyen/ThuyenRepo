@@ -9,10 +9,15 @@ from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from gui.app_settings import (
   TRAIN_WEEK_OPTIONS,
   add_learning_era,
+  add_oos_window,
+  describe_kb_oos_pairs,
   format_settings_summary,
   get_learning_era_catalog,
+  get_oos_window_catalog,
   get_settings,
+  oos_window_option,
   remove_learning_era,
+  remove_oos_window,
   settings_changed_since_last_grid,
   settings_grid_signature,
   update_settings,
@@ -24,8 +29,7 @@ SETTING_WIDGET_KEYS = (
   "settings_train_weeks",
   "settings_era_labels",
   "settings_learning_loops",
-  "settings_backtest_from",
-  "settings_backtest_to",
+  "settings_oos_labels",
   "settings_spread",
   "settings_slip",
   "settings_mining_presets",
@@ -33,21 +37,25 @@ SETTING_WIDGET_KEYS = (
   "settings_new_era_from",
   "settings_new_era_until",
   "settings_remove_era_label",
+  "settings_new_oos_label",
+  "settings_new_oos_from",
+  "settings_new_oos_until",
+  "settings_remove_oos_label",
+  "gs_oos_labels",
 )
-
-
-def _date_value(value: str, fallback: str) -> date:
-  try:
-    return date.fromisoformat(str(value)[:10])
-  except ValueError:
-    return date.fromisoformat(fallback)
 
 
 def _era_option(era: dict) -> str:
   return f"{era['label']} ({era['learn_from']} → {era['learn_until']})"
 
 
-def _init_widget_state(settings: dict, era_options: list[str], option_to_key: dict[str, str]) -> None:
+def _init_widget_state(
+  settings: dict,
+  era_options: list[str],
+  option_to_key: dict[str, str],
+  oos_options: list[str],
+  oos_option_to_key: dict[str, str],
+) -> None:
   from mining_presets import (
     list_curated_presets,
     list_presets,
@@ -74,8 +82,10 @@ def _init_widget_state(settings: dict, era_options: list[str], option_to_key: di
       if option_to_key.get(opt) in (settings.get("learning_era_keys") or [])
     ],
     "settings_learning_loops": int(settings.get("learning_loops") or 3),
-    "settings_backtest_from": _date_value(settings.get("backtest_from", ""), "2026-01-01"),
-    "settings_backtest_to": _date_value(settings.get("backtest_to", ""), "2026-12-31"),
+    "settings_oos_labels": [
+      opt for opt in oos_options
+      if oos_option_to_key.get(opt) in (settings.get("oos_window_keys") or [])
+    ],
     "settings_spread": float(settings.get("spread_pips", DEFAULT_SPREAD_PIPS)),
     "settings_slip": float(settings.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     "settings_mining_presets": [
@@ -84,12 +94,17 @@ def _init_widget_state(settings: dict, era_options: list[str], option_to_key: di
     "settings_new_era_label": "",
     "settings_new_era_from": date(2024, 1, 1),
     "settings_new_era_until": date(2025, 12, 31),
+    "settings_new_oos_label": "",
+    "settings_new_oos_from": date(2025, 7, 1),
+    "settings_new_oos_until": date(2025, 12, 31),
   }
   for key, value in defaults.items():
     st.session_state.setdefault(key, value)
   # Drop stale options if catalog changed (add/remove).
   selected = st.session_state.get("settings_era_labels") or []
   st.session_state["settings_era_labels"] = [opt for opt in selected if opt in option_to_key]
+  picked_oos = st.session_state.get("settings_oos_labels") or []
+  st.session_state["settings_oos_labels"] = [opt for opt in picked_oos if opt in oos_option_to_key]
   st.session_state["_settings_mining_option_names"] = option_names
   st.session_state["_settings_mining_label_to_name"] = label_by_name
   # Keep multiselect values in the current option set.
@@ -112,6 +127,22 @@ def _render_era_catalog(settings: dict) -> list[dict]:
         "Bật": "✓" if e["key"] in (settings.get("learning_era_keys") or []) else "",
       }
       for e in catalog
+    ]
+    st.dataframe(rows, use_container_width=True, hide_index=True)
+  return catalog
+
+
+def _render_oos_catalog(settings: dict) -> list[dict]:
+  catalog = get_oos_window_catalog(settings)
+  if catalog:
+    rows = [
+      {
+        "Tên": w["label"],
+        "Từ": w["oos_from"],
+        "Đến": w["oos_to"],
+        "Bật": "✓" if w["key"] in (settings.get("oos_window_keys") or []) else "",
+      }
+      for w in catalog
     ]
     st.dataframe(rows, use_container_width=True, hide_index=True)
   return catalog
@@ -144,7 +175,10 @@ def render(embedded: bool = False):
   catalog = get_learning_era_catalog(s)
   era_options = [_era_option(e) for e in catalog]
   option_to_key = {_era_option(e): e["key"] for e in catalog}
-  _init_widget_state(s, era_options, option_to_key)
+  oos_catalog = get_oos_window_catalog(s)
+  oos_options = [oos_window_option(w) for w in oos_catalog]
+  oos_option_to_key = {oos_window_option(w): w["key"] for w in oos_catalog}
+  _init_widget_state(s, era_options, option_to_key, oos_options, oos_option_to_key)
 
   st.markdown("#### Chiến lược")
   train_weeks = st.multiselect(
@@ -229,11 +263,70 @@ def render(embedded: bool = False):
   )
 
   st.markdown("#### Kiểm chứng")
-  c1, c2 = st.columns(2)
-  with c1:
-    backtest_from = st.date_input("Từ", key="settings_backtest_from", help=HELP["oos"])
-  with c2:
-    backtest_to = st.date_input("Đến", key="settings_backtest_to", help=HELP["oos"])
+  st.caption(
+    "Catalog cửa sổ OOS — thêm/xóa như giai đoạn học. "
+    "Grid Search chỉ chạy các cửa sổ **đang bật**, và **bỏ combo** nếu khoảng học KB "
+    "trùng ngày với OOS (kề nhau: học đến 30/6 rồi OOS từ 01/7 — được)."
+  )
+  _render_oos_catalog(s)
+  picked_oos = st.multiselect(
+    "Cửa sổ OOS đang dùng (bật cho Grid / pipeline)",
+    oos_options,
+    key="settings_oos_labels",
+    help=HELP["oos"],
+  )
+
+  with st.expander("Thêm cửa sổ OOS", expanded=False):
+    new_oos_label = st.text_input(
+      "Tên cửa sổ",
+      key="settings_new_oos_label",
+      placeholder="vd. 2025 (6 tháng cuối)",
+    )
+    c_oos1, c_oos2 = st.columns(2)
+    with c_oos1:
+      new_oos_from = st.date_input("OOS từ", key="settings_new_oos_from")
+    with c_oos2:
+      new_oos_until = st.date_input("OOS đến", key="settings_new_oos_until")
+    if st.button("＋ Thêm cửa sổ OOS", key="settings_add_oos", type="primary"):
+      try:
+        add_oos_window(
+          label=str(new_oos_label or "").strip(),
+          oos_from=new_oos_from.isoformat(),
+          oos_to=new_oos_until.isoformat(),
+          activate=True,
+        )
+        for key in (
+          "settings_oos_labels",
+          "settings_new_oos_label",
+          "settings_remove_oos_label",
+          "gs_oos_labels",
+        ):
+          st.session_state.pop(key, None)
+        st.toast("Đã thêm cửa sổ OOS")
+        st.rerun()
+      except ValueError as exc:
+        st.error(str(exc))
+
+  if len(oos_catalog) > 1:
+    remove_oos_opt = st.selectbox(
+      "Xóa cửa sổ OOS khỏi danh sách",
+      oos_options,
+      key="settings_remove_oos_label",
+    )
+    if st.button("Xóa cửa sổ OOS đã chọn", key="settings_remove_oos"):
+      try:
+        key = oos_option_to_key.get(remove_oos_opt)
+        if not key:
+          raise ValueError("Không tìm thấy cửa sổ OOS.")
+        remove_oos_window(key)
+        for k in ("settings_oos_labels", "settings_remove_oos_label", "gs_oos_labels"):
+          st.session_state.pop(k, None)
+        st.toast("Đã xóa cửa sổ OOS")
+        st.rerun()
+      except ValueError as exc:
+        st.error(str(exc))
+  else:
+    st.caption("Giữ ít nhất một cửa sổ OOS — thêm cửa sổ mới trước khi xóa.")
 
   st.markdown("#### Phí mô phỏng")
   c3, c4 = st.columns(2)
@@ -268,8 +361,8 @@ def render(embedded: bool = False):
       "Bỏ trống = miner baseline cũ (không khuyến nghị)."
     )
     rec_cap = (
-      f"Khuyến nghị GBP: **label 1.0R + stop confirm** (`{rec}`). "
-      "Trade Model active mang search space riêng cho Live / remine."
+      "Reset / chạy lại GBP: **ss_tight** (`gbp_fill_ss_tight`) · OOS **2026-h1**. "
+      f"`{rec}` vẫn trong catalog. Trade Model active mang search space riêng cho Live."
     )
   else:
     fill_cap = (
@@ -281,8 +374,8 @@ def render(embedded: bool = False):
       "Bỏ trống = miner baseline cũ (không khuyến nghị)."
     )
     rec_cap = (
-      "Khuyến nghị EUR: **label 1.0R + stop confirm** (`eur_fill_ss_lab`). "
-      "Trade Model active mang search space riêng cho Live / remine."
+      "Reset / chạy lại EUR: **ss_more** (`eur_fill_ss_more`) · OOS **2026-h1**. "
+      "`eur_fill_ss_lab` vẫn trong catalog. Trade Model active mang search space riêng cho Live."
     )
   st.caption(fill_cap)
   mining_option_names = st.session_state.get("_settings_mining_option_names") or []
@@ -310,8 +403,8 @@ def render(embedded: bool = False):
   if not picked_eras:
     st.warning("Chọn ít nhất một giai đoạn học; thay đổi này chưa được lưu.")
     valid = False
-  if backtest_from > backtest_to:
-    st.warning("Ngày bắt đầu phải trước ngày kết thúc; thay đổi này chưa được lưu.")
+  if not picked_oos:
+    st.warning("Chọn ít nhất một cửa sổ OOS; thay đổi này chưa được lưu.")
     valid = False
 
   label_to_name = st.session_state.get("_settings_mining_label_to_name") or {}
@@ -320,12 +413,27 @@ def render(embedded: bool = False):
     "strategy_train_weeks": list(train_weeks),
     "learning_era_keys": [option_to_key[opt] for opt in picked_eras if opt in option_to_key],
     "learning_loops": int(learning_loops),
-    "backtest_from": backtest_from.isoformat(),
-    "backtest_to": backtest_to.isoformat(),
+    "oos_window_keys": [
+      oos_option_to_key[opt] for opt in picked_oos if opt in oos_option_to_key
+    ],
     "spread_pips": float(spread),
     "slippage_pips": float(slip),
     "mining_presets": mining_names,
   }
+  preview = dict(s)
+  preview.update(current)
+  pairs = describe_kb_oos_pairs(preview)
+  if pairs:
+    ok_n = sum(1 for p in pairs if p["ok"])
+    skipped = [p for p in pairs if p["overlap"]]
+    st.caption(f"Cặp KB × OOS hợp lệ: **{ok_n}/{len(pairs)}** — trùng ngày thì Grid bỏ.")
+    if skipped:
+      st.warning(
+        "Bỏ vì KB trùng OOS: "
+        + "; ".join(f"{p['era_label']} × {p['oos_label']}" for p in skipped)
+      )
+    if ok_n == 0:
+      st.error("Không còn cặp KB × OOS hợp lệ — Grid Search sẽ không chạy được.")
   changed = any(s.get(key) != value for key, value in current.items())
   if valid and changed:
     update_settings(**current)

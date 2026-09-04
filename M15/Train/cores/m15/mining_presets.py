@@ -415,6 +415,58 @@ EUR_FILL_SS_WR = {
   "confirm_cancel_r": 0.42,
   "target_trades_per_week": 4.0,
 }
+# WR-hold R↑: same confirm as ss_more (0.15/6). Do not loosen fill — that dropped WR 56→53.5.
+EUR_FILL_SS_PLUS = {
+  **EUR_FILL_SS_MORE,
+  "min_bars_between": [8],
+  "max_hold_bars": [128],
+  "target_trades_per_week": 7.5,
+}
+EUR_FILL_SS_RUN = {
+  **EUR_FILL_SS_MORE,
+  "rr_ratios": [2.6, 3.0, 3.4],
+  "max_hold_bars": [128],
+  "target_trades_per_week": 6.5,
+}
+EUR_FILL_SS_LAB_PLUS = {
+  **EUR_FILL_SS_LAB,
+  "min_bars_between": [8],
+  "max_hold_bars": [128],
+  "target_trades_per_week": 7.0,
+}
+# Late trail AFTER mine (same entries as ss_more). Activate near genome TP
+# so giveback/timeout convert to wins without remine. 6m OOS 2026-h1:
+# WR 51.9→56.4, R +49.5→+56.5 vs full TP.
+EUR_FILL_SS_MORE_HYB24 = {
+  **EUR_FILL_SS_MORE,
+  "oos_exit_mode": "hybrid",
+  "oos_trail_activate_r": 2.4,
+  "oos_trail_distance_r": 0.40,
+}
+# Hold longer only — same confirm as ss_more (timeout winners may reach TP).
+EUR_FILL_SS_MORE_HOLD = {
+  **EUR_FILL_SS_MORE,
+  "max_hold_bars": [128],
+}
+# Later / wider trail than hyb24 — less clip winner, still catch giveback.
+EUR_FILL_SS_MORE_HYB28 = {
+  **EUR_FILL_SS_MORE,
+  "oos_exit_mode": "hybrid",
+  "oos_trail_activate_r": 2.8,
+  "oos_trail_distance_r": 0.55,
+}
+EUR_FILL_SS_BANK = {
+  **EUR_FILL_SS_MORE,
+  "exit_modes_full_only": False,
+  "exit_mode_lock": "hybrid",
+  "trail_activate_r": 1.3,
+  "trail_distance_r": 0.45,
+}
+# Closer TP (ATR×RR, SL still +spread) so more 2.2–3.0R hits on Bid/Ask.
+EUR_FILL_SS_CLIP = {
+  **EUR_FILL_SS_MORE,
+  "tp_ignores_spread_buffer": True,
+}
 
 # Post-fill GBP (SL = ATR×mult + 1 spread, entry-bar + ask): old RR 3.2–4.0
 # puts TP too far. Modest RR>2 + more fills so OOS 2026 can clear R>80 at WR>50.
@@ -576,6 +628,19 @@ GBP_FILL_SS_TIGHT = {
   "min_bars_between": [8],
   "target_trades_per_week": 7.0,
 }
+GBP_FILL_SS_TIGHT_HYB24 = {
+  **GBP_FILL_SS_TIGHT,
+  "oos_exit_mode": "hybrid",
+  "oos_trail_activate_r": 2.4,
+  "oos_trail_distance_r": 0.40,
+}
+# Keep ss_tight confirm (WR55 +40.6R n=38). Gap/hold only — denser n on 2026.
+GBP_FILL_SS_TIGHT_N = {
+  **GBP_FILL_SS_TIGHT,
+  "min_bars_between": [6],
+  "max_hold_bars": [128],
+  "target_trades_per_week": 8.5,
+}
 # Looser than ss_vol — more fills / a second DNA if n is the bottleneck on 2024 eras.
 GBP_FILL_SS_DENSE = {
   **GBP_FILL_SS_VOL,
@@ -585,30 +650,48 @@ GBP_FILL_SS_DENSE = {
   "min_bars_between": [6],
   "target_trades_per_week": 9.0,
 }
+# WR-hold R↑: same confirm as ss_vol (0.12/8). Gap/hold only — do not loosen confirm.
+GBP_FILL_SS_PLUS = {
+  **GBP_FILL_SS_VOL,
+  "min_bars_between": [6],
+  "max_hold_bars": [128],
+  "target_trades_per_week": 9.0,
+}
+GBP_FILL_SS_RUN = {
+  **GBP_FILL_SS_VOL,
+  "rr_ratios": [2.6, 3.0, 3.4],
+  "max_hold_bars": [128],
+  "target_trades_per_week": 8.0,
+}
+GBP_FILL_SS_BANK = {
+  **GBP_FILL_SS_VOL,
+  "exit_modes_full_only": False,
+  "exit_mode_lock": "hybrid",
+  "trail_activate_r": 1.3,
+  "trail_distance_r": 0.45,
+}
+GBP_FILL_SS_CLIP = {
+  **GBP_FILL_SS_VOL,
+  "tp_ignores_spread_buffer": True,
+}
 
 # App-recommended direction after Bid/Ask fills (BUY Ask / SELL Bid).
 # Elite OR-quality (RR 3.2–4) was fit on half-spread lab fills — do not
 # re-offer it as the EUR default.
 RECOMMENDED_PRESET = "eur_fill_ss_lab"
 
-# EUR Settings catalog: fill-aware DNA only (RR/ATR + confirm that survived Bid/Ask).
+# EUR Settings: ss_more = Reset/chạy lại 6m; lab/sparkstop vẫn trong catalog.
 EUR_FILL_CURATED: tuple[str, ...] = (
+  "eur_fill_ss_more",
   "eur_fill_ss_lab",
   "eur_fill_sparkstop",
-  "eur_fill_book",
-  "eur_fill_ss_more",
-  "eur_fill_ss_wr",
 )
 
-# GBP Settings catalog — Bid/Ask confirm first; book/WR50 kept as contrast.
+# GBP Settings: tight = Reset/chạy lại 6m; lab/vol vẫn trong catalog.
 GBP_FILL_CURATED: tuple[str, ...] = (
-  "gbp_fill_ss_lab",
-  "gbp_fill_ss_more",
-  "gbp_fill_ss_vol",
   "gbp_fill_ss_tight",
-  "gbp_fill_ss_dense",
-  "gbp_fill_ss_wait",
-  "gbp_fill_sparkstop",
+  "gbp_fill_ss_lab",
+  "gbp_fill_ss_vol",
 )
 
 # Default Settings UI list (no desk / EUR).
@@ -641,6 +724,27 @@ DEPRECATED_PRESETS: tuple[str, ...] = (
   "anti_chase_strict",
   "anti_chase_and_65_2",
   "anti_chase_and_68_2",
+  # Failed n/WR A/Bs after Bid/Ask + sparkstop (keep in PRESETS for old TMs).
+  "eur_fill_ss_lab_plus",
+  "eur_fill_ss_plus",
+  "eur_fill_ss_run",
+  "eur_fill_ss_bank",
+  "eur_fill_ss_more_hyb24",
+  "eur_fill_ss_more_hold",
+  "eur_fill_ss_more_hyb28",
+  "eur_fill_ss_clip",
+  "eur_fill_ss_wr",
+  "eur_fill_book",
+  "gbp_fill_ss_more",
+  "gbp_fill_ss_plus",
+  "gbp_fill_ss_run",
+  "gbp_fill_ss_bank",
+  "gbp_fill_ss_clip",
+  "gbp_fill_ss_tight_hyb24",
+  "gbp_fill_ss_tight_n",
+  "gbp_fill_ss_dense",
+  "gbp_fill_ss_wait",
+  "gbp_fill_sparkstop",
 )
 
 # Compact labels for Settings / Grid UI (unknown keys fall back to raw name).
@@ -674,15 +778,26 @@ PRESET_LABELS: dict[str, str] = {
   "eur_fill_sparkstop": "EUR fill · label 1.2R + stop",
   "eur_fill_overlap": "EUR fill · overlap 13–16",
   "eur_fill_ss_more": "EUR sparkstop · confirm 0.15 wait6",
-  "eur_fill_ss_wait": "EUR sparkstop · wait 8 nến",
+  "eur_fill_ss_plus": "EUR ss_more · gap 8 + hold 128 (R↑ giữ WR)",
+  "eur_fill_ss_run": "EUR ss_more · RR 2.6–3.4 hold 128",
+  "eur_fill_ss_bank": "EUR ss_more · hybrid bank 1.3R (R↑ giữ WR)",
+  "eur_fill_ss_more_hyb24": "EUR ss_more · trail muộn 2.4R (cùng entry)",
+  "eur_fill_ss_clip": "EUR ss_more · TP ATR×RR (không nhân spread)",
   "eur_fill_ss_lab": "EUR Bid/Ask · label 1.0R + stop (khuyến nghị)",
+  "eur_fill_ss_lab_plus": "EUR ss_lab · gap 8 + hold 128 (R↑ giữ WR)",
   "eur_fill_ss_wr": "EUR sparkstop · confirm 0.24",
   "gbp_fill_book": "GBP fill-aware · WR>50 R>80",
   "gbp_fill_sparkstop": "GBP Bid/Ask · label 1.2R + stop",
   "gbp_fill_ss_lab": "GBP Bid/Ask · label 1.0R + stop (khuyến nghị)",
   "gbp_fill_ss_more": "GBP sparkstop · confirm 0.15 wait6",
   "gbp_fill_ss_vol": "GBP sparkstop · nới confirm + 8 lệnh/tuần",
+  "gbp_fill_ss_plus": "GBP ss_vol · gap 6 + hold 128 (R↑ giữ WR)",
+  "gbp_fill_ss_run": "GBP ss_vol · RR 2.6–3.4 hold 128",
+  "gbp_fill_ss_bank": "GBP ss_vol · hybrid bank 1.3R (R↑ giữ WR)",
+  "gbp_fill_ss_clip": "GBP ss_vol · TP ATR×RR (không nhân spread)",
   "gbp_fill_ss_tight": "GBP sparkstop · confirm 0.13 wait6 (săn WR)",
+  "gbp_fill_ss_tight_hyb24": "GBP ss_tight · trail muộn 2.4R (cùng entry)",
+  "gbp_fill_ss_tight_n": "GBP ss_tight · gap 6 + hold 128 (thêm n)",
   "gbp_fill_ss_dense": "GBP sparkstop · confirm 0.10 wait10 (thêm n)",
   "gbp_fill_ss_wait": "GBP sparkstop · wait 8 nến",
   "gbp_fill_sniper": "GBP fill sniper · WR-first",
@@ -842,6 +957,36 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "knobs": "confirm 0.15 · wait 6 · cancel 0.60 · TPW 6 · label 1.2",
     "tradeoff": "n↑ Total R↑ · WR có thể thấp hơn 50",
   },
+  "eur_fill_ss_plus": {
+    "intent": "Giữ confirm ss_more — thêm lệnh + hold lâu hơn, không nới fill",
+    "knobs": "confirm 0.15 wait6 · gap 8 · hold 128 · TPW 7.5 · RR 2.2–3.0",
+    "tradeoff": "n↑ R↑ nếu lệnh thêm cùng chất · WR tụt nếu gap 8 kéo setup yếu",
+  },
+  "eur_fill_ss_run": {
+    "intent": "Giữ confirm ss_more — TP xa hơn, winner chạy hết",
+    "knobs": "confirm 0.15 wait6 · RR 2.6–3.4 · hold 128",
+    "tradeoff": "R/lệnh↑ · WR có thể tụt nếu TP 3.4 quá xa trên Bid/Ask",
+  },
+  "eur_fill_ss_bank": {
+    "intent": "R>80 WR>50 — chốt 1.3R rồi trail, không nới confirm",
+    "knobs": "confirm 0.15 wait6 · hybrid 1.3/0.45",
+    "tradeoff": "WR↑ nếu timeout là giveback · R/lệnh có thể thấp hơn full TP",
+  },
+  "eur_fill_ss_more_hyb24": {
+    "intent": "Cùng entry ss_more — trail muộn 2.4R sau khi mine full TP",
+    "knobs": "confirm 0.15 wait6 · OOS hybrid 2.4/0.40 · miner vẫn exit:full",
+    "tradeoff": "WR↑ khi giveback thành trail win · R/win có thể thấp hơn TP đầy",
+  },
+  "eur_fill_ss_clip": {
+    "intent": "R>80 WR>50 — TP = ATR×RR, SL vẫn +1 spread",
+    "knobs": "confirm 0.15 wait6 · TP:ATRxRR",
+    "tradeoff": "Nhiều TP hơn · R/win nhỏ hơn book đã +spread vào TP",
+  },
+  "eur_fill_ss_lab_plus": {
+    "intent": "Giữ confirm ss_lab WR56 — thêm n và hold để nâng R",
+    "knobs": "confirm 0.16 wait5 · gap 8 · hold 128 · TPW 7",
+    "tradeoff": "n↑ quanh DNA WR56 · WR tụt nếu gap 8 kéo setup yếu",
+  },
   "eur_fill_ss_wait": {
     "intent": "Chờ confirm lâu hơn — bắt lệnh chậm",
     "knobs": "confirm 0.18 · wait 8 nến · cancel 0.55",
@@ -882,6 +1027,26 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "knobs": "label 1.0 · confirm 0.12 · wait 8 · cancel 0.70 · gap 8 nến · TPW 8",
     "tradeoff": "n↑ mạnh · WR có thể tụt dưới 50 nếu confirm quá lỏng",
   },
+  "gbp_fill_ss_plus": {
+    "intent": "Giữ confirm ss_vol WR50 — gap/hold để nâng R, không nới fill",
+    "knobs": "confirm 0.12 wait8 · gap 6 · hold 128 · TPW 9",
+    "tradeoff": "n↑ R↑ · WR tụt nếu gap 6 kéo setup yếu",
+  },
+  "gbp_fill_ss_run": {
+    "intent": "Giữ confirm ss_vol WR50 — TP xa hơn",
+    "knobs": "confirm 0.12 wait8 · RR 2.6–3.4 · hold 128",
+    "tradeoff": "R/lệnh↑ · WR có thể tụt nếu TP 3.4 quá xa",
+  },
+  "gbp_fill_ss_bank": {
+    "intent": "R>80 WR>50 — chốt 1.3R rồi trail trên DNA ss_vol",
+    "knobs": "confirm 0.12 wait8 · hybrid 1.3/0.45",
+    "tradeoff": "WR↑ nếu timeout giveback · R/lệnh có thể thấp hơn full TP",
+  },
+  "gbp_fill_ss_clip": {
+    "intent": "R>80 WR>50 — TP ATR×RR trên DNA ss_vol",
+    "knobs": "confirm 0.12 wait8 · TP:ATRxRR",
+    "tradeoff": "Nhiều TP hơn · R/win nhỏ hơn nếu spread đã nằm trong TP",
+  },
   "gbp_fill_ss_wait": {
     "intent": "Chờ confirm lâu hơn — bắt lệnh chậm, giữ WR ss_more",
     "knobs": "label 1.0 · confirm 0.14 · wait 8 · cancel 0.65 · gap 8 · TPW 7.5",
@@ -891,6 +1056,16 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "intent": "Siết nhẹ ss_vol — săn WR>50 khi n đã đạt cổng 40",
     "knobs": "label 1.0 · confirm 0.13 · wait 6 · cancel 0.58 · gap 8 · TPW 7",
     "tradeoff": "n có thể tụt dưới 40 · WR↑ nếu fake chết trong 6 nến",
+  },
+  "gbp_fill_ss_tight_hyb24": {
+    "intent": "Cùng entry ss_tight — trail muộn 2.4R sau khi mine full TP",
+    "knobs": "confirm 0.13 wait6 · OOS hybrid 2.4/0.40 · miner vẫn exit:full",
+    "tradeoff": "WR/R↑ nếu winner giveback · GBP 6m có thể không cộng R như EUR",
+  },
+  "gbp_fill_ss_tight_n": {
+    "intent": "R>80 WR>50 — thêm n trên DNA ss_tight, không nới confirm",
+    "knobs": "confirm 0.13 wait6 · gap 6 · hold 128 · TPW 8.5",
+    "tradeoff": "n↑ · WR có thể tụt nếu lệnh chen sát nhau",
   },
   "gbp_fill_ss_dense": {
     "intent": "Nới hơn ss_vol — thêm DNA khi era 2024 n mỏng",
@@ -1080,6 +1255,10 @@ def _summarize_space_knobs(space: dict | None) -> str:
     bits.append(f"exit:{lock}")
   elif ss.get("exit_modes_full_only"):
     bits.append("exit:full")
+  oos_ex = str(ss.get("oos_exit_mode") or "").strip()
+  if oos_ex:
+    act = ss.get("oos_trail_activate_r")
+    bits.append(f"oos:{oos_ex}{act if act else ''}")
   if float(ss.get("label_rr") or 0) > 0:
     bits.append(f"labelRR{ss.get('label_rr')}")
   if float(ss.get("confirm_r") or 0) > 0:
@@ -1137,15 +1316,29 @@ PRESETS: dict[str, dict] = {
   "eur_fill_sparkstop": deepcopy(EUR_FILL_SPARKSTOP),
   "eur_fill_overlap": deepcopy(EUR_FILL_OVERLAP),
   "eur_fill_ss_more": deepcopy(EUR_FILL_SS_MORE),
+  "eur_fill_ss_plus": deepcopy(EUR_FILL_SS_PLUS),
+  "eur_fill_ss_run": deepcopy(EUR_FILL_SS_RUN),
   "eur_fill_ss_wait": deepcopy(EUR_FILL_SS_WAIT),
   "eur_fill_ss_lab": deepcopy(EUR_FILL_SS_LAB),
+  "eur_fill_ss_lab_plus": deepcopy(EUR_FILL_SS_LAB_PLUS),
+  "eur_fill_ss_bank": deepcopy(EUR_FILL_SS_BANK),
+  "eur_fill_ss_more_hyb24": deepcopy(EUR_FILL_SS_MORE_HYB24),
+  "eur_fill_ss_more_hold": deepcopy(EUR_FILL_SS_MORE_HOLD),
+  "eur_fill_ss_more_hyb28": deepcopy(EUR_FILL_SS_MORE_HYB28),
+  "eur_fill_ss_clip": deepcopy(EUR_FILL_SS_CLIP),
   "eur_fill_ss_wr": deepcopy(EUR_FILL_SS_WR),
   "gbp_fill_book": deepcopy(GBP_FILL_BOOK),
   "gbp_fill_sparkstop": deepcopy(GBP_FILL_SPARKSTOP),
   "gbp_fill_ss_lab": deepcopy(GBP_FILL_SS_LAB),
   "gbp_fill_ss_more": deepcopy(GBP_FILL_SS_MORE),
   "gbp_fill_ss_vol": deepcopy(GBP_FILL_SS_VOL),
+  "gbp_fill_ss_plus": deepcopy(GBP_FILL_SS_PLUS),
+  "gbp_fill_ss_run": deepcopy(GBP_FILL_SS_RUN),
+  "gbp_fill_ss_bank": deepcopy(GBP_FILL_SS_BANK),
+  "gbp_fill_ss_clip": deepcopy(GBP_FILL_SS_CLIP),
   "gbp_fill_ss_tight": deepcopy(GBP_FILL_SS_TIGHT),
+  "gbp_fill_ss_tight_hyb24": deepcopy(GBP_FILL_SS_TIGHT_HYB24),
+  "gbp_fill_ss_tight_n": deepcopy(GBP_FILL_SS_TIGHT_N),
   "gbp_fill_ss_dense": deepcopy(GBP_FILL_SS_DENSE),
   "gbp_fill_ss_wait": deepcopy(GBP_FILL_SS_WAIT),
   "gbp_fill_sniper": deepcopy(GBP_FILL_SNIPER),

@@ -16,7 +16,7 @@
     "long|range_buy|eq1|0.5": {
       "wins": 13,
       "losses": 50,
-      "total_r": -12.499999999999428,
+      "total_r": -12.49999999999941,
       "uses": 63
     },
     "long|sweep_low_fade|eq1|0.5": {
@@ -34,7 +34,7 @@
     "short|pullback_short|eq1|0.5": {
       "wins": 0,
       "losses": 6,
-      "total_r": -6.000000000000039,
+      "total_r": -6.000000000000242,
       "uses": 6
     },
     "short|adx|lt|14.6455": {
@@ -964,7 +964,7 @@
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 0.4793732753501333
+          "weight": 0.47937327535013335
         },
         {
           "feature": "sweep_low_fade",
@@ -1224,7 +1224,7 @@
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 1.321855042388576
+          "weight": 1.3218550423885762
         },
         {
           "feature": "sweep_low_fade",
@@ -1809,7 +1809,7 @@
           "direction": "long",
           "op": "eq1",
           "threshold": 0.5,
-          "weight": 0.44366362886439287
+          "weight": 0.4436636288643929
         },
         {
           "feature": "sweep_low_fade",
@@ -1840,6 +1840,71 @@
       "rr_ratio": 3.0,
       "min_rules_match": 1,
       "ml_prob_min": 0.4480616757799355,
+      "exit_mode": "full",
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "trail_activate_r": 1.0,
+      "trail_distance_r": 0.5,
+      "max_trades_per_day": 2,
+      "max_hold_bars": 96,
+      "min_bars_between": 12,
+      "session_filter": true,
+      "session_start_hour": 7,
+      "session_end_hour": 20,
+      "blocked_hours": [],
+      "allow_long": true,
+      "allow_short": true,
+      "anti_chase": false,
+      "anti_chase_rsi_short_max": 100.0,
+      "anti_chase_rsi_long_min": 0.0,
+      "anti_chase_vwap_short_max": 99.0,
+      "anti_chase_logic": "or",
+      "tp_ignores_spread_buffer": false,
+      "min_atr_spread_ratio": 0.0,
+      "confirm_r": 0.0,
+      "confirm_wait_bars": 4,
+      "confirm_cancel_r": 0.5
+    },
+    {
+      "fitness": 523.2872727272794,
+      "name": "Forge RR3 full 2L2S range+pullback #D386",
+      "long_rules": [
+        {
+          "feature": "range_buy",
+          "direction": "long",
+          "op": "eq1",
+          "threshold": 0.5,
+          "weight": 0.7803320032111855
+        },
+        {
+          "feature": "sweep_low_fade",
+          "direction": "long",
+          "op": "eq1",
+          "threshold": 0.5,
+          "weight": 0.012991519140624954
+        }
+      ],
+      "short_rules": [
+        {
+          "feature": "sweep_high_fade",
+          "direction": "short",
+          "op": "eq1",
+          "threshold": 0.5,
+          "weight": 0.020763873927007275
+        },
+        {
+          "feature": "pullback_short",
+          "direction": "short",
+          "op": "eq1",
+          "threshold": 0.5,
+          "weight": 0.03
+        }
+      ],
+      "score_threshold": 0.6,
+      "atr_mult_sl": 1.1986355626154268,
+      "rr_ratio": 3.0,
+      "min_rules_match": 1,
+      "ml_prob_min": 0.44,
       "exit_mode": "full",
       "partial_pct": 0.4,
       "partial_at_r": 1.2,
@@ -2555,71 +2620,6 @@
       "rr_ratio": 2.0,
       "min_rules_match": 1,
       "ml_prob_min": 0.3584208288157136,
-      "exit_mode": "full",
-      "partial_pct": 0.4,
-      "partial_at_r": 1.2,
-      "trail_activate_r": 1.0,
-      "trail_distance_r": 0.5,
-      "max_trades_per_day": 2,
-      "max_hold_bars": 96,
-      "min_bars_between": 12,
-      "session_filter": true,
-      "session_start_hour": 7,
-      "session_end_hour": 20,
-      "blocked_hours": [],
-      "allow_long": true,
-      "allow_short": true,
-      "anti_chase": false,
-      "anti_chase_rsi_short_max": 100.0,
-      "anti_chase_rsi_long_min": 0.0,
-      "anti_chase_vwap_short_max": 99.0,
-      "anti_chase_logic": "or",
-      "tp_ignores_spread_buffer": false,
-      "min_atr_spread_ratio": 0.0,
-      "confirm_r": 0.0,
-      "confirm_wait_bars": 4,
-      "confirm_cancel_r": 0.5
-    },
-    {
-      "fitness": 363.45492433325734,
-      "name": "Forge RR2.5 full 2L2S range+sweep #63F0",
-      "long_rules": [
-        {
-          "feature": "range_buy",
-          "direction": "long",
-          "op": "eq1",
-          "threshold": 0.5,
-          "weight": 2.635982828282807
-        },
-        {
-          "feature": "sweep_low_fade",
-          "direction": "long",
-          "op": "eq1",
-          "threshold": 0.5,
-          "weight": 0.2980552114858214
-        }
-      ],
-      "short_rules": [
-        {
-          "feature": "sweep_high_fade",
-          "direction": "short",
-          "op": "eq1",
-          "threshold": 0.5,
-          "weight": 0.4
-        },
-        {
-          "feature": "pullback_short",
-          "direction": "short",
-          "op": "eq1",
-          "threshold": 0.5,
-          "weight": 0.4
-        }
-      ],
-      "score_threshold": 1.0,
-      "atr_mult_sl": 1.042709876903706,
-      "rr_ratio": 2.5,
-      "min_rules_match": 1,
-      "ml_prob_min": 0.414248589973252,
       "exit_mode": "full",
       "partial_pct": 0.4,
       "partial_at_r": 1.2,
@@ -10832,7 +10832,7 @@
     {
       "key": "short|pullback_short|eq1|0.5",
       "entry_time": "2024-04-11 12:15:00",
-      "r": -0.9999999999998983
+      "r": -1.0000000000001008
     },
     {
       "key": "long|range_buy|eq1|0.5",
@@ -11157,17 +11157,17 @@
     {
       "key": "long|range_buy|eq1|0.5",
       "entry_time": "2024-05-14 08:15:00",
-      "r": 3.0000000000000844
+      "r": 3.0000000000000275
     },
     {
       "key": "long|range_buy|eq1|0.5",
       "entry_time": "2024-05-16 06:30:00",
-      "r": -0.9999999999999458
+      "r": -0.9999999999998965
     },
     {
       "key": "long|range_buy|eq1|0.5",
       "entry_time": "2024-05-20 07:15:00",
-      "r": 3.0000000000000417
+      "r": 3.000000000000068
     },
     {
       "key": "long|range_buy|eq1|0.5",
@@ -11213,7 +11213,7 @@
   "epoch_history": [
     {
       "epoch": 1,
-      "timestamp": "2026-09-02T06:36:56.750971+00:00",
+      "timestamp": "2026-09-04T12:33:35.688651+00:00",
       "n_trades": 56,
       "trades_per_week": 3.29,
       "win_rate_pct": 17.86,
@@ -11230,13 +11230,13 @@
     },
     {
       "epoch": 2,
-      "timestamp": "2026-09-02T06:37:19.401293+00:00",
+      "timestamp": "2026-09-04T12:33:56.939595+00:00",
       "n_trades": 50,
       "trades_per_week": 2.94,
       "win_rate_pct": 16.0,
       "avg_rr": 2.938,
       "profit_factor": 0.53,
-      "total_pips": -173.5,
+      "total_pips": -173.92,
       "total_r": -18.5,
       "year_win_rate_pct": 16.0,
       "year_avg_rr": 2.938,
@@ -11247,13 +11247,13 @@
     },
     {
       "epoch": 3,
-      "timestamp": "2026-09-02T06:37:42.191056+00:00",
+      "timestamp": "2026-09-04T12:34:16.282868+00:00",
       "n_trades": 44,
       "trades_per_week": 2.59,
       "win_rate_pct": 18.18,
       "avg_rr": 2.569,
-      "profit_factor": 0.629,
-      "total_pips": -117.46,
+      "profit_factor": 0.637,
+      "total_pips": -115.08,
       "total_r": -15.448,
       "year_win_rate_pct": 18.18,
       "year_avg_rr": 2.569,
@@ -11264,5 +11264,5 @@
     }
   ],
   "best_fitness_ever": 1028.165436393904,
-  "updated_at": "2026-09-02T06:37:42.191384+00:00"
+  "updated_at": "2026-09-04T12:34:16.283348+00:00"
 }

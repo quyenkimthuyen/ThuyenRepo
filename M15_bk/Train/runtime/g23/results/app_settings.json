@@ -1,0 +1,91 @@
+{
+  "id": "default",
+  "label": "Cài đặt mặc định",
+  "strategy_train_weeks": [
+    6
+  ],
+  "learning_eras": [
+    {
+      "key": "2025-full",
+      "label": "2025 (12 tháng)",
+      "learn_from": "2025-01-01",
+      "learn_until": "2025-12-31",
+      "kb_profile": "era_2025_full"
+    },
+    {
+      "key": "2025-h2",
+      "label": "2025 (6 tháng cuối)",
+      "learn_from": "2025-07-01",
+      "learn_until": "2025-12-31",
+      "kb_profile": "era_2025_h2"
+    },
+    {
+      "key": "2024-h1",
+      "label": "2024 (6 tháng đầu)",
+      "learn_from": "2024-01-01",
+      "learn_until": "2024-06-30",
+      "kb_profile": "era_2024_h1",
+      "oos_from": "2024-07-01",
+      "oos_to": "2024-12-31"
+    },
+    {
+      "key": "2024-h2",
+      "label": "2024 (6 tháng cuối)",
+      "learn_from": "2024-07-01",
+      "learn_until": "2024-12-31",
+      "kb_profile": "era_2024_h2",
+      "oos_from": "2025-01-01",
+      "oos_to": "2025-06-30"
+    },
+    {
+      "key": "2025-h1",
+      "label": "2025 (6 tháng đầu)",
+      "learn_from": "2025-01-01",
+      "learn_until": "2025-06-30",
+      "kb_profile": "era_2025_h1"
+    },
+    {
+      "key": "2025-q4",
+      "label": "2025 (3 tháng cuối)",
+      "learn_from": "2025-10-01",
+      "learn_until": "2025-12-31",
+      "kb_profile": "era_2025_q4"
+    }
+  ],
+  "learning_era_keys": [
+    "2025-h2"
+  ],
+  "learning_loops": 3,
+  "oos_windows": [
+    {
+      "key": "2026",
+      "label": "2026 (năm kiểm chứng)",
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31"
+    },
+    {
+      "key": "2025-h2",
+      "label": "2025 (6 tháng cuối)",
+      "oos_from": "2025-07-01",
+      "oos_to": "2025-12-31"
+    },
+    {
+      "key": "2026-h1",
+      "label": "2026 (6 tháng đầu)",
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30"
+    }
+  ],
+  "oos_window_keys": [
+    "2026-h1"
+  ],
+  "backtest_from": "2026-01-01",
+  "backtest_to": "2026-06-30",
+  "spread_pips": 2.3,
+  "slippage_pips": 0.3,
+  "grid_objective": "quality",
+  "mining_presets": [
+    "gbp_fill_ss_tight"
+  ],
+  "updated_at": "2026-09-04T12:34:13+05:30"
+}
