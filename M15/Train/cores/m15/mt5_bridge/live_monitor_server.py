@@ -948,7 +948,9 @@ async function refresh() {{
         " · "+rows.length+" nến · "+((snap.trades||[]).length)+" lệnh · pan/zoom giữ nguyên (uirevision)";
     }} else {{
       online=Boolean(conn.connected) && age<=10;
-      setText("conn",online?"ONLINE":"OFFLINE",online?"online":"offline");
+      const waiting=Boolean(conn.connected) && !online && age<=120;
+      setText("conn",online?"ONLINE":(waiting?"WAIT":"OFFLINE"),
+        online?"online":(waiting?"signal":"offline"));
       setText("price",(conn.bid ?? "—")+" / "+(conn.ask ?? "—"));
       setText("spread",conn.spread_points!=null?conn.spread_points+" pts":"—");
       setText("positions",conn.positions ?? "—");
@@ -1040,6 +1042,15 @@ def start_live_monitor_server(
       if parsed.path == "/health":
         self._send(200, b"ok", "text/plain; charset=utf-8")
         return
+      if parsed.path == "/whoami":
+        conn = read_json(connection_path(bridge_dir)) or {}
+        body = json.dumps({
+          "ok": True,
+          "bridge_dir": str(Path(bridge_dir).resolve()),
+          "instance_id": conn.get("instance_id"),
+        }).encode("utf-8")
+        self._send(200, body, "application/json; charset=utf-8")
+        return
       if parsed.path == "/plotly.min.js":
         try:
           self._send(200, plotly_js.read_bytes(), "text/javascript; charset=utf-8")
@@ -1103,6 +1114,7 @@ def start_live_monitor_server(
           "history": read_json(bars_path(bridge_dir)) or {},
           "connection": read_json(conn_file) or {},
           "connection_mtime": conn_file.stat().st_mtime if conn_file.exists() else None,
+          "bridge_dir": str(Path(bridge_dir).resolve()),
           "trades": trades,
           "decision": decision,
         }
@@ -1151,6 +1163,54 @@ def start_live_monitor_server(
   return server
 
 
+def chart_server_matches_bridge(
+  port: int,
+  bridge_dir: Path | None = None,
+  *,
+  timeout: float = 0.5,
+) -> bool:
+  """True only if the process on ``port`` serves this desk's bridge folder.
+
+  A leftover Train tree can keep /health=ok on the desk chart port while
+  snapshot quotes come from a stale copy (EA looks OFFLINE with old BID/ASK).
+  """
+  import urllib.request
+
+  want = Path(bridge_dir or BRIDGE_DIR).resolve()
+  try:
+    with urllib.request.urlopen(
+      f"http://127.0.0.1:{int(port)}/whoami", timeout=timeout,
+    ) as r:
+      data = json.loads(r.read().decode("utf-8"))
+    raw = str(data.get("bridge_dir") or "").strip()
+    if raw:
+      return Path(raw).resolve() == want
+  except Exception:
+    pass
+  try:
+    with urllib.request.urlopen(
+      f"http://127.0.0.1:{int(port)}/health", timeout=timeout,
+    ) as r:
+      if r.read() != b"ok":
+        return False
+    with urllib.request.urlopen(
+      f"http://127.0.0.1:{int(port)}/snapshot?bars=1", timeout=max(timeout, 1.0),
+    ) as r:
+      snap = json.loads(r.read().decode("utf-8"))
+    snap_dir = str(snap.get("bridge_dir") or "").strip()
+    if snap_dir:
+      return Path(snap_dir).resolve() == want
+    conn_file = connection_path(want)
+    if not conn_file.exists():
+      return True
+    snap_mt = snap.get("connection_mtime")
+    if snap_mt is None:
+      return False
+    return abs(float(snap_mt) - conn_file.stat().st_mtime) < 3.0
+  except Exception:
+    return False
+
+
 def ensure_chart_server(
   bridge_dir: Path | None = None,
   port: int = DEFAULT_MONITOR_PORT,
@@ -1160,6 +1220,7 @@ def ensure_chart_server(
   import urllib.request
 
   port = int(port)
+  want_dir = Path(bridge_dir) if bridge_dir else BRIDGE_DIR
   is_sim = port == SIM_MONITOR_PORT
   is_compare = port == COMPARE_MONITOR_PORT
   if is_compare:
@@ -1176,8 +1237,11 @@ def ensure_chart_server(
     except Exception:
       return False
 
+  def _ours() -> bool:
+    return chart_server_matches_bridge(port, want_dir)
+
   if _healthy() and not is_sim and not is_compare:
-    return True
+    return _ours()
   with lock:
     if is_compare:
       if _COMPARE_CHART_SERVER is not None and _healthy():
@@ -1226,12 +1290,12 @@ def ensure_chart_server(
       return _healthy()
 
     if _healthy():
-      return True
+      return _ours()
     try:
       _CHART_SERVER = start_live_monitor_server(
-        Path(bridge_dir) if bridge_dir else BRIDGE_DIR,
+        want_dir,
         port=port,
       )
     except OSError:
       pass
-    return _healthy()
+    return _ours()

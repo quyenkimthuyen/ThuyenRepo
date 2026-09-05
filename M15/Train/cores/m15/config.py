@@ -35,8 +35,28 @@ MIN_TRAIN_BARS = int(_CFG.get("min_train_bars") or (1500 if DEFAULT_TF == "M5" e
 # Compatibility for old imports. New artifacts must use train_weeks.
 TRAIN_MONTHS = TRAIN_WEEKS
 
-DEFAULT_SPREAD_PIPS = float(_CFG.get("spread_pips") or 1.0)
-DEFAULT_SLIPPAGE_PIPS = float(_CFG.get("slippage_pips") or 0.3)
+def _cfg_float(key: str, default: float) -> float:
+  raw = _CFG.get(key)
+  if raw is None or raw == "":
+    return float(default)
+  return float(raw)
+
+
+def coalesce_float(*vals, default: float) -> float:
+  """First value that is set, including 0. ``or default`` would drop 0."""
+  for v in vals:
+    if v is None or v == "":
+      continue
+    try:
+      return float(v)
+    except (TypeError, ValueError):
+      continue
+  return float(default)
+
+
+DEFAULT_SPREAD_PIPS = _cfg_float("spread_pips", 1.0)
+# 0 is valid (lab matches live Ask/Bid; do not use ``or 0.3``).
+DEFAULT_SLIPPAGE_PIPS = _cfg_float("slippage_pips", 0.0)
 
 DEFAULT_RISK_PCT_PER_TRADE = 1.0
 DEFAULT_MAX_WEEKLY_LOSS_R = 4.0

@@ -186,9 +186,7 @@ def _bar_dict(ts: pd.Timestamp, row: pd.Series) -> dict:
     "volume": float(row["Volume"] if "Volume" in row.index else 0.0),
     "symbol": _replay_symbol(),
   }
-  pts = _row_spread_points(row)
-  if pts:
-    payload["spread_points"] = pts
+  payload["spread_points"] = _row_spread_points(row)
   return payload
 
 

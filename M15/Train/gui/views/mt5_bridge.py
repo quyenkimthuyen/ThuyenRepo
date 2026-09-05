@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from urllib.error import URLError
-from urllib.request import urlopen
 
 import pandas as pd
 import streamlit as st
@@ -730,7 +728,7 @@ def _render_conditions_alignment(
     f"KB `{model_desc.get('kb_profile')}@ep{model_desc.get('kb_snapshot')}` · "
     f"session `{ss.get('session_ranges')}` · spacing `{ss.get('min_bars_between')}` · "
     f"hold `{ss.get('max_hold_bars')}` · "
-    f"spread/slip `{model_desc.get('spread_pips')}/{model_desc.get('slippage_pips')}` · "
+    f"fill SpreadPoints nến · "
     f"fp `{model_fp}`"
   )
   if match_state == "mismatch":
@@ -1055,12 +1053,16 @@ def _trader_desk_fragment() -> None:
   _render_trader_desk(include_live_metrics=True)
 
 
-def _chart_server_healthy(url: str) -> bool:
+def _chart_server_healthy(url: str, bridge_dir=None) -> bool:
+  from mt5_bridge.live_monitor_server import chart_server_matches_bridge
+
   try:
-    with urlopen(f"{url}/health", timeout=0.5) as response:
-      return response.read() == b"ok"
-  except (OSError, URLError):
+    port = int(str(url).rsplit(":", 1)[-1].split("/")[0])
+  except (TypeError, ValueError):
     return False
+  return chart_server_matches_bridge(
+    port, bridge_dir or resolve_live_bridge_dir(),
+  )
 
 
 @st.fragment(run_every=timedelta(seconds=2))
@@ -1075,7 +1077,7 @@ def _live_chart_recover_fragment(max_bars: int) -> None:
 
   port = desk_chart_port()
   ensure_chart_server(resolve_live_bridge_dir(), port)
-  if _chart_server_healthy(f"http://127.0.0.1:{port}"):
+  if _chart_server_healthy(f"http://127.0.0.1:{port}", resolve_live_bridge_dir()):
     if st.session_state.get("_live_chart_recovered"):
       return
     if not st.session_state.get("_live_chart_recover_armed"):
@@ -1105,8 +1107,11 @@ def _render_live_chart(max_bars: int, *, model_id: str | None = None) -> None:
 
   from mt5_bridge.live_monitor_server import ensure_chart_server
   ensure_chart_server(resolve_live_bridge_dir(), port)
-  server_ready = _chart_server_healthy(monitor_url)
-  use_iframe = server_ready and model_id is None
+  server_ready = _chart_server_healthy(monitor_url, resolve_live_bridge_dir())
+  # Iframe Plotly.react (pan + scrollZoom) — same UX as Compare. Snapshot is
+  # Streamlit plotly_chart and remounts on rerun, so it feels sticky/laggy.
+  # URL already filters by model=; do not gate iframe on model_id is None.
+  use_iframe = server_ready
   if use_iframe:
     components.iframe(
       f"{monitor_url}/chart?bars={max_bars}&model={quote(model_q, safe='')}",
@@ -1116,7 +1121,9 @@ def _render_live_chart(max_bars: int, *, model_id: str | None = None) -> None:
     st.caption(legend)
     return
   if not server_ready:
-    st.warning("Live chart server chưa chạy; đang dùng snapshot tĩnh.")
+    st.warning(
+      "Live chart server chưa khớp folder EA của desk này; đang dùng snapshot đúng desk."
+    )
   frame, connection = load_ea_chart_data(max_bars=max_bars, bridge_dir=bridge_dir)
   roster_ids = _live_roster_model_ids()
   trades = prepare_live_chart_trades(
@@ -1133,7 +1140,13 @@ def _render_live_chart(max_bars: int, *, model_id: str | None = None) -> None:
   if fig is None:
     st.caption("Đang chờ EA gửi nến để vẽ chart.")
   else:
-    show_plotly(fig, live_chart_title, key="mt5_ea_live_chart")
+    fig.update_layout(dragmode="pan")
+    show_plotly(
+      fig,
+      live_chart_title,
+      key="mt5_ea_live_chart",
+      config={"scrollZoom": True, "displaylogo": False},
+    )
     st.caption(legend)
   # Poll for iframe remount only while waiting for the all-models chart server.
   # (Calling this when a single model is selected would still abort later tabs.)

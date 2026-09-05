@@ -125,7 +125,7 @@ Panel workflow trên **Tổng quan** và thứ tự vận hành:
 
 | Mục đích | Dùng gì |
 |----------|---------|
-| Đánh giá strategy | Grid + Health OOS + spread/slip · **KB OFF** làm baseline |
+| Đánh giá strategy | Grid + Health OOS + fill SpreadPoints nến · **KB OFF** làm baseline |
 | Cải thiện kinh nghiệm | Học KB giai đoạn A → OOS giai đoạn B (không leakage) |
 | Vận hành | Bridge roster + remine tuần · **không** Grid lại mỗi tuần |
 | Cất nghiên cứu | **Archive** (giữ report) thay vì Xóa cứng |
@@ -248,11 +248,11 @@ Mặc định app: preset **`elite_or_quality`** (thường **ít lệnh hơn**,
 Đổi ở Cài đặt chỉ ảnh hưởng Grid; Live/Sim theo space **đã lưu trên Trade Model** trong Bridge roster.
 
 ### Grid Search
-Số combo ≈ `train × KB profile × epoch × mining_preset` (OOS/spread/slip cố định).  
+Số combo ≈ `train × KB profile × epoch × mining_preset` (OOS cố định).  
 `grid_objective` chỉ xếp hạng, không nhân combo. Đổi Cài đặt → Grid chỉ chạy combo **mới**.
 
 ### Chi phí & hold-out
-Spread/slip mặc định desk (EUR thường 1.0/0.3; GBP thường 1.5/0.3) — luôn bật khi đánh giá.  
+Fill lab = **SpreadPoints từng nến** XM (BUY Ask / SELL Bid). Không chỉnh chênh lệch / trượt giá trong Cài đặt.  
 Hold-out: giữ tháng cuối chỉ test, không re-optimize WF chính.
 
 ### Mục tiêu checklist

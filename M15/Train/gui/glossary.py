@@ -16,8 +16,8 @@ HELP = {
   "kb_on": "Dùng bộ nhớ kinh nghiệm khi tìm chiến lược (thường tốt hơn, cần kiểm chứng thêm).",
   "kb_off": "Không dùng bộ nhớ — đánh giá **khách quan nhất**, nên chạy trước khi tin vào kết quả.",
   "epoch": "**Vòng học (epoch)** — chạy cả giai đoạn một lần để cập nhật bộ nhớ (ep001, ep002, …).",
-  "spread": "Bid→Ask (pip). Lab/replay: BUY khớp Ask, SELL khớp Bid — cùng kiểu Live. Ưu tiên spread từng nến MT5 khi có.",
-  "slippage": "Trượt giá thêm (pip) trên fill thị trường lab (Live khớp Ask/Bid báo giá).",
+  "spread": "Bid→Ask từng nến MT5 (`SpreadPoints`). Lab/replay: BUY Ask, SELL Bid — cùng Live. Không chỉnh tay.",
+  "slippage": "Lab không cộng trượt giá thêm (0). Live khớp Ask/Bid báo giá.",
   "r_unit": "**Đơn vị R** — lợi nhuận theo rủi ro mỗi lệnh (1R = ±1 lần risk).",
   "drawdown": "**Max DD** — mức sụt giảm lớn nhất từ đỉnh equity (đơn vị R).",
   "win_rate": "**WR** — tỷ lệ lệnh thắng trong giai đoạn kiểm chứng.",
@@ -177,12 +177,10 @@ def format_profile_oneline(tp: dict) -> str:
   kb = format_kb_line(bool(tp.get("use_kb", True)), tp.get("kb_profile"), tp.get("kb_snapshot"))
   oos_f = tp.get("oos_from", "?")
   oos_t = tp.get("oos_to", "?")
-  spread = tp.get("spread_pips", 1)
-  slip = tp.get("slippage_pips", 0.3)
   return (
     f"Học **{train} tuần** · {kb} · "
     f"Kiểm chứng {oos_f} → {oos_t} · "
-    f"phí {spread}/{slip} pip"
+    f"fill SpreadPoints nến"
   )
 
 

@@ -141,7 +141,7 @@ def run_oos(model: dict) -> dict:
     use_learning=bool(model.get("use_kb", True)),
     train_weeks=int(model.get("train_weeks") or 3),
     spread_pips=float(model.get("spread_pips") or 1.0),
-    slippage_pips=float(model.get("slippage_pips") or 0.3),
+    slippage_pips=float(model["slippage_pips"]) if model.get("slippage_pips") is not None else 0.0,
     holdout_months=0,
     kb_profile=model.get("kb_profile"),
     kb_snapshot=model.get("kb_snapshot"),

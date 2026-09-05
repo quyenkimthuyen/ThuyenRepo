@@ -435,6 +435,7 @@ def build_ea_chart(
     height=620 if has_volume else 560,
     margin=dict(l=8, r=96, t=48, b=72 if legend_seen else 32),
     hovermode="x unified",
+    dragmode="pan",
     xaxis_rangeslider_visible=False,
     uirevision="mt5-live-chart",
     showlegend=bool(legend_seen),

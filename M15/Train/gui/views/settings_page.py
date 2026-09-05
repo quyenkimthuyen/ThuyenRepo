@@ -5,7 +5,6 @@ from datetime import date
 
 import streamlit as st
 
-from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from gui.app_settings import (
   TRAIN_WEEK_OPTIONS,
   add_learning_era,
@@ -30,8 +29,6 @@ SETTING_WIDGET_KEYS = (
   "settings_era_labels",
   "settings_learning_loops",
   "settings_oos_labels",
-  "settings_spread",
-  "settings_slip",
   "settings_mining_presets",
   "settings_new_era_label",
   "settings_new_era_from",
@@ -86,8 +83,6 @@ def _init_widget_state(
       opt for opt in oos_options
       if oos_option_to_key.get(opt) in (settings.get("oos_window_keys") or [])
     ],
-    "settings_spread": float(settings.get("spread_pips", DEFAULT_SPREAD_PIPS)),
-    "settings_slip": float(settings.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     "settings_mining_presets": [
       preset_label(n) for n in saved if n in known
     ] or [preset_label(recommended_preset())],
@@ -328,17 +323,6 @@ def render(embedded: bool = False):
   else:
     st.caption("Giữ ít nhất một cửa sổ OOS — thêm cửa sổ mới trước khi xóa.")
 
-  st.markdown("#### Phí mô phỏng")
-  c3, c4 = st.columns(2)
-  with c3:
-    spread = st.number_input(
-      "Chênh lệch (pip)", 0.0, 5.0, step=0.1, key="settings_spread",
-    )
-  with c4:
-    slip = st.number_input(
-      "Trượt giá (pip)", 0.0, 2.0, step=0.1, key="settings_slip",
-    )
-
   st.caption(
     "Mục tiêu xếp hạng Grid Search nằm ở trang **Grid Search** "
     "(đổi objective → bảng / Best đổi ngay, không cần chạy lại combo)."
@@ -350,31 +334,26 @@ def render(embedded: bool = False):
   desk = (os.environ.get("TRAINAPP_DESK") or "").strip().lower()
   is_gbp = desk.startswith("g")
   rec = recommended_preset()
-  spread_txt = f"{float(DEFAULT_SPREAD_PIPS):g} / {float(DEFAULT_SLIPPAGE_PIPS):g} pip"
+  fill_cap = (
+    "Lab fill **BUY Ask / SELL Bid**, SL = ATR×mult + 1 **SpreadPoints từng nến** XM. "
+    "Không cộng trượt giá lab."
+  )
   if is_gbp:
-    fill_cap = (
-      f"Lab fill **BUY Ask / SELL Bid**, SL = ATR×mult + 1 spread, desk **{spread_txt}**. "
-      "Preset Elite RR 3.2–4 (fill cũ nửa spread) **không** dùng làm mặc định GBP."
-    )
     mining_help = (
-      "Hướng **GBP Bid/Ask**: RR 2.2–3.0, ATR 1.05/1.25, label 1.0R + stop confirm. "
+      "Hướng **GBP Bid/Ask**: densify n (gap 6, confirm 0.12) + trail 2.4R — nhắm WR>50 và R>50. "
       "Bỏ trống = miner baseline cũ (không khuyến nghị)."
     )
     rec_cap = (
-      "Reset / chạy lại GBP: **ss_tight** (`gbp_fill_ss_tight`) · OOS **2026-h1**. "
+      "Reset / chạy lại GBP: **r50** (`gbp_fill_r50`) · OOS **2026-h1**. "
       f"`{rec}` vẫn trong catalog. Trade Model active mang search space riêng cho Live."
     )
   else:
-    fill_cap = (
-      f"Lab fill **BUY Ask / SELL Bid**, SL = ATR×mult + 1 spread, desk **{spread_txt}**. "
-      "Preset Elite RR 3.2–4 (fill cũ nửa spread) **không** còn trong catalog EUR."
-    )
     mining_help = (
-      "Hướng **EUR Bid/Ask**: RR 2.2–3.0, ATR 1.05/1.25, label 1.0R + stop confirm. "
+      "Hướng **EUR Bid/Ask**: densify n (gap 6, confirm 0.15) + trail 2.4R — nhắm WR>50 và R>50. "
       "Bỏ trống = miner baseline cũ (không khuyến nghị)."
     )
     rec_cap = (
-      "Reset / chạy lại EUR: **ss_more** (`eur_fill_ss_more`) · OOS **2026-h1**. "
+      "Reset / chạy lại EUR: **r50** (`eur_fill_r50`) · OOS **2026-h1**. "
       "`eur_fill_ss_lab` vẫn trong catalog. Trade Model active mang search space riêng cho Live."
     )
   st.caption(fill_cap)
@@ -416,8 +395,6 @@ def render(embedded: bool = False):
     "oos_window_keys": [
       oos_option_to_key[opt] for opt in picked_oos if opt in oos_option_to_key
     ],
-    "spread_pips": float(spread),
-    "slippage_pips": float(slip),
     "mining_presets": mining_names,
   }
   preview = dict(s)

@@ -14,7 +14,9 @@ from pathlib import Path
 from typing import Any
 
 from mt5_bridge.trade_journal import process_fill
-from execution import POINT as _POINT, PIP as _PIP, spread_from_quote
+from execution import (
+  POINT as _POINT, PIP as _PIP, carry_spread_points, spread_from_quote,
+)
 
 
 def _spread_px() -> float:
@@ -99,6 +101,7 @@ class PaperBook:
   last_signal_id: str = ""
   n_fills: int = 0
   spread_pips: float = 0.0
+  last_spread_pts: float = 0.0
   _spread_px_cached: float = 0.0
   _fills: list[dict] = field(default_factory=list, repr=False)
 
@@ -125,10 +128,11 @@ class PaperBook:
     spread_points: int | float = 0,
   ) -> list[dict]:
     """Apply pending open then manage SL/TP/trail on this bar. Returns fills."""
+    pts, self.last_spread_pts = carry_spread_points(spread_points, self.last_spread_pts)
     emitted: list[dict] = []
     if self.pending and not self.open:
       fill = self._open_from_decision(
-        self.pending, float(open_), bar_time, spread_points=spread_points,
+        self.pending, float(open_), bar_time, spread_points=pts,
       )
       self.pending = None
       if fill:
@@ -140,7 +144,7 @@ class PaperBook:
         low=float(low),
         close=float(close),
         bar_time=bar_time,
-        spread_points=spread_points,
+        spread_points=pts,
       )
       if close_fill:
         emitted.append(close_fill)

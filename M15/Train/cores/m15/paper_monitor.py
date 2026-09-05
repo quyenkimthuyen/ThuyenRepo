@@ -15,6 +15,7 @@ from mt5_bridge.history_sync import utc_to_broker_time
 from optimizer import optimize_on_window
 from strategy import compute_metrics
 from strategy_miner import (
+  _bar_spread_points,
   generate_signals_mined, backtest_mined, mining_search_space_from_dict,
 )
 
@@ -48,24 +49,16 @@ def _project_signal_levels(
   av = fm.atr[bar_idx]
   if pd.isna(av) or av <= 0:
     return None
-  pts = 0.0
-  arr = getattr(fm, "spread_points", None)
+  last_pts = 0.0
+  look = bar_idx if entry_idx >= fm.n else entry_idx
+  for j in range(max(0, look - 16), look + 1):
+    pts, last_pts = _bar_spread_points(fm, j, last_pts)
   if entry_idx >= fm.n:
     raw_entry = float(fm.close[bar_idx])
     entry_time = str(fm.index[bar_idx] + pd.Timedelta(minutes=15))
-    if arr is not None and 0 <= bar_idx < len(arr):
-      try:
-        pts = float(arr[bar_idx] or 0.0)
-      except (TypeError, ValueError):
-        pts = 0.0
   else:
     raw_entry = float(fm.open[entry_idx])
     entry_time = str(fm.index[entry_idx])
-    if arr is not None and 0 <= entry_idx < len(arr):
-      try:
-        pts = float(arr[entry_idx] or 0.0)
-      except (TypeError, ValueError):
-        pts = 0.0
   entry_price = adjust_entry_price(
     raw_entry, direction, spread_pips, slippage_pips, spread_points=pts,
   )

@@ -149,8 +149,6 @@ def _sync_tp_form_widgets(tp: dict):
     st.session_state["tp_kb_pid"] = kb_label
   st.session_state["tp_oos_f"] = tp.get("oos_from") or ""
   st.session_state["tp_oos_t"] = tp.get("oos_to") or ""
-  st.session_state["tp_spread"] = float(tp.get("spread_pips", DEFAULT_SPREAD_PIPS))
-  st.session_state["tp_slip"] = float(tp.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS))
   st.session_state.pop("tp_kb_epoch", None)
   snap = _normalize_snapshot(tp.get("kb_snapshot"))
   if pid and tp.get("use_kb", True):
@@ -215,8 +213,8 @@ def get_profile_run_params() -> dict:
     "kb_snapshot": _normalize_snapshot(tp.get("kb_snapshot")),
     "oos_from": tp.get("oos_from"),
     "oos_to": tp.get("oos_to"),
-    "spread_pips": float(tp.get("spread_pips", DEFAULT_SPREAD_PIPS)),
-    "slippage_pips": float(tp.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
+    "spread_pips": float(DEFAULT_SPREAD_PIPS),
+    "slippage_pips": float(DEFAULT_SLIPPAGE_PIPS),
   }
 
 
@@ -323,6 +321,8 @@ def set_active_trade_profile(profile_id: str | None = None, **fields) -> dict:
     tp["kb_snapshot"] = _normalize_snapshot(tp["kb_snapshot"])
 
   tp = _enrich_from_kb_profile(tp)
+  tp["spread_pips"] = float(DEFAULT_SPREAD_PIPS)
+  tp["slippage_pips"] = float(DEFAULT_SLIPPAGE_PIPS)
   if not tp.get("label") or not tp.get("label_custom"):
     tp = _sync_profile_label(tp)
 
@@ -707,11 +707,7 @@ def render_sidebar_trade_profiles():
             )
       oos_f = st.text_input("Kiểm chứng từ", key="tp_oos_f", help=HELP["oos"])
       oos_t = st.text_input("Kiểm chứng đến", key="tp_oos_t", help=HELP["oos"])
-      c1, c2 = st.columns(2)
-      with c1:
-        spread = st.number_input("Chênh lệch (pip)", 0.0, 3.0, step=0.1, key="tp_spread", help=HELP["spread"])
-      with c2:
-        slip = st.number_input("Trượt giá (pip)", 0.0, 2.0, step=0.1, key="tp_slip", help=HELP["slippage"])
+      st.caption("Fill lab = **SpreadPoints từng nến** XM · không cộng trượt giá.")
 
       snap = None
       if use_kb and kb_pid:
@@ -728,8 +724,8 @@ def render_sidebar_trade_profiles():
         kb_snapshot=snap if use_kb else None,
         oos_from=oos_f.strip() or None,
         oos_to=oos_t.strip() or None,
-        spread_pips=float(spread),
-        slippage_pips=float(slip),
+        spread_pips=float(DEFAULT_SPREAD_PIPS),
+        slippage_pips=float(DEFAULT_SLIPPAGE_PIPS),
         source="manual",
       )
       st.session_state.pop("backtest_report", None)

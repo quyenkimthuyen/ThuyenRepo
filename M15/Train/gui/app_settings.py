@@ -107,7 +107,7 @@ DEFAULT_SETTINGS = {
   "slippage_pips": DEFAULT_SLIPPAGE_PIPS,
   "grid_objective": "quality",
   # EUR 6m recipe. Desk g23 override in default_settings_for_desk().
-  "mining_presets": ["eur_fill_ss_more"],
+  "mining_presets": ["eur_fill_r50"],
   "updated_at": None,
 }
 
@@ -296,6 +296,9 @@ def _sanitize_settings(data: dict) -> dict:
     out["mining_presets"] = presets
   except Exception:
     out["mining_presets"] = list(out.get("mining_presets") or [])
+  # Fill cost is not a Settings knob: per-bar SpreadPoints, slip 0 (desk YAML fallback).
+  out["spread_pips"] = float(DEFAULT_SPREAD_PIPS)
+  out["slippage_pips"] = float(DEFAULT_SLIPPAGE_PIPS)
   return out
 
 
@@ -673,8 +676,6 @@ def settings_grid_signature(settings: dict | None = None) -> str:
     oos_sig,
     s.get("backtest_from", ""),
     s.get("backtest_to", ""),
-    str(s.get("spread_pips", 1.0)),
-    str(s.get("slippage_pips", 0.3)),
     f"msp:{presets}",
   ]
   return "|".join(parts)
@@ -711,7 +712,7 @@ def format_settings_summary(settings: dict | None = None) -> str:
   return (
     f"Học chiến lược: **{trains}** · Giai đoạn học: **{eras}** · "
     f"Vòng học: **{s.get('learning_loops', 4)}** · Kiểm chứng: **{oos}** · "
-    f"Fill Bid/Ask: **{s.get('spread_pips')} / {s.get('slippage_pips')} pip** · "
+    f"Fill Bid/Ask: **SpreadPoints nến** · "
     f"Mining: **{msp}**"
   )
 

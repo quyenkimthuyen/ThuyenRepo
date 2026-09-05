@@ -1,7 +1,10 @@
 """Long-running tasks — backtest, học KB, so sánh — chạy nền."""
 from __future__ import annotations
 
-from config import DEFAULT_FEATURE_PROFILE, DEFAULT_TF
+from config import (
+  DEFAULT_FEATURE_PROFILE, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS, DEFAULT_TF,
+  coalesce_float,
+)
 
 import json
 import threading
@@ -288,8 +291,8 @@ def _worker_model_health(state: dict):
 
   start_date = p.get("start_date") or "2022-01-01"
   train_weeks = int(p.get("train_weeks") or model.get("train_weeks") or 6)
-  spread = float(p.get("spread_pips") or model.get("spread_pips") or 1.0)
-  slip = float(p.get("slippage_pips") or model.get("slippage_pips") or 0.3)
+  spread = coalesce_float(p.get("spread_pips"), model.get("spread_pips"), default=DEFAULT_SPREAD_PIPS)
+  slip = coalesce_float(p.get("slippage_pips"), model.get("slippage_pips"), default=DEFAULT_SLIPPAGE_PIPS)
   oos_from = p.get("oos_from") or model.get("oos_from")
   oos_to = p.get("oos_to") or model.get("oos_to")
   kb_profile = p.get("kb_profile") or model.get("kb_profile")
@@ -402,8 +405,8 @@ def _worker_remine_health(state: dict):
 
   start_date = p.get("start_date") or "2022-01-01"
   train_weeks = int(p.get("train_weeks") or model.get("train_weeks") or 6)
-  spread = float(p.get("spread_pips") or model.get("spread_pips") or 1.0)
-  slip = float(p.get("slippage_pips") or model.get("slippage_pips") or 0.3)
+  spread = coalesce_float(p.get("spread_pips"), model.get("spread_pips"), default=DEFAULT_SPREAD_PIPS)
+  slip = coalesce_float(p.get("slippage_pips"), model.get("slippage_pips"), default=DEFAULT_SLIPPAGE_PIPS)
   oos_from = p.get("oos_from") or model.get("oos_from")
   oos_to = p.get("oos_to") or model.get("oos_to")
   kb_profile = p.get("kb_profile") or model.get("kb_profile")
@@ -507,8 +510,8 @@ def _worker_mining_space_health(state: dict):
 
   start_date = p.get("start_date") or "2022-01-01"
   train_weeks = int(p.get("train_weeks") or model.get("train_weeks") or 6)
-  spread = float(p.get("spread_pips") or model.get("spread_pips") or 1.0)
-  slip = float(p.get("slippage_pips") or model.get("slippage_pips") or 0.3)
+  spread = coalesce_float(p.get("spread_pips"), model.get("spread_pips"), default=DEFAULT_SPREAD_PIPS)
+  slip = coalesce_float(p.get("slippage_pips"), model.get("slippage_pips"), default=DEFAULT_SLIPPAGE_PIPS)
   oos_from = p.get("oos_from") or model.get("oos_from")
   oos_to = p.get("oos_to") or model.get("oos_to")
   kb_profile = p.get("kb_profile") or model.get("kb_profile")

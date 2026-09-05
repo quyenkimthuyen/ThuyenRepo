@@ -602,7 +602,7 @@ def summarize_grid_config(config: dict | None) -> dict:
     "spread_pips": cfg.get("spread_pips"),
     "slippage_pips": cfg.get("slippage_pips"),
     "cost_txt": (
-      f"spread {cfg.get('spread_pips', '—')} / slip {cfg.get('slippage_pips', '—')}"
+      "fill SpreadPoints nến"
     ),
     "settings_signature": cfg.get("settings_signature"),
   }

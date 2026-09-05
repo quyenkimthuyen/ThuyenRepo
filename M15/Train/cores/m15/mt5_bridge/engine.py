@@ -7,7 +7,13 @@ from typing import Any
 
 import pandas as pd
 
-from config import DEFAULT_RISK_PCT_PER_TRADE, MIN_TRAIN_BARS, TRAIN_WEEKS
+from config import (
+  DEFAULT_RISK_PCT_PER_TRADE,
+  DEFAULT_SLIPPAGE_PIPS,
+  DEFAULT_SPREAD_PIPS,
+  MIN_TRAIN_BARS,
+  TRAIN_WEEKS,
+)
 from data_loader import get_train_window_indices, get_week_indices
 from feature_engine import FeatureMatrix
 from mt5_bridge.history_sync import (
@@ -281,11 +287,18 @@ class BridgeEngine:
     """
     if df.empty:
       raise ValueError("empty history for FeatureMatrix")
+    spread_tag = 0
+    if "SpreadPoints" in df.columns and len(df):
+      try:
+        spread_tag = int(round(float(df["SpreadPoints"].sum())))
+      except (TypeError, ValueError):
+        spread_tag = 0
     key = (
       feature_profile,
       len(df),
       str(df.index[0]),
       str(df.index[-1]),
+      spread_tag,
     )
     if self._fm is None or self._fm_key != key:
       ensure_label_cache_for_df(len(df))
@@ -574,6 +587,12 @@ class BridgeEngine:
       "Close": float(bar["close"]),
       "Volume": float(bar.get("volume") or bar.get("tick_volume") or 0),
     }
+    try:
+      row["SpreadPoints"] = float(
+        bar.get("spread_points") or bar.get("SpreadPoints") or 0,
+      )
+    except (TypeError, ValueError):
+      row["SpreadPoints"] = 0.0
     if self.mt5_cache.resolve() == MT5_CACHE_PATH.resolve():
       self._df = merge_history_bars([bar], {
         "server": bar.get("server"),
@@ -584,6 +603,8 @@ class BridgeEngine:
       add = pd.DataFrame([row], index=[ts])
       df = pd.concat([df, add]).sort_index()
       df = df[~df.index.duplicated(keep="last")]
+      if "SpreadPoints" in df.columns:
+        df["SpreadPoints"] = pd.to_numeric(df["SpreadPoints"], errors="coerce").fillna(0.0)
       self._df = df
       self._save_mt5_cache()
     # New tip only — remine/features must refresh
@@ -637,8 +658,8 @@ class BridgeEngine:
     use_learning = bool(params.get("use_learning", True))
     kb_profile = params.get("kb_profile")
     kb_snapshot = params.get("kb_snapshot")
-    spread = float(params.get("spread_pips", 1.0))
-    slip = float(params.get("slippage_pips", 0.3))
+    spread = float(params.get("spread_pips", DEFAULT_SPREAD_PIPS))
+    slip = float(params.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS))
     model_id = params.get("trade_model_id") or self.model_id
     if (
       not self._model

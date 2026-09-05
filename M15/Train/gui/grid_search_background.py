@@ -91,25 +91,40 @@ def load_job_state() -> dict | None:
   return _read_json(JOB_STATE_PATH)
 
 
+def _thread_alive() -> bool:
+  return _thread is not None and _thread.is_alive()
+
+
+def _is_inline_runner(state: dict | None) -> bool:
+  return bool(state) and state.get("runner") == "inline"
+
+
 def is_grid_running() -> bool:
   state = load_job_state()
   if not state or state.get("status") != "running":
     return False
-  return _thread is not None and _thread.is_alive()
+  if _is_inline_runner(state):
+    return True
+  return _thread_alive()
+
+
+def grid_cancel_requested() -> bool:
+  return _cancel.is_set()
 
 
 def get_grid_status() -> dict:
   state = load_job_state() or {}
-  alive = _thread is not None and _thread.is_alive()
+  alive = _thread_alive()
+  inline = _is_inline_runner(state)
   status = state.get("status", "idle")
-  if status == "running" and not alive:
+  if status == "running" and not alive and not inline:
     status = "interrupted"
   total = int(state.get("total") or 0)
   done = int(state.get("done") or 0)
   pct = (done / total * 100) if total else 0
   return {
     "status": status,
-    "running": alive and status == "running",
+    "running": status == "running" and (alive or inline),
     "run_id": state.get("run_id"),
     "objective": state.get("objective"),
     "total": total,
@@ -121,6 +136,7 @@ def get_grid_status() -> dict:
     "finished_at": state.get("finished_at"),
     "error": state.get("error"),
     "n_rows": len(state.get("rows") or []),
+    "runner": state.get("runner"),
   }
 
 
@@ -132,6 +148,78 @@ def _save_state(state: dict):
   state["updated_at"] = _now_iso()
   with _lock:
     _write_json(JOB_STATE_PATH, state)
+
+
+def begin_inline_grid_run(
+  specs: list[GridSpec],
+  *,
+  objective: str,
+  config: dict,
+  run_id: str | None = None,
+) -> str:
+  """Mark Grid Search as running inside another worker (pipeline KB → Grid)."""
+  if is_grid_running():
+    raise RuntimeError("Grid search đang chạy — hủy hoặc đợi hoàn thành.")
+  _cancel.clear()
+  ts = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d_%H%M%S")
+  rid = run_id or f"gs_{ts}"
+  state = {
+    "status": "running",
+    "runner": "inline",
+    "run_id": rid,
+    "objective": objective,
+    "config": config,
+    "specs": [spec_to_dict(s) for s in specs],
+    "total": len(specs),
+    "done": 0,
+    "current_label": "",
+    "rows": [],
+    "started_at": _now_iso(),
+    "updated_at": _now_iso(),
+    "finished_at": None,
+    "error": None,
+  }
+  _save_state(state)
+  return rid
+
+
+def update_inline_grid_run(
+  *,
+  done: int,
+  total: int | None = None,
+  current_label: str = "",
+  rows: list[dict] | None = None,
+):
+  state = load_job_state() or {}
+  if not _is_inline_runner(state) or state.get("status") != "running":
+    return
+  state["done"] = int(done)
+  if total is not None:
+    state["total"] = int(total)
+  state["current_label"] = current_label or ""
+  if rows is not None:
+    state["rows"] = list(rows)
+  _save_state(state)
+
+
+def finish_inline_grid_run(
+  *,
+  status: str,
+  rows: list[dict] | None = None,
+  error: str | None = None,
+):
+  state = load_job_state() or {}
+  if rows is not None:
+    state["rows"] = list(rows)
+    state["done"] = max(int(state.get("done") or 0), len(rows))
+    if not state.get("total"):
+      state["total"] = len(rows)
+  state["status"] = status
+  state["runner"] = None
+  state["current_label"] = ""
+  state["finished_at"] = _now_iso()
+  state["error"] = error
+  _save_state(state)
 
 
 def _worker(run_id: str, specs_data: list[dict], objective: str, config: dict, start_at: int = 0):
@@ -310,6 +398,21 @@ def ensure_grid_worker_running():
   if not state or state.get("status") != "running":
     return
   if _thread is not None and _thread.is_alive():
+    return
+  if _is_inline_runner(state):
+    try:
+      from gui.long_task_background import is_task_running, load_job_state as load_lt
+    except Exception:
+      is_task_running = lambda: False  # noqa: E731
+      load_lt = lambda: None  # noqa: E731
+    lt = load_lt() or {}
+    if is_task_running() and lt.get("job_type") == "kb_then_grid":
+      return
+    state["status"] = "interrupted"
+    state["runner"] = None
+    state["finished_at"] = _now_iso()
+    state["error"] = "Pipeline dừng giữa Grid — chạy lại pipeline hoặc Grid Search."
+    _save_state(state)
     return
 
   done = int(state.get("done") or 0)

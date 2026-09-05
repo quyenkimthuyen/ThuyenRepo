@@ -128,6 +128,62 @@ def test_backtest_buy_entry_is_ask():
   assert trades[0].entry_price == pytest.approx(1.10 + 1.9 * PIP + 0.3 * PIP)
 
 
+def test_backtest_prefers_bar_spread_points_over_settings():
+  n = 6
+  fm = _bt_fm(n)
+  fm.spread_points[:] = 0
+  fm.spread_points[1] = 24  # fill bar (signal at 0 → entry next open)
+  signals = np.zeros(n, dtype=np.int8)
+  signals[0] = 1
+  strat = MinedStrategy(
+    atr_mult_sl=0.9, rr_ratio=3.0, max_hold_bars=96, max_trades_per_day=2,
+    session_filter=False, min_bars_between=1, exit_mode="full", anti_chase=False,
+  )
+  trades = backtest_mined(
+    fm, strat, signals, 0, n, spread_pips=1.9, slippage_pips=0.0,
+  )
+  assert len(trades) == 1
+  assert trades[0].entry_price == pytest.approx(1.10 + 24 * POINT)
+  assert trades[0].entry_price != pytest.approx(1.10 + 1.9 * PIP)
+
+
+def test_project_levels_prefers_bar_spread_points():
+  from paper_monitor import _project_signal_levels
+
+  fm = _bt_fm(6)
+  fm.spread_points[:] = 0
+  fm.spread_points[1] = 24
+  strat = MinedStrategy(atr_mult_sl=0.9, rr_ratio=3.0)
+  proj = _project_signal_levels(fm, strat, 0, 1, spread_pips=1.9, slippage_pips=0.0)
+  assert proj is not None
+  assert proj["entry_px"] == pytest.approx(round(1.10 + 24 * POINT, 5))
+  sl_d = abs(proj["entry_px"] - proj["sl"])
+  assert sl_d == pytest.approx(0.9 * float(fm.atr[0]) + 24 * POINT, abs=1.5e-5)
+
+
+def test_merge_bar_writes_spread_points(tmp_path):
+  from mt5_bridge.engine import BridgeEngine
+
+  cache = tmp_path / "iso.parquet"
+  seed = pd.DataFrame(
+    {
+      "Open": [1.1], "High": [1.11], "Low": [1.09], "Close": [1.1],
+      "Volume": [1.0], "SpreadPoints": [16.0],
+    },
+    index=pd.DatetimeIndex([pd.Timestamp("2026-01-02 08:00")]),
+  )
+  seed.to_parquet(cache)
+  eng = BridgeEngine(mt5_cache=cache)
+  ts = eng.merge_bar({
+    "time": "2026.01.02 12:15",
+    "open": 1.2, "high": 1.21, "low": 1.19, "close": 1.20,
+    "volume": 5, "spread_points": 33,
+  })
+  frame = eng.load()
+  assert "SpreadPoints" in frame.columns
+  assert float(frame.loc[ts, "SpreadPoints"]) == 33.0
+
+
 def test_history_stores_spread_points(tmp_path, monkeypatch):
   monkeypatch.setattr(history_sync, "MT5_CACHE_PATH", tmp_path / "mt5.parquet")
   monkeypatch.setattr(history_sync, "MT5_META_PATH", tmp_path / "meta.json")

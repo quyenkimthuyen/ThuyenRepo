@@ -106,6 +106,8 @@ def test_chart_recover_does_not_abort_later_live_tabs():
   assert 'st.rerun(scope="fragment")' not in recover
   assert "not server_ready" in render
   assert "model_id is None" in render
+  assert "use_iframe = server_ready" in render
+  assert "use_iframe = server_ready and model_id is None" not in render
   live = (root / "gui" / "views" / "live_trade_dash.py").read_text(encoding="utf-8")
   assert live.find("LABEL_TAB_REWARD") < live.find('"Kỹ thuật"')
   assert live.find('"Kỹ thuật"') < live.find('"Test lịch sử"')

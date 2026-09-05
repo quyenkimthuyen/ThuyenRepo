@@ -368,6 +368,22 @@ def _bar_spread_points(fm, i: int, last_pts: float) -> tuple[float, float]:
   return carry_spread_points(pts, last_pts)
 
 
+def _spread_cache_tag(fm, start: int, end: int) -> tuple[int, int, int]:
+  """Cheap fingerprint so label cache invalidates after parquet resync."""
+  arr = getattr(fm, "spread_points", None)
+  if arr is None:
+    return (0, 0, 0)
+  sl = arr[max(0, int(start)):max(0, int(end))]
+  if len(sl) == 0:
+    return (0, 0, 0)
+  try:
+    total = int(round(float(sl.sum())))
+    nz = int((sl > 0).sum())
+  except (TypeError, ValueError):
+    return (len(sl), 0, 0)
+  return (len(sl), total, nz)
+
+
 def _confirm_stop_fill(
   fm, start_j: int, end_idx: int, direction: int, ref_price: float, sl_d: float,
   confirm_r: float, cancel_r: float, wait_bars: int,
@@ -412,6 +428,7 @@ def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
   key = (
     "bidask1", fm.n, start, end, rr, atr_mult, max_hold_bars, round(spr, 4),
     int(bool(tp_ignores_spread_buffer)),
+    _spread_cache_tag(fm, start, end),
   )
   with _LABEL_LOCK:
     cached = LABEL_CACHE.get(key)
