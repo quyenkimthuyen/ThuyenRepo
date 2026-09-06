@@ -145,7 +145,7 @@ def _run_grid(desk: str, *, workers: int) -> dict:
   )
   ok = [x for x in rows if not x.get("error")]
   _log(desk, f"Grid done {rid}: {len(ok)}/{len(rows)} OK in {time.time() - t0:.0f}s")
-  ranked = sorted(ok, key=lambda r: (_row_nums(r)[0], _row_nums(r)[1]), reverse=True)
+  ranked = sorted(ok, key=lambda r: (_row_nums(r)[1], _row_nums(r)[0]), reverse=True)
   for r in ranked[:8]:
     _log(desk, f"top {_fmt(r)}")
   return {"run_id": rid, "rows": rows, "objective": objective}
@@ -156,7 +156,7 @@ def _create_models(desk: str, run: dict) -> list[dict]:
 
   rows = [r for r in (run.get("rows") or []) if not r.get("error")]
   hits = [r for r in rows if _passes(r)]
-  hits.sort(key=lambda r: (_row_nums(r)[0], _row_nums(r)[1]), reverse=True)
+  hits.sort(key=lambda r: (_row_nums(r)[1], _row_nums(r)[0]), reverse=True)
   _log(desk, f"Filter WR>{FILTER['wr_gt']} R>{FILTER['total_r_gt']} n>={FILTER['n_ge']}: {len(hits)}")
   created = []
   for i, row in enumerate(hits[:MAX_MODELS]):

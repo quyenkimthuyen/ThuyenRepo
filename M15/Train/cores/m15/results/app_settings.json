@@ -2,17 +2,15 @@
   "id": "default",
   "label": "Cài đặt mặc định",
   "strategy_train_weeks": [
-    3,
-    6,
-    9
+    8
   ],
   "learning_eras": [
     {
-      "key": "2025-full",
-      "label": "2025 (12 tháng)",
+      "key": "2025-h1",
+      "label": "2025 (6 tháng đầu)",
       "learn_from": "2025-01-01",
-      "learn_until": "2025-12-31",
-      "kb_profile": "era_2025_full"
+      "learn_until": "2025-06-30",
+      "kb_profile": "era_2025_h1"
     },
     {
       "key": "2025-h2",
@@ -20,20 +18,58 @@
       "learn_from": "2025-07-01",
       "learn_until": "2025-12-31",
       "kb_profile": "era_2025_h2"
+    },
+    {
+      "key": "2024-h1",
+      "label": "2024 (6 tháng đầu)",
+      "learn_from": "2024-01-01",
+      "learn_until": "2024-06-30",
+      "kb_profile": "era_2024_h1",
+      "oos_from": "2024-07-01",
+      "oos_to": "2024-12-31"
+    },
+    {
+      "key": "2024-h2",
+      "label": "2024 (6 tháng cuối)",
+      "learn_from": "2024-07-01",
+      "learn_until": "2024-12-31",
+      "kb_profile": "era_2024_h2",
+      "oos_from": "2025-01-01",
+      "oos_to": "2025-06-30"
     }
   ],
   "learning_era_keys": [
-    "2025-full",
-    "2025-h2"
+    "2025-h1",
+    "2024-h2"
   ],
-  "learning_loops": 4,
+  "learning_loops": 3,
+  "oos_windows": [
+    {
+      "key": "2026-h1",
+      "label": "2026 (6 tháng đầu)",
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30"
+    },
+    {
+      "key": "2025-h2",
+      "label": "2025 (6 tháng cuối)",
+      "oos_from": "2025-07-01",
+      "oos_to": "2025-12-31"
+    }
+  ],
+  "oos_window_keys": [
+    "2026-h1"
+  ],
   "backtest_from": "2026-01-01",
-  "backtest_to": "2026-12-31",
+  "backtest_to": "2026-06-30",
   "spread_pips": 1.0,
-  "slippage_pips": 0.3,
-  "grid_objective": "risk_adjusted",
+  "slippage_pips": 0.0,
+  "grid_objective": "quality",
   "mining_presets": [
-    "elite_or_quality"
+    "eur_fill_r50_clip",
+    "eur_fill_r50",
+    "eur_fill_bar_stop",
+    "eur_fill_ss_clip"
   ],
-  "updated_at": "2026-08-16T00:07:11+07:00"
+  "updated_at": "2026-09-05T19:56:18+05:30"
 }

@@ -213,6 +213,41 @@ def test_elite_presets_opt_in():
   assert "frontier_rr_hi" not in list_curated_presets()
 
 
+def test_lc2_dna_presets_keep_confirm_off():
+  from mining_presets import LC2_DNA_PRESETS, get_preset
+  from strategy_miner import mining_search_space_from_dict
+
+  assert "lc2_elite_clip" in LC2_DNA_PRESETS
+  exact = mining_search_space_from_dict(get_preset("lc2_elite_60_3"))
+  assert exact.confirm_r == pytest.approx(0.0)
+  assert exact.rr_ratios == (3.5, 4.0)
+  assert exact.atr_multipliers == (0.9, 1.05)
+  assert exact.min_bars_between == (12,)
+  assert exact.max_hold_bars == (96,)
+  assert exact.exit_modes_full_only is True
+  assert exact.anti_chase_fixed_rsi == pytest.approx(58.0)
+  assert exact.anti_chase_use_vwap is False
+  clip = mining_search_space_from_dict(get_preset("lc2_elite_clip"))
+  assert clip.tp_ignores_spread_buffer is True
+  assert clip.confirm_r == pytest.approx(0.0)
+  assert clip.rr_ratios == (3.5, 4.0)
+  vwap = mining_search_space_from_dict(get_preset("lc2_elite_vwap"))
+  assert vwap.anti_chase_use_vwap is True
+  assert vwap.anti_chase_fixed_vwap == pytest.approx(1.2)
+  orq = mining_search_space_from_dict(get_preset("lc2_or_quality"))
+  assert orq.rr_ratios == (3.2, 3.5, 4.0)
+  assert orq.anti_chase_fixed_vwap == pytest.approx(1.5)
+  e55 = mining_search_space_from_dict(get_preset("lc2_elite_55_4"))
+  assert e55.rr_ratios == (4.0,)
+  assert e55.anti_chase_fixed_rsi == pytest.approx(55.0)
+  bar = mining_search_space_from_dict(get_preset("lc2_elite_bar"))
+  assert bar.tp_ignores_spread_buffer is True
+  assert bar.oos_exit_mode == "hybrid"
+  assert bar.oos_trail_activate_r == pytest.approx(2.4)
+  assert bar.confirm_r == pytest.approx(0.0)
+  assert bar.max_hold_bars == (128,)
+
+
 def test_eur_fill_presets_wider_sl_closer_tp():
   from mining_presets import get_preset
   from strategy_miner import mining_search_space_from_dict
@@ -267,9 +302,17 @@ def test_eur_fill_presets_wider_sl_closer_tp():
   assert more.confirm_wait_bars == 5
   assert more.rr_ratios == (2.0, 2.4, 2.8)
   assert more.max_hold_bars == (128,)
+  assert more.min_bars_between == (8,)
+  assert more.tp_ignores_spread_buffer is True
   assert more.anti_chase_fixed_rsi == pytest.approx(58.0)
   assert more.oos_exit_mode == "hybrid"
   assert more.oos_trail_activate_r == pytest.approx(2.0)
+  bar_stop = mining_search_space_from_dict(get_preset("eur_fill_bar_stop"))
+  assert bar_stop.confirm_r == pytest.approx(0.20)
+  assert bar_stop.confirm_wait_bars == 4
+  assert bar_stop.tp_ignores_spread_buffer is True
+  assert bar_stop.min_bars_between == (6,)
+  assert bar_stop.oos_trail_activate_r == pytest.approx(2.4)
   plus = mining_search_space_from_dict(get_preset("eur_fill_ss_plus"))
   assert plus.confirm_r == pytest.approx(0.18)
   assert plus.confirm_wait_bars == 5
@@ -381,20 +424,22 @@ def test_preset_blurbs_and_direction_line():
 def test_app_settings_default_mining_preset(monkeypatch):
   monkeypatch.setenv("TRAINAPP_DESK", "e21")
   from gui.app_settings import DEFAULT_SETTINGS, _sanitize_settings, default_settings_for_desk
-  assert DEFAULT_SETTINGS["mining_presets"] == ["eur_fill_ss_more"]
+  assert DEFAULT_SETTINGS["mining_presets"] == ["eur_fill_r50_clip"]
   assert DEFAULT_SETTINGS["strategy_train_weeks"] == [8]
   assert DEFAULT_SETTINGS["learning_era_keys"] == ["2025-h1"]
   assert DEFAULT_SETTINGS["oos_window_keys"] == ["2026-h1"]
   assert DEFAULT_SETTINGS["backtest_to"] == "2026-06-30"
   cleaned = _sanitize_settings({"learning_eras": DEFAULT_SETTINGS["learning_eras"]})
-  assert cleaned["mining_presets"] == ["eur_fill_ss_more"]
+  assert cleaned["mining_presets"] == ["eur_fill_r50_clip"]
   assert cleaned["oos_window_keys"] == ["2026-h1"]
   assert [w["key"] for w in cleaned["oos_windows"]] == ["2026-h1", "2025-h2"]
   pinned = _sanitize_settings({"spread_pips": 5.0, "slippage_pips": 0.8})
   assert pinned["spread_pips"] == float(DEFAULT_SETTINGS["spread_pips"])
   assert pinned["slippage_pips"] == float(DEFAULT_SETTINGS["slippage_pips"])
   s = default_settings_for_desk()
-  assert s["mining_presets"] == ["eur_fill_ss_more"]
+  assert s["mining_presets"] == [
+    "eur_fill_r50_clip", "eur_fill_r50", "eur_fill_bar_stop", "eur_fill_ss_clip",
+  ]
   assert s["strategy_train_weeks"] == [8]
   assert s["learning_era_keys"] == ["2025-h1"]
   assert s["oos_window_keys"] == ["2026-h1"]
@@ -421,7 +466,10 @@ def test_g23_fill_aware_defaults(monkeypatch):
   assert book.rr_ratios == (2.4, 2.8, 3.2)
   assert max(book.rr_ratios) <= 3.2
   s = default_settings_for_desk()
-  assert s["mining_presets"] == ["gbp_fill_ss_tight"]
+  assert s["mining_presets"] == [
+    "gbp_fill_ss_wait", "gbp_fill_r50_clip", "gbp_fill_r50", "gbp_fill_bar_stop",
+  ]
+  assert s["learning_era_keys"] == ["2024-h2"]
   assert s["strategy_train_weeks"] == [6]
   vol = mining_search_space_from_dict(get_preset("gbp_fill_ss_vol"))
   assert vol.label_rr == 1.0
@@ -436,8 +484,13 @@ def test_g23_fill_aware_defaults(monkeypatch):
   assert tight.confirm_wait_bars == 5
   assert tight.rr_ratios == (2.0, 2.4, 2.8)
   assert tight.max_hold_bars == (128,)
+  assert tight.tp_ignores_spread_buffer is True
   assert tight.oos_exit_mode == "hybrid"
   assert tight.oos_trail_activate_r == pytest.approx(2.0)
+  gbp_bar = mining_search_space_from_dict(get_preset("gbp_fill_bar_stop"))
+  assert gbp_bar.confirm_r == pytest.approx(0.20)
+  assert gbp_bar.tp_ignores_spread_buffer is True
+  assert gbp_bar.min_bars_between == (6,)
   tight_n = mining_search_space_from_dict(get_preset("gbp_fill_ss_tight_n"))
   assert tight_n.confirm_r == pytest.approx(0.16)
   assert tight_n.confirm_wait_bars == 5
@@ -467,7 +520,7 @@ def test_g23_fill_aware_defaults(monkeypatch):
   assert gbank.confirm_r == pytest.approx(0.12)
   gclip = mining_search_space_from_dict(get_preset("gbp_fill_ss_clip"))
   assert gclip.tp_ignores_spread_buffer is True
-  assert s["learning_era_keys"] == ["2025-h2"]
+  assert s["learning_era_keys"] == ["2024-h2"]
   assert s["oos_window_keys"] == ["2026-h1"]
   assert [w["key"] for w in s["oos_windows"]] == ["2026-h1", "2025-h2"]
   assert s["grid_objective"] == "quality"

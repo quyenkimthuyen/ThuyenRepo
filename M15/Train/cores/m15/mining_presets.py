@@ -266,6 +266,36 @@ ELITE_60_35 = {
   "target_trades_per_week": 4.0,
 }
 
+# LiveCheck2 best-model DNA (EUR elite_60_3 / VWAP / OR-quality / elite_55_4).
+# LC2 books were scored on ~12m OOS + slip 0.3 + constant 1.9, no sparkstop.
+# Pin geometry + confirm_r=0. Clip/bar variants keep DNA but stop per-bar
+# SpreadPoints from multiplying into TP (M15 fill). Do not add confirm.
+_LC2_DNA_LOCK = {
+  "atr_multipliers": [0.9, 1.05],
+  "max_hold_bars": [96],
+  "min_bars_between": [12],
+  "confirm_r": 0.0,
+  "exit_modes_full_only": True,
+}
+_LC2_BAR = {
+  "tp_ignores_spread_buffer": True,
+  "max_hold_bars": [128],
+  "oos_exit_mode": "hybrid",
+  "oos_trail_activate_r": 2.4,
+  "oos_trail_distance_r": 0.40,
+}
+LC2_ELITE_60_3 = {**ELITE_60_3, **_LC2_DNA_LOCK}
+LC2_ELITE_VWAP = {**ELITE_60_3_VWAP, **_LC2_DNA_LOCK}
+LC2_OR_QUALITY = {**ELITE_OR_QUALITY, **_LC2_DNA_LOCK}
+LC2_ELITE_55_4 = {**ELITE_55_4, **_LC2_DNA_LOCK}
+LC2_ELITE_CLIP = {**LC2_ELITE_60_3, "tp_ignores_spread_buffer": True}
+LC2_VWAP_CLIP = {**LC2_ELITE_VWAP, "tp_ignores_spread_buffer": True}
+LC2_ORQ_CLIP = {**LC2_OR_QUALITY, "tp_ignores_spread_buffer": True}
+LC2_E55_CLIP = {**LC2_ELITE_55_4, "tp_ignores_spread_buffer": True}
+LC2_ELITE_BAR = {**LC2_ELITE_60_3, **_LC2_BAR}
+LC2_VWAP_BAR = {**LC2_ELITE_VWAP, **_LC2_BAR}
+LC2_ORQ_BAR = {**LC2_OR_QUALITY, **_LC2_BAR}
+
 # EUR Bid/Ask fill: SL = ATR×mult + 1 spread, BUY at Ask. Elite RR 3.2–4.0
 # put TP too far (densify WR peaked ~33%). Wider SL + closer TP vs old elites.
 EUR_FILL_WIDE = {
@@ -397,10 +427,11 @@ EUR_FILL_SS_MORE = {
   "confirm_wait_bars": 5,
   "confirm_cancel_r": 0.52,
   "rr_ratios": [2.0, 2.4, 2.8],
-  "min_bars_between": [10],
+  "min_bars_between": [8],
   "max_hold_bars": [128],
   "anti_chase_fixed_rsi": 58.0,
   "target_trades_per_week": 6.0,
+  "tp_ignores_spread_buffer": True,
   "oos_exit_mode": "hybrid",
   "oos_trail_activate_r": 2.0,
   "oos_trail_distance_r": 0.40,
@@ -641,6 +672,7 @@ GBP_FILL_SS_TIGHT = {
   "max_hold_bars": [128],
   "anti_chase_fixed_rsi": 58.0,
   "target_trades_per_week": 6.5,
+  "tp_ignores_spread_buffer": True,
   "oos_exit_mode": "hybrid",
   "oos_trail_activate_r": 2.0,
   "oos_trail_distance_r": 0.40,
@@ -734,21 +766,69 @@ GBP_FILL_R50_CLIP = {
   "tp_ignores_spread_buffer": True,
 }
 
+# Per-bar SpreadPoints already taxes SL. Multiplying that into TP is why
+# ss_more n collapsed 43→10 on the same 2026-h1 window. Keep sparkstop confirm.
+EUR_FILL_BAR_STOP = {
+  **EUR_FILL_SPARKSTOP,
+  "label_rr": 1.0,
+  "tp_ignores_spread_buffer": True,
+  "min_bars_between": [6],
+  "max_hold_bars": [128],
+  "target_trades_per_week": 8.0,
+  "oos_exit_mode": "hybrid",
+  "oos_trail_activate_r": 2.4,
+  "oos_trail_distance_r": 0.40,
+}
+GBP_FILL_BAR_STOP = {
+  **GBP_FILL_SPARKSTOP,
+  "label_rr": 1.0,
+  "tp_ignores_spread_buffer": True,
+  "min_bars_between": [6],
+  "max_hold_bars": [128],
+  "target_trades_per_week": 8.5,
+  "oos_exit_mode": "hybrid",
+  "oos_trail_activate_r": 2.4,
+  "oos_trail_distance_r": 0.40,
+}
+
 # App-recommended direction after Bid/Ask fills (BUY Ask / SELL Bid).
 # Elite OR-quality (RR 3.2–4) was fit on half-spread lab fills — do not
 # re-offer it as the EUR default.
 RECOMMENDED_PRESET = "eur_fill_ss_lab"
 
-# EUR Settings: r50 = Reset/chạy lại 6m (WR>50 R>50); lab vẫn trong catalog.
+# EUR Settings: clip-first — per-bar spread must not multiply into TP.
 EUR_FILL_CURATED: tuple[str, ...] = (
+  "eur_fill_r50_clip",
   "eur_fill_r50",
+  "eur_fill_bar_stop",
+  "eur_fill_ss_clip",
   "eur_fill_ss_lab",
   "eur_fill_ss_more",
 )
 
-# GBP Settings: r50 = Reset/chạy lại 6m; lab/vol vẫn trong catalog.
+# LiveCheck2 DNA remine on M15 2026-h1 (not Settings Reset defaults).
+LC2_DNA_PRESETS: tuple[str, ...] = (
+  "lc2_elite_clip",
+  "lc2_vwap_clip",
+  "lc2_orq_clip",
+  "lc2_e55_clip",
+  "lc2_elite_bar",
+  "lc2_vwap_bar",
+  "lc2_orq_bar",
+  "lc2_elite_60_3",
+  "lc2_elite_vwap",
+  "lc2_or_quality",
+  "lc2_elite_55_4",
+)
+
+# GBP: ss_wait + 2024-h2 hit WR>50 R>50 on SpreadPoints 2026-h1.
 GBP_FILL_CURATED: tuple[str, ...] = (
+  "gbp_fill_ss_wait",
+  "gbp_fill_r50_clip",
   "gbp_fill_r50",
+  "gbp_fill_bar_stop",
+  "gbp_fill_ss_clip",
+  "gbp_fill_ss_tight",
   "gbp_fill_ss_lab",
   "gbp_fill_ss_vol",
 )
@@ -791,18 +871,15 @@ DEPRECATED_PRESETS: tuple[str, ...] = (
   "eur_fill_ss_more_hyb24",
   "eur_fill_ss_more_hold",
   "eur_fill_ss_more_hyb28",
-  "eur_fill_ss_clip",
   "eur_fill_ss_wr",
   "eur_fill_book",
   "gbp_fill_ss_more",
   "gbp_fill_ss_plus",
   "gbp_fill_ss_run",
   "gbp_fill_ss_bank",
-  "gbp_fill_ss_clip",
   "gbp_fill_ss_tight_hyb24",
   "gbp_fill_ss_tight_n",
   "gbp_fill_ss_dense",
-  "gbp_fill_ss_wait",
   "gbp_fill_sparkstop",
 )
 
@@ -819,6 +896,17 @@ PRESET_LABELS: dict[str, str] = {
   "elite_60_3_vwap": "Elite WR60 · VWAP",
   "elite_55_4": "Elite WR60 · RR4 (ít lệnh)",
   "elite_or_quality": "Elite OR-quality (fill cũ — không dùng EUR Bid/Ask)",
+  "lc2_elite_60_3": "LC2 DNA · elite_60_3 (không confirm)",
+  "lc2_elite_vwap": "LC2 DNA · elite VWAP 1.2",
+  "lc2_or_quality": "LC2 DNA · OR-quality RSI58∨VWAP1.5",
+  "lc2_elite_55_4": "LC2 DNA · elite_55_4 RR4",
+  "lc2_elite_clip": "LC2 DNA · elite_60_3 + TP clip",
+  "lc2_vwap_clip": "LC2 DNA · VWAP + TP clip",
+  "lc2_orq_clip": "LC2 DNA · OR-quality + TP clip",
+  "lc2_e55_clip": "LC2 DNA · elite_55_4 + TP clip",
+  "lc2_elite_bar": "LC2 DNA · elite_60_3 clip + trail 2.4R",
+  "lc2_vwap_bar": "LC2 DNA · VWAP clip + trail 2.4R",
+  "lc2_orq_bar": "LC2 DNA · OR-quality clip + trail 2.4R",
   "elite_60_35": "Elite RSI60 · RR3.5",
   "eur_fill_wide": "EUR fill · SL rộng TP gần",
   "eur_fill_book": "EUR fill-aware · RR 2.2–3",
@@ -836,9 +924,10 @@ PRESET_LABELS: dict[str, str] = {
   "eur_fill_stop": "EUR fill · stop confirm 0.2R",
   "eur_fill_sparkstop": "EUR fill · label 1.2R + stop",
   "eur_fill_overlap": "EUR fill · overlap 13–16",
-  "eur_fill_ss_more": "EUR slip0 · label 1.0R confirm 0.18 TP 2.0–2.8 trail 2.0R",
+  "eur_fill_ss_more": "EUR slip0 · label 1.0R confirm 0.18 TP clip + trail 2.0R",
   "eur_fill_r50": "EUR R50 · densify n + trail 2.4R (WR>50 R>50)",
   "eur_fill_r50_clip": "EUR R50 · TP ATR×RR (nhiều hit hơn)",
+  "eur_fill_bar_stop": "EUR bar-spread · sparkstop confirm + TP clip + trail 2.4R",
   "eur_fill_ss_plus": "EUR ss_more · gap 8 + hold 128 (R↑ giữ WR)",
   "eur_fill_ss_run": "EUR ss_more · RR 2.6–3.4 hold 128",
   "eur_fill_ss_bank": "EUR ss_more · hybrid bank 1.3R (R↑ giữ WR)",
@@ -856,13 +945,14 @@ PRESET_LABELS: dict[str, str] = {
   "gbp_fill_ss_run": "GBP ss_vol · RR 2.6–3.4 hold 128",
   "gbp_fill_ss_bank": "GBP ss_vol · hybrid bank 1.3R (R↑ giữ WR)",
   "gbp_fill_ss_clip": "GBP ss_vol · TP ATR×RR (không nhân spread)",
-  "gbp_fill_ss_tight": "GBP slip0 · confirm 0.16 TP 2.0–2.8 trail 2.0R",
+  "gbp_fill_ss_tight": "GBP slip0 · confirm 0.16 TP clip + trail 2.0R",
   "gbp_fill_r50": "GBP R50 · densify n + trail 2.4R (WR>50 R>50)",
   "gbp_fill_r50_clip": "GBP R50 · TP ATR×RR (nhiều hit hơn)",
+  "gbp_fill_bar_stop": "GBP bar-spread · sparkstop confirm + TP clip + trail 2.4R",
   "gbp_fill_ss_tight_hyb24": "GBP ss_tight · trail muộn 2.4R (cùng entry)",
   "gbp_fill_ss_tight_n": "GBP ss_tight · gap 6 + hold 128 (thêm n)",
   "gbp_fill_ss_dense": "GBP sparkstop · confirm 0.10 wait10 (thêm n)",
-  "gbp_fill_ss_wait": "GBP sparkstop · wait 8 nến",
+  "gbp_fill_ss_wait": "GBP R50 · confirm 0.14 wait 8 (WR>50 R>50 trên 2024-h2)",
   "gbp_fill_sniper": "GBP fill sniper · WR-first",
   "gbp_fill_flow": "GBP fill flow · volume + RR>2",
   "gbp_fill_wr": "GBP fill WR-first · London",
@@ -919,6 +1009,21 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "intent": "Elite WR-first, chỉ RSI void (không VWAP)",
     "knobs": "RSI≥58 fixed · RR 3.5–4 · exit full · elite_frontier",
     "tradeoff": "WR cao · ít lệnh hơn baseline",
+  },
+  "lc2_elite_60_3": {
+    "intent": "DNA LiveCheck2 +139R (12m OOS) — remine trên 2026-h1 M15",
+    "knobs": "confirm=0 · RR 3.5–4 · ATR 0.9/1.05 · gap 12 · hold 96 · RSI 58",
+    "tradeoff": "Sách LC2 là 12 tháng + slip 0.3; M15 chấm 6 tháng + SpreadPoints",
+  },
+  "lc2_elite_clip": {
+    "intent": "DNA LC2 elite + TP không nhân spread nến",
+    "knobs": "cùng elite_60_3 · tp_ignores_spread_buffer",
+    "tradeoff": "TP gần hơn LC2 gốc · giữ confirm=0",
+  },
+  "lc2_elite_bar": {
+    "intent": "DNA LC2 elite + clip + trail muộn 2.4R (cửa sổ 6 tháng)",
+    "knobs": "clip TP · hold 128 · hybrid trail 2.4R · confirm=0",
+    "tradeoff": "R↑ nếu winner chạy dài · RR báo cáo có thể < 3.5",
   },
   "elite_60_3_vwap": {
     "intent": "Elite siết hơn bằng VWAP OR",
@@ -1016,9 +1121,14 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "tradeoff": "Bỏ Asia/London open · n thấp",
   },
   "eur_fill_ss_more": {
-    "intent": "EUR sau slip 0 — săn WR và Total R (fill Ask/Bid, không +0.3 lab)",
-    "knobs": "label 1.0 · confirm 0.18 wait5 · RR 2.0–2.8 · hold 128 · trail OOS 2.0R",
-    "tradeoff": "TP gần hơn ss_more cũ · n vừa · WR↑ nếu 0.3 slip từng ăn winner",
+    "intent": "EUR sau slip 0 + SpreadPoints nến — TP không nhân spread vào target",
+    "knobs": "label 1.0 · confirm 0.18 wait5 · gap 8 · TP clip · trail OOS 2.0R",
+    "tradeoff": "Nhiều TP hơn ss_more cũ (TP=SL×RR) · R/win có thể nhỏ hơn",
+  },
+  "eur_fill_bar_stop": {
+    "intent": "EUR SpreadPoints nến — giữ confirm sparkstop, TP = ATR×RR",
+    "knobs": "confirm 0.20 wait4 · clip · gap 6 · trail OOS 2.4R · TPW 8",
+    "tradeoff": "n↑ vs sparkstop thuần · WR tụt nếu densify kéo setup yếu",
   },
   "eur_fill_r50": {
     "intent": "EUR — WR>50 và Total R>50 trên OOS 6 tháng (nếu EV đủ, thiếu lệnh)",
@@ -1126,9 +1236,14 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "tradeoff": "n↑ nếu confirm trễ · miss nếu fake chết sớm",
   },
   "gbp_fill_ss_tight": {
-    "intent": "GBP sau slip 0 — săn WR và Total R (spread 2.3, không +0.3 lab)",
-    "knobs": "label 1.0 · confirm 0.16 wait5 · RR 2.0–2.8 · hold 128 · trail OOS 2.0R",
-    "tradeoff": "Siết hơn ss_vol · n có thể <40 · WR/R↑ nếu TP 3.0 cũ quá xa",
+    "intent": "GBP sau slip 0 + SpreadPoints nến — TP không nhân spread vào target",
+    "knobs": "label 1.0 · confirm 0.16 wait5 · TP clip · hold 128 · trail OOS 2.0R",
+    "tradeoff": "Nhiều TP hơn tight cũ · R/win có thể nhỏ hơn",
+  },
+  "gbp_fill_bar_stop": {
+    "intent": "GBP SpreadPoints nến — giữ confirm sparkstop, TP = ATR×RR",
+    "knobs": "confirm 0.20 wait4 · clip · gap 6 · trail OOS 2.4R · TPW 8.5",
+    "tradeoff": "n↑ vs sparkstop thuần · WR tụt nếu densify kéo setup yếu",
   },
   "gbp_fill_r50": {
     "intent": "GBP — WR>50 và Total R>50 trên OOS 6 tháng (ss_vol n + trail muộn)",
@@ -1382,6 +1497,17 @@ PRESETS: dict[str, dict] = {
   "elite_55_surgery": deepcopy(ELITE_55_SURGERY),
   "elite_or_quality": deepcopy(ELITE_OR_QUALITY),
   "elite_60_35": deepcopy(ELITE_60_35),
+  "lc2_elite_60_3": deepcopy(LC2_ELITE_60_3),
+  "lc2_elite_vwap": deepcopy(LC2_ELITE_VWAP),
+  "lc2_or_quality": deepcopy(LC2_OR_QUALITY),
+  "lc2_elite_55_4": deepcopy(LC2_ELITE_55_4),
+  "lc2_elite_clip": deepcopy(LC2_ELITE_CLIP),
+  "lc2_vwap_clip": deepcopy(LC2_VWAP_CLIP),
+  "lc2_orq_clip": deepcopy(LC2_ORQ_CLIP),
+  "lc2_e55_clip": deepcopy(LC2_E55_CLIP),
+  "lc2_elite_bar": deepcopy(LC2_ELITE_BAR),
+  "lc2_vwap_bar": deepcopy(LC2_VWAP_BAR),
+  "lc2_orq_bar": deepcopy(LC2_ORQ_BAR),
   "eur_fill_wide": deepcopy(EUR_FILL_WIDE),
   "eur_fill_book": deepcopy(EUR_FILL_BOOK),
   "eur_fill_wr": deepcopy(EUR_FILL_WR),
@@ -1412,6 +1538,7 @@ PRESETS: dict[str, dict] = {
   "eur_fill_ss_wr": deepcopy(EUR_FILL_SS_WR),
   "eur_fill_r50": deepcopy(EUR_FILL_R50),
   "eur_fill_r50_clip": deepcopy(EUR_FILL_R50_CLIP),
+  "eur_fill_bar_stop": deepcopy(EUR_FILL_BAR_STOP),
   "gbp_fill_book": deepcopy(GBP_FILL_BOOK),
   "gbp_fill_sparkstop": deepcopy(GBP_FILL_SPARKSTOP),
   "gbp_fill_ss_lab": deepcopy(GBP_FILL_SS_LAB),
@@ -1428,6 +1555,7 @@ PRESETS: dict[str, dict] = {
   "gbp_fill_ss_wait": deepcopy(GBP_FILL_SS_WAIT),
   "gbp_fill_r50": deepcopy(GBP_FILL_R50),
   "gbp_fill_r50_clip": deepcopy(GBP_FILL_R50_CLIP),
+  "gbp_fill_bar_stop": deepcopy(GBP_FILL_BAR_STOP),
   "gbp_fill_sniper": deepcopy(GBP_FILL_SNIPER),
   "gbp_fill_flow": deepcopy(GBP_FILL_FLOW),
   "gbp_fill_wr": deepcopy(GBP_FILL_WR),

@@ -1,0 +1,784 @@
+{
+  "models": [
+    {
+      "train_weeks": 8,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2024_h2",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "spread_pips": 1.9,
+      "slippage_pips": 0.0,
+      "total_r": 40.323,
+      "win_rate_pct": 60.0,
+      "max_drawdown_r": 4.0,
+      "profit_factor": 3.243,
+      "n_trades": 40,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          128
+        ],
+        "min_bars_between": [
+          6
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 60.0,
+        "anti_chase_fixed_vwap": 1.8,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.2,
+        "confirm_wait_bars": 4,
+        "confirm_cancel_r": 0.5,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "EURUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-09-04 20:30:00",
+      "data_bars": 66529,
+      "data_fingerprint": "d797437a75e61a0dc11f34701d8fa47e106eddf36e190004d76b8e9f2bc266d2",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260905_224423",
+      "grid_key": "74c882917bc7",
+      "label_custom": true,
+      "id": "tm_wr60r40_d634912b",
+      "label": "WR60R40",
+      "created_at": "2026-09-05T22:44:23+05:30",
+      "kb_pin_path": "trade_models/tm_wr60r40_d634912b_kb_pin.json",
+      "kb_fingerprint": "51a0243914480901",
+      "kb_pin_bytes": 257103,
+      "kb_pin_source": "/home/thuyenng/work/ThuyenRepo/M15_check/Train/runtime/e21/learning/kb_profiles/snapshots/era_2024_h2/ep001.json"
+    },
+    {
+      "train_weeks": 8,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2024_h2",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "spread_pips": 1.9,
+      "slippage_pips": 0.0,
+      "total_r": 25.087,
+      "win_rate_pct": 54.55,
+      "max_drawdown_r": 2.58,
+      "profit_factor": 2.15,
+      "n_trades": 44,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.4,
+          2.8
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          128
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 6.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.8,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.0,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.18,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.52,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "EURUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-09-04 20:30:00",
+      "data_bars": 66529,
+      "data_fingerprint": "d797437a75e61a0dc11f34701d8fa47e106eddf36e190004d76b8e9f2bc266d2",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260905_224423",
+      "grid_key": "e58e2bf240e8",
+      "label_custom": true,
+      "id": "tm_wr55r25_e1ecde3a",
+      "label": "WR55R25",
+      "created_at": "2026-09-05T22:44:23+05:30",
+      "kb_pin_path": "trade_models/tm_wr55r25_e1ecde3a_kb_pin.json",
+      "kb_fingerprint": "51a0243914480901",
+      "kb_pin_bytes": 257103,
+      "kb_pin_source": "/home/thuyenng/work/ThuyenRepo/M15_check/Train/runtime/e21/learning/kb_profiles/snapshots/era_2024_h2/ep001.json"
+    },
+    {
+      "train_weeks": 8,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2024_h2",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "spread_pips": 1.9,
+      "slippage_pips": 0.0,
+      "total_r": 17.08,
+      "win_rate_pct": 51.52,
+      "max_drawdown_r": 4.33,
+      "profit_factor": 2.078,
+      "n_trades": 33,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.4,
+          2.8
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          128
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 6.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.8,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.0,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.18,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.52,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "EURUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-09-04 20:30:00",
+      "data_bars": 66529,
+      "data_fingerprint": "d797437a75e61a0dc11f34701d8fa47e106eddf36e190004d76b8e9f2bc266d2",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260905_224423",
+      "grid_key": "2eac4fd0e57b",
+      "label_custom": true,
+      "id": "tm_wr52r17_e278485d",
+      "label": "WR52R17",
+      "created_at": "2026-09-05T22:44:23+05:30",
+      "kb_pin_path": "trade_models/tm_wr52r17_e278485d_kb_pin.json",
+      "kb_fingerprint": "f01168e53719c9e8",
+      "kb_pin_bytes": 510440,
+      "kb_pin_source": "/home/thuyenng/work/ThuyenRepo/M15_check/Train/runtime/e21/learning/kb_profiles/snapshots/era_2024_h2/ep002.json"
+    },
+    {
+      "train_weeks": 8,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2024_h2",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "spread_pips": 1.9,
+      "slippage_pips": 0.0,
+      "total_r": 28.488,
+      "win_rate_pct": 53.33,
+      "max_drawdown_r": 4.21,
+      "profit_factor": 3.305,
+      "n_trades": 30,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          128
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.2,
+        "confirm_wait_bars": 4,
+        "confirm_cancel_r": 0.5,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "EURUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-09-04 20:30:00",
+      "data_bars": 66529,
+      "data_fingerprint": "d797437a75e61a0dc11f34701d8fa47e106eddf36e190004d76b8e9f2bc266d2",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260906_004556",
+      "grid_key": "6f1f233f5daa",
+      "label_custom": true,
+      "id": "tm_wr53r28_ef3d84ad",
+      "label": "WR53R28",
+      "created_at": "2026-09-06T00:45:56+05:30",
+      "kb_pin_path": "trade_models/tm_wr53r28_ef3d84ad_kb_pin.json",
+      "kb_fingerprint": "51a0243914480901",
+      "kb_pin_bytes": 257103,
+      "kb_pin_source": "/home/thuyenng/work/ThuyenRepo/M15_check/Train/runtime/e21/learning/kb_profiles/snapshots/era_2024_h2/ep001.json"
+    },
+    {
+      "train_weeks": 8,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2024_h2",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "spread_pips": 1.9,
+      "slippage_pips": 0.0,
+      "total_r": 28.166,
+      "win_rate_pct": 51.61,
+      "max_drawdown_r": 5.0,
+      "profit_factor": 2.508,
+      "n_trades": 31,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.6,
+          3.0,
+          3.4
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          128
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 4.0,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.2,
+        "confirm_wait_bars": 4,
+        "confirm_cancel_r": 0.5,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "EURUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-09-04 20:30:00",
+      "data_bars": 66529,
+      "data_fingerprint": "d797437a75e61a0dc11f34701d8fa47e106eddf36e190004d76b8e9f2bc266d2",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260906_004556",
+      "grid_key": "4bde4687b4c6",
+      "label_custom": true,
+      "id": "tm_wr52r28_122b8d83",
+      "label": "WR52R28",
+      "created_at": "2026-09-06T00:45:56+05:30",
+      "kb_pin_path": "trade_models/tm_wr52r28_122b8d83_kb_pin.json",
+      "kb_fingerprint": "51a0243914480901",
+      "kb_pin_bytes": 257103,
+      "kb_pin_source": "/home/thuyenng/work/ThuyenRepo/M15_check/Train/runtime/e21/learning/kb_profiles/snapshots/era_2024_h2/ep001.json"
+    },
+    {
+      "train_weeks": 8,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2024_h2",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "spread_pips": 1.9,
+      "slippage_pips": 0.0,
+      "total_r": 25.271,
+      "win_rate_pct": 54.55,
+      "max_drawdown_r": 4.0,
+      "profit_factor": 3.254,
+      "n_trades": 22,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.4,
+          2.8,
+          3.2
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          128
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 4.5,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.2,
+        "confirm_wait_bars": 4,
+        "confirm_cancel_r": 0.5,
+        "max_trades_per_day": 0,
+        "force_side": "both"
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "EURUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-09-04 20:30:00",
+      "data_bars": 66529,
+      "data_fingerprint": "d797437a75e61a0dc11f34701d8fa47e106eddf36e190004d76b8e9f2bc266d2",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260906_004556",
+      "grid_key": "ac524c762837",
+      "label_custom": true,
+      "id": "tm_wr55r25_2_7c459b22",
+      "label": "WR55R25 (2)",
+      "created_at": "2026-09-06T00:45:56+05:30",
+      "kb_pin_path": "trade_models/tm_wr55r25_2_7c459b22_kb_pin.json",
+      "kb_fingerprint": "f01168e53719c9e8",
+      "kb_pin_bytes": 510440,
+      "kb_pin_source": "/home/thuyenng/work/ThuyenRepo/M15_check/Train/runtime/e21/learning/kb_profiles/snapshots/era_2024_h2/ep002.json"
+    }
+  ]
+}
