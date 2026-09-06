@@ -340,20 +340,22 @@ def render(embedded: bool = False):
   )
   if is_gbp:
     mining_help = (
-      "Hướng **GBP Bid/Ask**: densify n (gap 6, confirm 0.12) + trail 2.4R — nhắm WR>50 và R>50. "
+      "Hướng **GBP >5 lệnh/tuần, WR>50**: `gbp_fill_wk5` (flow_frontier, nới confirm). "
+      "`gbp_fill_2pd` giữ confirm 0.12 nếu muốn sách thưa WR cao. "
       "Bỏ trống = miner baseline cũ (không khuyến nghị)."
     )
     rec_cap = (
-      "Reset / chạy lại GBP: **r50** (`gbp_fill_r50`) · OOS **2026-h1**. "
-      f"`{rec}` vẫn trong catalog. Trade Model active mang search space riêng cho Live."
+      "Reset / chạy lại GBP: **wk5** (`gbp_fill_wk5,gbp_fill_wk5_mkt,gbp_fill_wk5_open`) · OOS **2026-h1**. "
+      f"`{rec}` vẫn là hướng 2pd cũ. Trade Model active mang search space riêng cho Live."
     )
   else:
     mining_help = (
-      "Hướng **EUR Bid/Ask**: densify n (gap 6, confirm 0.15) + trail 2.4R — nhắm WR>50 và R>50. "
+      "Hướng **EUR >5 lệnh/tuần, WR>50**: `eur_fill_wk5` (flow_frontier, nới confirm). "
+      "`eur_fill_2pd` giữ confirm 0.15 nếu muốn sách thưa WR cao. "
       "Bỏ trống = miner baseline cũ (không khuyến nghị)."
     )
     rec_cap = (
-      "Reset / chạy lại EUR: **r50** (`eur_fill_r50`) · OOS **2026-h1**. "
+      "Reset / chạy lại EUR: **wk5** (`eur_fill_wk5,eur_fill_wk5_mkt,eur_fill_wk5_open`) · OOS **2026-h1**. "
       "`eur_fill_ss_lab` vẫn trong catalog. Trade Model active mang search space riêng cho Live."
     )
   st.caption(fill_cap)

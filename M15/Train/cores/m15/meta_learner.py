@@ -113,7 +113,7 @@ def _evaluate_genome(
   comb = compute_metrics(fit_trades + val_trades)
   val_m = compute_metrics(val_trades)
 
-  if space.selection_mode in ("expectancy_frontier", "elite_frontier"):
+  if space.selection_mode in ("expectancy_frontier", "elite_frontier", "flow_frontier"):
     val_weeks = max(weeks * 0.35, 0.5)
     s_val = score_strategy_metrics(
       val_m, val_weeks, space.target_trades_per_week,
@@ -200,6 +200,9 @@ def _mine_strategy_learning_impl(
   long_wins, short_wins = _label_outcomes(
     fm, train_start, train_end, (lab if lab > 0 else rr), atr_m, max_hold,
     tp_ignores_spread_buffer=bool(getattr(space, "tp_ignores_spread_buffer", False)),
+    confirm_r=float(getattr(space, "confirm_r", 0.0) or 0.0),
+    confirm_wait_bars=int(getattr(space, "confirm_wait_bars", 4) or 4),
+    confirm_cancel_r=float(getattr(space, "confirm_cancel_r", 0.5) or 0.5),
   )
   ml = _fit_ml_with_experience(fm, train_start, train_end, long_wins, short_wins, kb, as_of=as_of)
 

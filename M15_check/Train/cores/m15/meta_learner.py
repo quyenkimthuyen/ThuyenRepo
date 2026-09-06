@@ -17,7 +17,7 @@ from ml_scorer import MLScorer, ML_FEATURES
 from strategy import compute_metrics
 from strategy_miner import (
   MinedStrategy, Rule, mine_strategy, generate_signals_mined, backtest_mined,
-  score_strategy_metrics, _label_outcomes, _mine_threshold_rules, _mine_binary_rules,
+  score_strategy_metrics, freq_floor_penalty, _label_outcomes, _mine_threshold_rules, _mine_binary_rules,
   _count_matching_rules, CONTINUOUS_FEATURES, BINARY_LONG, BINARY_SHORT,
   _weeks_in_window, MiningSearchSpace, constrain_strategy_to_space,
   apply_breakthrough_filters, _exec_cost_kwargs,
@@ -100,8 +100,9 @@ def _evaluate_genome(
   search_space: MiningSearchSpace | None = None,
 ) -> tuple[float, dict, MinedStrategy]:
   space = search_space or MiningSearchSpace(target_trades_per_week=target_tpw)
-  # Score with surgery / calibrate-chase only. Fixed anti-chase is applied later
-  # on the final genome so ranking matches the unfiltered frontier book.
+  # Score with surgery / calibrate-chase only; fixed anti-chase lands on the
+  # final genome — unless the preset opts into anti_chase_score_with_veto, which
+  # ranks genomes on the post-veto book.
   strat = apply_breakthrough_filters(
     fm, strat, train_start, train_end, space, for_scoring=True,
   )
@@ -134,6 +135,7 @@ def _evaluate_genome(
     )
   if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
     s -= 80
+  s -= freq_floor_penalty(comb, weeks, space)
   return s, comb, strat
 
 

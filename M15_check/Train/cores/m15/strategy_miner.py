@@ -153,6 +153,13 @@ class MiningSearchSpace:
   anti_chase_vwap_caps: tuple[float, ...] = (1.5, 2.0, 2.5, 99.0)
   # or = void if RSI or VWAP is chase; and = void only if both are chase
   anti_chase_logic: str = "or"
+  # Opt-in: rank genomes on the book that SURVIVES the fixed veto. Default False
+  # keeps legacy ranking (veto attached only to the final pick). LiveCheck2
+  # eur_r100_hyper: ranking without the veto deleted ~95% of mined longs OOS.
+  anti_chase_score_with_veto: bool = False
+  # Opt-in genome eligibility floor in trades/week over the train window.
+  # 0 = off. Blocks 3-trade genomes that win on tiny samples and then never fire.
+  min_trades_per_week: float = 0.0
   # Opt-in: only mine full exits (no hybrid/partial that clip winners → RR↓)
   exit_modes_full_only: bool = False
   # "" | full | hybrid | partial — lock one exit family (overrides full_only).
@@ -1217,6 +1224,21 @@ def score_strategy_metrics(
   return s
 
 
+def freq_floor_penalty(metrics: dict, weeks: float, space: MiningSearchSpace | None) -> float:
+  """Graded penalty for genomes below ``space.min_trades_per_week``.
+
+  Graded (not a hard reject) so evolution keeps a gradient toward denser books
+  instead of collapsing to the fallback genome when nothing clears the floor.
+  """
+  floor = float(getattr(space, "min_trades_per_week", 0.0) or 0.0)
+  if floor <= 0:
+    return 0.0
+  tpw = float(metrics.get("n_trades") or 0) / max(float(weeks), 1e-9)
+  if tpw >= floor:
+    return 0.0
+  return 500.0 * min(1.0, (floor - tpw) / floor)
+
+
 def _passes_best_gate(metrics: dict, selection_mode: str) -> bool:
   """Hard gate for the preferred genome; frontier mode is less WR-overfit."""
   wr = float(metrics.get("win_rate") or 0)
@@ -1498,14 +1520,15 @@ def apply_breakthrough_filters(
   """Compose opt-in post-mine filters (surgery → anti-chase).
 
   ``for_scoring=True`` skips fixed anti-chase so genome ranking stays stable;
-  fixed gates are applied only on the final chosen strategy.
+  fixed gates are applied only on the final chosen strategy. Presets that set
+  ``anti_chase_score_with_veto`` keep the veto during ranking instead.
   """
   space = space or MiningSearchSpace()
   out = apply_edge_surgery(fm, strat, train_start, train_end, space)
   if space.anti_chase:
     mode = str(getattr(space, "anti_chase_mode", "calibrate") or "calibrate")
     if mode == "fixed":
-      if for_scoring:
+      if for_scoring and not getattr(space, "anti_chase_score_with_veto", False):
         # Rank genomes without the fixed veto; attach veto only on the final pick.
         out.anti_chase = False
         out.anti_chase_rsi_short_max = 100.0
@@ -1554,6 +1577,12 @@ def mine_strategy(
   confirm_r = float(getattr(space, "confirm_r", 0.0) or 0.0)
   confirm_wait = int(getattr(space, "confirm_wait_bars", 4) or 4)
   confirm_cancel = float(getattr(space, "confirm_cancel_r", 0.5) or 0.5)
+
+  score_with_veto = (
+    bool(getattr(space, "anti_chase_score_with_veto", False))
+    and bool(space.anti_chase)
+    and str(getattr(space, "anti_chase_mode", "calibrate") or "calibrate") == "fixed"
+  )
 
   for rr in space.rr_ratios:
     for atr_m in space.atr_multipliers:
@@ -1626,6 +1655,8 @@ def mine_strategy(
                         name=f"v3_{exit_mode}_rr{rr}",
                         **exit_kw,
                       )
+                      if score_with_veto:
+                        strat = apply_fixed_anti_chase(strat, space)
                       sig = generate_signals_mined(fm, strat, train_start, train_end)
                       fit_trades = backtest_mined(fm, strat, sig, train_start, split, **_exec_cost_kwargs())
                       val_trades = backtest_mined(fm, strat, sig, split, train_end, **_exec_cost_kwargs())
@@ -1659,6 +1690,7 @@ def mine_strategy(
                         gate_m = comb
                       if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
                         s -= 80
+                      s -= freq_floor_penalty(comb, weeks, space)
 
                       if s > best_fallback_score:
                         best_fallback_score, best_fallback = s, strat

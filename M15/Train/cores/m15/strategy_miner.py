@@ -132,7 +132,8 @@ class MiningSearchSpace:
   target_trades_per_week: float = TARGET_TRADES_PER_WEEK
   drawdown_penalty: float = 0.0
   loss_streak_penalty: float = 0.0
-  # legacy | expectancy_frontier | elite_frontier (opt-in joint WR×RR selection)
+  # legacy | expectancy_frontier | elite_frontier | flow_frontier
+  # flow_frontier: hard floor ~5 trades/week + WR≥50 (volume book, not sniper).
   selection_mode: str = "legacy"
   # Opt-in: after mining, kill toxic hours / weak side using TRAIN trades only
   edge_surgery: bool = False
@@ -393,41 +394,47 @@ def _confirm_stop_fill(
 
   Same-bar confirm+cancel → skip (path unknown). Live-like BUY/SELL stop.
   """
-  from execution import spread_from_quote
+  from execution import confirm_bar_result, confirm_fill_price, spread_from_quote
   wait_n = max(1, int(wait_bars or 1))
   last = min(start_j + wait_n, end_idx - 1)
   if sl_d <= 0 or confirm_r <= 0:
     return None
-  confirm_px = ref_price + direction * sl_d * float(confirm_r)
-  cancel_px = ref_price - direction * sl_d * float(cancel_r)
   pts = last_pts
   for j in range(start_j, last):
     pts, _ = _bar_spread_points(fm, j, pts)
     spr = spread_from_quote(spread_pips, pts)
-    bid_h, bid_l = float(fm.high[j]), float(fm.low[j])
-    if direction > 0:
-      if bid_l <= cancel_px:
-        return None
-      if bid_h >= confirm_px:
-        return (j, confirm_px, pts)
-    else:
-      ask_h, ask_l = bid_h + spr, bid_l + spr
-      if ask_h >= cancel_px:
-        return None
-      if ask_l <= confirm_px:
-        return (j, confirm_px, pts)
+    hit = confirm_bar_result(
+      direction=int(direction),
+      ref_price=float(ref_price),
+      sl_d=float(sl_d),
+      confirm_r=float(confirm_r),
+      cancel_r=float(cancel_r),
+      bid_high=float(fm.high[j]),
+      bid_low=float(fm.low[j]),
+      spread_px=spr,
+    )
+    if hit == "cancel":
+      return None
+    if hit == "fill":
+      return (j, confirm_fill_price(int(direction), ref_price, sl_d, confirm_r), pts)
   return None
 
 
 def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
                     spread_pips: float | None = None,
-                    tp_ignores_spread_buffer: bool = False):
+                    tp_ignores_spread_buffer: bool = False,
+                    confirm_r: float = 0.0,
+                    confirm_wait_bars: int = 4,
+                    confirm_cancel_r: float = 0.5):
   ensure_label_cache_for_df(fm.n)
   from execution import stop_and_target_distances, spread_from_quote
   spr = float(DEFAULT_SPREAD_PIPS if spread_pips is None else spread_pips)
   key = (
     "bidask1", fm.n, start, end, rr, atr_mult, max_hold_bars, round(spr, 4),
     int(bool(tp_ignores_spread_buffer)),
+    round(float(confirm_r or 0.0), 4),
+    int(confirm_wait_bars or 0),
+    round(float(confirm_cancel_r or 0.0), 4),
     _spread_cache_tag(fm, start, end),
   )
   with _LABEL_LOCK:
@@ -459,25 +466,50 @@ def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36,
       av, atr_mult, rr, spr, pts,
       tp_ignores_spread_buffer=bool(tp_ignores_spread_buffer),
     )
-    lsl, ltp = buy_entry - sl_d, buy_entry + tp_d
-    ssl, stp = sell_entry + sl_d, sell_entry - tp_d
+    long_fill = buy_entry
+    short_fill = sell_entry
+    long_from = i + 1
+    short_from = i + 1
+    if float(confirm_r or 0.0) > 0:
+      long_hit = _confirm_stop_fill(
+        fm, i + 1, end, 1, buy_entry, sl_d,
+        confirm_r, confirm_cancel_r, confirm_wait_bars, spr, pts,
+      )
+      short_hit = _confirm_stop_fill(
+        fm, i + 1, end, -1, sell_entry, sl_d,
+        confirm_r, confirm_cancel_r, confirm_wait_bars, spr, pts,
+      )
+      if long_hit is None and short_hit is None:
+        continue
+      if long_hit is not None:
+        long_from, long_fill, pts = long_hit
+      else:
+        long_from = None
+      if short_hit is not None:
+        short_from, short_fill, pts = short_hit
+      else:
+        short_from = None
+    lsl, ltp = long_fill - sl_d, long_fill + tp_d
+    ssl, stp = short_fill + sl_d, short_fill - tp_d
     j_end = min(i + 1 + max_hold, end)
 
-    # Include the entry bar (i+1) — live SL is active from the fill tick.
-    for j in range(i + 1, j_end):
-      if l[j] <= lsl:
-        break
-      if h[j] >= ltp:
-        long_win[i] = 1
-        break
-    for j in range(i + 1, j_end):
-      j_pts, last_pts = _bar_spread_points(fm, j, last_pts)
-      j_spr = spread_from_quote(spr, j_pts)
-      if h[j] + j_spr >= ssl:
-        break
-      if l[j] + j_spr <= stp:
-        short_win[i] = 1
-        break
+    # Include the fill bar — live SL is active from the fill tick.
+    if long_from is not None:
+      for j in range(int(long_from), j_end):
+        if l[j] <= lsl:
+          break
+        if h[j] >= ltp:
+          long_win[i] = 1
+          break
+    if short_from is not None:
+      for j in range(int(short_from), j_end):
+        j_pts, last_pts = _bar_spread_points(fm, j, last_pts)
+        j_spr = spread_from_quote(spr, j_pts)
+        if h[j] + j_spr >= ssl:
+          break
+        if l[j] + j_spr <= stp:
+          short_win[i] = 1
+          break
 
   with _LABEL_LOCK:
     LABEL_CACHE[key] = (long_win, short_win)
@@ -1097,9 +1129,16 @@ def score_strategy_metrics(
   wr, rr, tr, pf = m["win_rate"], m["avg_rr"], m["total_r"], m["profit_factor"]
   dd = float(m.get("max_drawdown_r") or 0)
   elite = selection_mode == "elite_frontier"
+  flow = selection_mode == "flow_frontier"
   # Soft frequency band: prefer ~7–10 tpw but allow quality over volume.
   # Elite sniper bands around a low target (accept sparse high-quality books).
-  if elite:
+  # flow_frontier: volume book — tpw<5 is a veto, not a mild penalty.
+  if flow:
+    if tpw < 5.0:
+      freq_score = -180.0 - (5.0 - tpw) * 70.0
+    else:
+      freq_score = 90.0 + min(tpw - 5.0, 5.0) * 20.0
+  elif elite:
     freq_score = 35 - abs(tpw - target_tpw) * 12
     if tpw < max(1.5, target_tpw * 0.45):
       freq_score -= 25
@@ -1118,41 +1157,54 @@ def score_strategy_metrics(
 
   expectancy = wr * rr - (1.0 - wr)  # approx R per trade at fixed RR
   s = (
-    wr * 130
+    wr * (80 if flow else 130)
     + min(rr, 4.5 if elite else 4) * 50
     + min(pf, 4) * 18
     + tr * (6 if elite else 12)
     + max(expectancy, -0.5) * 90
     + freq_score
   )
-  # Achievable quality bonuses (previous 55/58/60 rarely fired)
-  if wr >= 0.45 and rr >= 2.0:
-    s += 45
-  if wr >= 0.48 and rr >= 2.2:
-    s += 70
-  if wr >= 0.52 and rr >= 2.0:
-    s += 90
-  if wr >= 0.55 and rr >= 2.0:
-    s += 60
-  if rr >= 2.0:
-    s += 40
-  if rr < 1.7:
-    s -= (1.7 - rr) * 100
-  if wr < 0.40:
-    s -= (0.40 - wr) * 200
+  # Achievable quality bonuses (previous 55/58/60 rarely fired).
+  # flow_frontier skips these — they are how elite snipers beat volume books.
+  if not flow:
+    if wr >= 0.45 and rr >= 2.0:
+      s += 45
+    if wr >= 0.48 and rr >= 2.2:
+      s += 70
+    if wr >= 0.52 and rr >= 2.0:
+      s += 90
+    if wr >= 0.55 and rr >= 2.0:
+      s += 60
+    if rr >= 2.0:
+      s += 40
+    if rr < 1.7:
+      s -= (1.7 - rr) * 100
+    if wr < 0.40:
+      s -= (0.40 - wr) * 200
   if tr <= 0:
     s -= 50
   # Built-in mild risk-adjusted reward (research: lower DD with spacing/hold)
-  if dd > 0 and tr > 0:
-    s += min(tr / dd, 10.0) * 12
-  elif tr > 0 and dd <= 0:
-    s += 40
+  if not flow:
+    if dd > 0 and tr > 0:
+      s += min(tr / dd, 10.0) * 12
+    elif tr > 0 and dd <= 0:
+      s += 40
   # Mild default DD / streak friction even when penalties are 0
   s -= dd * (drawdown_penalty if drawdown_penalty > 0 else 0.8)
   s -= float(m.get("max_loss_streak") or 0) * (
     loss_streak_penalty if loss_streak_penalty > 0 else 1.5
   )
 
+  if flow:
+    if wr >= 0.50 and rr >= 2.0:
+      s += 80
+    if wr >= 0.55:
+      s += 40
+    if wr < 0.50:
+      s -= (0.50 - wr) * 400
+    if rr < 2.0:
+      s -= (2.0 - rr) * 120
+    return s
   if selection_mode in ("expectancy_frontier", "elite_frontier"):
     # Geometric joint score: punish one-sided WR↑/RR↓ or RR↑/WR↓ trades.
     wr_ref = 0.60 if elite else 0.48
@@ -1186,13 +1238,27 @@ def score_strategy_metrics(
   return s
 
 
-def _passes_best_gate(metrics: dict, selection_mode: str) -> bool:
+def _passes_best_gate(
+  metrics: dict, selection_mode: str,
+  *,
+  weeks: float | None = None,
+  target_tpw: float | None = None,
+) -> bool:
   """Hard gate for the preferred genome; frontier mode is less WR-overfit."""
   wr = float(metrics.get("win_rate") or 0)
   rr = float(metrics.get("avg_rr") or 0)
   tr = float(metrics.get("total_r") or 0)
   if tr <= 0:
     return False
+  if selection_mode == "flow_frontier":
+    n = float(metrics.get("n_trades") or 0)
+    w = max(float(weeks or 1.0), 0.5)
+    tpw = n / w
+    floor = 5.0
+    if target_tpw and float(target_tpw) > 0:
+      floor = min(5.0, float(target_tpw))
+    expectancy = wr * rr - (1.0 - wr)
+    return wr >= 0.50 and rr >= 2.0 and tpw >= floor and expectancy >= 0.20
   if selection_mode == "elite_frontier":
     expectancy = wr * rr - (1.0 - wr)
     return (
@@ -1530,6 +1596,9 @@ def mine_strategy(
         long_wins, short_wins = _label_outcomes(
           fm, train_start, train_end, (label_rr if label_rr > 0 else rr), atr_m, max_hold,
           tp_ignores_spread_buffer=tp_geom,
+          confirm_r=confirm_r,
+          confirm_wait_bars=confirm_wait,
+          confirm_cancel_r=confirm_cancel,
         )
 
         ml = MLScorer()
@@ -1601,7 +1670,9 @@ def mine_strategy(
                       if comb["n_trades"] < 3:
                         continue
 
-                      if space.selection_mode in ("expectancy_frontier", "elite_frontier"):
+                      if space.selection_mode in (
+                        "expectancy_frontier", "elite_frontier", "flow_frontier",
+                      ):
                         # Rank mostly on held-out train slice → less WR overfit.
                         val_weeks = max(weeks * 0.35, 0.5)
                         s_val = score_strategy_metrics(
@@ -1615,7 +1686,13 @@ def mine_strategy(
                           space.selection_mode,
                         )
                         s = 0.7 * s_val + 0.3 * s_all
-                        gate_m = val_m if val_m["n_trades"] >= 2 else comb
+                        if space.selection_mode == "flow_frontier":
+                          # Frequency needs the full train window; val is ~2–3 weeks.
+                          gate_m = comb
+                          gate_weeks = weeks
+                        else:
+                          gate_m = val_m if val_m["n_trades"] >= 2 else comb
+                          gate_weeks = val_weeks if val_m["n_trades"] >= 2 else weeks
                       else:
                         s = score_strategy_metrics(
                           comb, weeks, space.target_trades_per_week,
@@ -1623,13 +1700,18 @@ def mine_strategy(
                           space.selection_mode,
                         )
                         gate_m = comb
+                        gate_weeks = weeks
                       if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
                         s -= 80
 
                       if s > best_fallback_score:
                         best_fallback_score, best_fallback = s, strat
 
-                      if _passes_best_gate(gate_m, space.selection_mode):
+                      if _passes_best_gate(
+                        gate_m, space.selection_mode,
+                        weeks=gate_weeks,
+                        target_tpw=space.target_trades_per_week,
+                      ):
                         if s > best_score:
                           best_score, best = s, strat
 

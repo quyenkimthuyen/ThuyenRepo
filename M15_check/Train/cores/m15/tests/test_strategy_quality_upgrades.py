@@ -281,6 +281,40 @@ def test_eur_fill_presets_wider_sl_closer_tp():
   assert bar_stop.tp_ignores_spread_buffer is True
   assert bar_stop.min_bars_between == (6,)
   assert bar_stop.oos_trail_activate_r == pytest.approx(2.4)
+  bar_wait = mining_search_space_from_dict(get_preset("eur_fill_bar_wait"))
+  assert bar_wait.confirm_r == pytest.approx(0.20)
+  assert bar_wait.confirm_wait_bars == 8
+  assert bar_wait.confirm_cancel_r == pytest.approx(0.60)
+  assert bar_wait.min_bars_between == (6,)
+  bar_gap = mining_search_space_from_dict(get_preset("eur_fill_bar_gap4"))
+  assert bar_gap.confirm_r == pytest.approx(0.20)
+  assert bar_gap.min_bars_between == (4,)
+  assert bar_gap.target_trades_per_week == pytest.approx(10.0)
+  bar_n = mining_search_space_from_dict(get_preset("eur_fill_bar_n"))
+  assert bar_n.confirm_r == pytest.approx(0.20)
+  assert bar_n.min_bars_between == (4,)
+  assert bar_n.confirm_wait_bars == 6
+  assert bar_n.tp_ignores_spread_buffer is True
+  bar_hyb = mining_search_space_from_dict(get_preset("eur_fill_bar_hyb28"))
+  assert bar_hyb.confirm_r == pytest.approx(0.20)
+  assert bar_hyb.oos_trail_activate_r == pytest.approx(2.8)
+  assert bar_hyb.oos_trail_distance_r == pytest.approx(0.55)
+  assert bar_hyb.min_bars_between == (6,)
+  hyper = mining_search_space_from_dict(get_preset("eur_fill_hyper"))
+  assert hyper.anti_chase_score_with_veto is True
+  assert hyper.min_trades_per_week == pytest.approx(2.2)
+  assert hyper.max_trades_per_day == 4
+  assert hyper.min_bars_between == (4, 8)
+  assert hyper.confirm_r == pytest.approx(0.20)
+  assert hyper.tp_ignores_spread_buffer is True
+  wide = mining_search_space_from_dict(get_preset("eur_fill_hyper_wide"))
+  assert wide.anti_chase_fixed_rsi == pytest.approx(62.0)
+  assert wide.anti_chase_fixed_vwap == pytest.approx(2.0)
+  assert wide.anti_chase_score_with_veto is True
+  soft = mining_search_space_from_dict(get_preset("eur_fill_hyper_soft"))
+  assert soft.confirm_r == pytest.approx(0.16)
+  assert soft.confirm_wait_bars == 5
+  assert soft.min_trades_per_week == pytest.approx(2.2)
   elite_vwap = mining_search_space_from_dict(get_preset("eur_fill_elite_vwap"))
   assert elite_vwap.anti_chase_fixed_rsi == pytest.approx(58.0)
   assert elite_vwap.anti_chase_fixed_vwap == pytest.approx(1.2)
@@ -303,6 +337,13 @@ def test_eur_fill_presets_wider_sl_closer_tp():
   gbp_or = mining_search_space_from_dict(get_preset("gbp_fill_elite_or"))
   assert gbp_or.anti_chase_fixed_vwap == pytest.approx(1.5)
   assert gbp_or.rr_ratios == (2.4, 2.8, 3.2)
+  gbp_hyper = mining_search_space_from_dict(get_preset("gbp_fill_hyper"))
+  assert gbp_hyper.anti_chase_score_with_veto is True
+  assert gbp_hyper.min_trades_per_week == pytest.approx(2.2)
+  assert gbp_hyper.confirm_r == pytest.approx(0.12)
+  assert gbp_hyper.max_trades_per_day == 4
+  gbp_hw = mining_search_space_from_dict(get_preset("gbp_fill_hyper_wide"))
+  assert gbp_hw.anti_chase_fixed_rsi == pytest.approx(62.0)
   plus = mining_search_space_from_dict(get_preset("eur_fill_ss_plus"))
   assert plus.confirm_r == pytest.approx(0.18)
   assert plus.confirm_wait_bars == 5
@@ -340,6 +381,46 @@ def test_eur_fill_presets_wider_sl_closer_tp():
   assert lab.label_rr == 1.0
   wrp = mining_search_space_from_dict(get_preset("eur_fill_ss_wr"))
   assert wrp.confirm_r == 0.24
+
+
+def test_freq_floor_penalty_and_veto_aware_scoring():
+  from strategy_miner import (
+    MiningSearchSpace,
+    apply_breakthrough_filters,
+    freq_floor_penalty,
+  )
+
+  off = MiningSearchSpace()
+  assert off.anti_chase_score_with_veto is False
+  assert off.min_trades_per_week == 0.0
+  assert freq_floor_penalty({"n_trades": 3}, 6.0, off) == 0.0
+  floor = MiningSearchSpace(min_trades_per_week=1.5)
+  assert freq_floor_penalty({"n_trades": 3}, 6.0, floor) > 300
+  assert freq_floor_penalty({"n_trades": 9}, 6.0, floor) == 0.0
+  assert freq_floor_penalty({"n_trades": 0}, 6.0, floor) == 500.0
+
+  class _Strat:
+    def __init__(self):
+      self.anti_chase = False
+      self.anti_chase_rsi_short_max = 100.0
+      self.anti_chase_rsi_long_min = 0.0
+      self.anti_chase_vwap_short_max = 99.0
+      self.anti_chase_logic = "or"
+      self.name = "probe"
+
+  legacy_space = MiningSearchSpace(
+    anti_chase=True, anti_chase_mode="fixed", anti_chase_fixed_rsi=55.0,
+  )
+  ranked = apply_breakthrough_filters(None, _Strat(), 0, 10, legacy_space, for_scoring=True)
+  assert ranked.anti_chase is False
+
+  veto_space = MiningSearchSpace(
+    anti_chase=True, anti_chase_mode="fixed", anti_chase_fixed_rsi=55.0,
+    anti_chase_score_with_veto=True,
+  )
+  ranked = apply_breakthrough_filters(None, _Strat(), 0, 10, veto_space, for_scoring=True)
+  assert ranked.anti_chase is True
+  assert ranked.anti_chase_rsi_long_min == 45.0
 
 
 def test_exit_modes_lock_and_tp_geometry():

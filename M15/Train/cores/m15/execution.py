@@ -123,3 +123,94 @@ def adjust_exit_price(
 def apply_cost_to_r(pnl_r: float, risk_price: float, spread_pips: float, slippage_pips: float) -> float:
   cost_r = cost_r_from_pips(round_trip_cost_pips(spread_pips, slippage_pips), risk_price)
   return pnl_r - cost_r
+
+
+def effective_rr(
+  entry: float,
+  sl: float,
+  tp: float,
+  *,
+  fallback: float = 2.0,
+) -> float:
+  """RR from planned SL/TP. Prefer this over genome rr so TP-clip survives rebase."""
+  risk = abs(float(entry) - float(sl))
+  if risk <= 0:
+    return float(fallback) if fallback > 0 else 2.0
+  return abs(float(tp) - float(entry)) / risk
+
+
+def rebase_fill_levels(
+  *,
+  direction: int,
+  fill_entry: float,
+  planned_entry: float,
+  planned_sl: float,
+  planned_tp: float,
+  rr: float | None = None,
+) -> tuple[float, float, float]:
+  """Rebase SL/TP onto the Bid/Ask fill. RR always from planned geometry (clip-safe).
+
+  Live EA / HistoryFeed / Compare / miner must share this: genome ``rr_ratio``
+  is not used when SL and TP are present — otherwise ``tp_ignores_spread_buffer``
+  is undone (TP becomes SL×genome-RR).
+  """
+  direction = int(direction)
+  fill = float(fill_entry)
+  planned = float(planned_entry or 0.0)
+  p_sl = float(planned_sl or 0.0)
+  p_tp = float(planned_tp or 0.0)
+  planned_risk = abs(planned - p_sl) if planned > 0 and p_sl > 0 else 0.0
+  geom = effective_rr(planned, p_sl, p_tp, fallback=0.0) if planned > 0 and p_sl > 0 and p_tp > 0 else 0.0
+  use_rr = geom if geom > 0 else (float(rr) if rr is not None and float(rr) > 0 else 2.0)
+  if planned_risk > 0:
+    if direction == 1:
+      sl, tp = fill - planned_risk, fill + planned_risk * use_rr
+    else:
+      sl, tp = fill + planned_risk, fill - planned_risk * use_rr
+    return sl, tp, planned_risk
+  if planned > 0:
+    delta = fill - planned
+    return p_sl + delta, p_tp + delta, abs(fill - (p_sl + delta))
+  return p_sl, p_tp, abs(fill - p_sl)
+
+
+def confirm_fill_price(direction: int, ref_price: float, sl_d: float, confirm_r: float) -> float:
+  """Pending-stop fill: BUY stop above Ask ref, SELL stop below Bid ref."""
+  return float(ref_price) + int(direction) * float(sl_d) * float(confirm_r)
+
+
+def confirm_bar_result(
+  *,
+  direction: int,
+  ref_price: float,
+  sl_d: float,
+  confirm_r: float,
+  cancel_r: float,
+  bid_high: float,
+  bid_low: float,
+  spread_px: float = 0.0,
+) -> str:
+  """One completed M15 bar vs pending stop. ``cancel`` | ``fill`` | ``wait``.
+
+  Same-bar confirm+cancel → ``cancel`` (path unknown), matching ``_confirm_stop_fill``.
+  BUY manages on Bid; SELL on Ask = Bid + spread.
+  """
+  if sl_d <= 0 or confirm_r <= 0:
+    return "wait"
+  direction = int(direction)
+  fill_px = confirm_fill_price(direction, ref_price, sl_d, confirm_r)
+  cancel_px = float(ref_price) - direction * float(sl_d) * float(cancel_r)
+  bid_h, bid_l = float(bid_high), float(bid_low)
+  spr = max(0.0, float(spread_px))
+  if direction > 0:
+    if bid_l <= cancel_px:
+      return "cancel"
+    if bid_h >= fill_px:
+      return "fill"
+    return "wait"
+  ask_h, ask_l = bid_h + spr, bid_l + spr
+  if ask_h >= cancel_px:
+    return "cancel"
+  if ask_l <= fill_px:
+    return "fill"
+  return "wait"

@@ -107,7 +107,14 @@ def _ensure_kb(desk: str, *, reset: bool) -> dict:
   return {"learned": learned, "skipped": skipped, "loops": loops}
 
 
-def _run_grid(desk: str, *, workers: int, mining_presets: list[str] | None = None) -> dict:
+def _run_grid(
+  desk: str,
+  *,
+  workers: int,
+  mining_presets: list[str] | None = None,
+  era_keys: list[str] | None = None,
+  train_weeks: list[int] | None = None,
+) -> dict:
   from gui.app_settings import get_settings
   from gui.grid_search_engine import (
     build_grid_from_settings, grid_readiness, run_grid, save_grid_run, _score,
@@ -115,9 +122,14 @@ def _run_grid(desk: str, *, workers: int, mining_presets: list[str] | None = Non
   from config import DEFAULT_TF
 
   s = get_settings()
-  if mining_presets:
+  if mining_presets or era_keys or train_weeks:
     s = dict(s)
-    s["mining_presets"] = list(mining_presets)
+    if mining_presets:
+      s["mining_presets"] = list(mining_presets)
+    if era_keys:
+      s["learning_era_keys"] = list(era_keys)
+    if train_weeks:
+      s["strategy_train_weeks"] = [int(w) for w in train_weeks]
   ready = grid_readiness(s)
   _log(
     desk,
@@ -159,15 +171,17 @@ def _create_models(desk: str, run: dict) -> list[dict]:
 
   rows = [r for r in (run.get("rows") or []) if not r.get("error")]
   hits = [r for r in rows if _passes(r)]
-  hits.sort(key=lambda r: (_row_nums(r)[1], _row_nums(r)[0]), reverse=True)
+  hits.sort(key=lambda r: (_row_nums(r)[3], _row_nums(r)[1], _row_nums(r)[0]), reverse=True)
   _log(desk, f"Filter WR>{FILTER['wr_gt']} R>{FILTER['total_r_gt']} n>={FILTER['n_ge']}: {len(hits)}")
   current = get_active_trade_model(force_reload=True)
   cur_key = None
+  cur_n = 0
   if current:
     cur_key = (
       float(current.get("total_r") or 0),
       float(current.get("win_rate_pct") or 0),
     )
+    cur_n = int(current.get("n_trades") or 0)
   created = []
   for i, row in enumerate(hits[:MAX_MODELS]):
     wr, tot, dd, n = _row_nums(row)
@@ -177,12 +191,19 @@ def _create_models(desk: str, run: dict) -> list[dict]:
       if cur_key is None:
         promote = True
       else:
-        promote = (tot, wr) > cur_key
+        more_fills = n > cur_n and tot >= cur_key[0] * 0.75
+        promote = (tot, wr) > cur_key or more_fills
         if not promote:
           _log(
             desk,
-            f"Giữ Active hiện tại R={cur_key[0]:+.1f} WR={cur_key[1]:.1f} "
-            f"(grid mới top R={tot:+.1f} WR={wr:.1f})",
+            f"Giữ Active hiện tại R={cur_key[0]:+.1f} WR={cur_key[1]:.1f} n={cur_n} "
+            f"(grid mới top n={n} R={tot:+.1f} WR={wr:.1f})",
+          )
+        elif more_fills and not (tot, wr) > cur_key:
+          _log(
+            desk,
+            f"Active → denser WR>50 n={cur_n}→{n} R={cur_key[0]:+.1f}→{tot:+.1f} "
+            f"WR={cur_key[1]:.1f}→{wr:.1f}",
           )
     model = create_trade_model(
       row,
@@ -287,6 +308,8 @@ def run_desk(
   wipe: bool = False,
   replay: bool = False,
   mining_presets: list[str] | None = None,
+  era_keys: list[str] | None = None,
+  train_weeks: list[int] | None = None,
 ) -> dict:
   cfg = _bind(desk)
   from gui.app_settings import default_settings_for_desk, save_settings, _sanitize_settings, get_settings
@@ -302,13 +325,16 @@ def run_desk(
   _log(
     desk,
     f"start pair={cfg.get('pair')} tf={cfg.get('tf')} "
-    f"weeks={s.get('strategy_train_weeks')} eras={s.get('learning_era_keys')} "
+    f"weeks={train_weeks or s.get('strategy_train_weeks')} eras={era_keys or s.get('learning_era_keys')} "
     f"loops={s.get('learning_loops')} presets={grid_presets or s.get('mining_presets')} "
     f"oos={s.get('oos_window_keys')} {s.get('backtest_from')}→{s.get('backtest_to')} "
     f"spread={s.get('spread_pips')}/{s.get('slippage_pips')}",
   )
   kb = _ensure_kb(desk, reset=reset_kb)
-  run = _run_grid(desk, workers=workers, mining_presets=grid_presets)
+  run = _run_grid(
+    desk, workers=workers, mining_presets=grid_presets, era_keys=era_keys,
+    train_weeks=train_weeks,
+  )
   created = _create_models(desk, run)
   replay_out = None
   if replay:
@@ -389,10 +415,20 @@ def main() -> int:
     "--presets", default="",
     help="Override mining presets cho grid lần này (csv). Không ghi đè Settings.",
   )
+  ap.add_argument(
+    "--era-keys", default="",
+    help="Override learning_era_keys cho grid lần này (csv). Không ghi đè Settings.",
+  )
+  ap.add_argument(
+    "--weeks", default="",
+    help="Override strategy_train_weeks cho grid lần này (csv). Không ghi đè Settings.",
+  )
   args = ap.parse_args()
   desks = [d.strip().lower() for d in args.desks.split(",") if d.strip()]
   reset = bool(args.reset_kb) and not args.no_reset_kb
   preset_override = [p.strip() for p in args.presets.split(",") if p.strip()] or None
+  era_override = [k.strip() for k in args.era_keys.split(",") if k.strip()] or None
+  week_override = [int(w) for w in args.weeks.split(",") if w.strip()] or None
   summary = []
   rc = 0
   for desk in desks:
@@ -408,6 +444,8 @@ def main() -> int:
           wipe=bool(args.wipe),
           replay=bool(args.replay),
           mining_presets=preset_override,
+          era_keys=era_override,
+          train_weeks=week_override,
         ))
     except Exception as exc:
       rc = 1

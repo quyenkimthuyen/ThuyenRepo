@@ -180,6 +180,9 @@ def attach_ml_scorer(
   long_wins, short_wins = _label_outcomes(
     fm, train_start, train_end, (lab if lab > 0 else rr), atr_m, max_hold,
     tp_ignores_spread_buffer=bool(getattr(space, "tp_ignores_spread_buffer", False)),
+    confirm_r=float(getattr(space, "confirm_r", 0.0) or 0.0),
+    confirm_wait_bars=int(getattr(space, "confirm_wait_bars", 4) or 4),
+    confirm_cancel_r=float(getattr(space, "confirm_cancel_r", 0.5) or 0.5),
   )
   if isinstance(kb, KnowledgeBase):
     ml = _fit_ml_with_experience(

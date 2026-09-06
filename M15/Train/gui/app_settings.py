@@ -107,7 +107,7 @@ DEFAULT_SETTINGS = {
   "slippage_pips": DEFAULT_SLIPPAGE_PIPS,
   "grid_objective": "quality",
   # EUR 6m recipe. Desk g23 override in default_settings_for_desk().
-  "mining_presets": ["eur_fill_r50_clip"],
+  "mining_presets": ["eur_fill_2pd"],
   "updated_at": None,
 }
 
@@ -135,15 +135,17 @@ def default_settings_for_desk() -> dict:
   desk = (os.environ.get("TRAINAPP_DESK") or "").strip().lower()
   if desk.startswith("g"):
     out["strategy_train_weeks"] = [6]
-    out["learning_era_keys"] = ["2024-h2"]
+    out["learning_era_keys"] = ["2025-h2"]
     out["mining_presets"] = [
-      "gbp_fill_ss_wait", "gbp_fill_r50_clip", "gbp_fill_r50", "gbp_fill_bar_stop",
+      "gbp_fill_2pd", "gbp_fill_r50_clip", "gbp_fill_r50", "gbp_fill_bar_stop",
+      "gbp_fill_ss_clip", "gbp_fill_elite_or",
     ]
   else:
     out["strategy_train_weeks"] = [8]
     out["learning_era_keys"] = ["2025-h1"]
     out["mining_presets"] = [
-      "eur_fill_r50_clip", "eur_fill_r50", "eur_fill_bar_stop", "eur_fill_ss_clip",
+      "eur_fill_2pd", "eur_fill_r50_clip", "eur_fill_r50", "eur_fill_bar_stop",
+      "eur_fill_ss_clip", "eur_fill_elite_or",
     ]
   return out
 

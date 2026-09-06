@@ -27,7 +27,7 @@ OBJECTIVES = {
   "win_rate_pct": "Tỷ lệ thắng % (cao nhất)",
   "profit_factor": "Hệ số lợi nhuận (cao nhất)",
   "risk_adjusted": "R / sụt giảm (cao nhất)",
-  "quality": "Chất lượng (R/DD + PF + WR)",
+  "quality": "Chất lượng (R/DD + PF + WR, ưu tiên ~2 lệnh/ngày nếu WR giữ)",
 }
 
 
@@ -319,6 +319,12 @@ def _score(row: dict, objective: str) -> float:
     score = (r / max(dd, 0.5)) * 2.0 + pf * 25.0 + wr * wr_w + r * 0.04
     if m5 and tpw > 6.0:
       score -= (tpw - 6.0) * 6.0
+    # Hunt bar: WR>50 and >5 trades/week outranks a sparse sniper.
+    if not m5 and wr > 50.0 and tpw > 5.0:
+      score += 800.0 + min(tpw, 12.0) * 12.0
+    elif not m5 and wr >= 55.0:
+      # Mild densify bonus when WR holds; WR76 sparse still beats WR50 dense.
+      score += min(tpw, 10.0) * 0.35
     return score
   return float(row.get("total_r") or 0)
 

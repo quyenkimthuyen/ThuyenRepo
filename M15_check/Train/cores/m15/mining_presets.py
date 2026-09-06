@@ -749,6 +749,59 @@ EUR_FILL_BAR_STOP = {
   "oos_trail_activate_r": 2.4,
   "oos_trail_distance_r": 0.40,
 }
+# Densify around bar_stop DNA (WR60/+40R n=40). Do not drop confirm_r —
+# r50_clip already proved confirm 0.15 → n=61 WR41 / +21R.
+EUR_FILL_BAR_WAIT = {
+  **EUR_FILL_BAR_STOP,
+  "confirm_wait_bars": 8,
+  "confirm_cancel_r": 0.60,
+  "target_trades_per_week": 9.0,
+}
+EUR_FILL_BAR_GAP4 = {
+  **EUR_FILL_BAR_STOP,
+  "min_bars_between": [4],
+  "target_trades_per_week": 10.0,
+}
+EUR_FILL_BAR_N = {
+  **EUR_FILL_BAR_STOP,
+  "min_bars_between": [4],
+  "confirm_wait_bars": 6,
+  "confirm_cancel_r": 0.60,
+  "target_trades_per_week": 10.0,
+}
+# Same entries as bar_stop; later trail so more winners reach TP (R↑ at same n).
+EUR_FILL_BAR_HYB28 = {
+  **EUR_FILL_BAR_STOP,
+  "oos_trail_activate_r": 2.8,
+  "oos_trail_distance_r": 0.55,
+}
+# LiveCheck2 eur_r100_hyper: rank WITH the anti-chase veto + min_trades_per_week
+# floor so the miner stops picking dip-fade rules that the veto then deletes.
+# Bid/Ask + sparkstop confirm stay on (LC2 hyper had confirm_r=0 / 12m OOS).
+# Floor 2.2 on an 8-week window ≈ 18 train fills; 6m OOS at that rate ≈ n≥57.
+_EUR_FILL_HYPER_FAST = {
+  "anti_chase_score_with_veto": True,
+  "min_trades_per_week": 2.2,
+  "max_trades_per_day": 4,
+  "min_bars_between": [4, 8],
+  "target_trades_per_week": 12.0,
+}
+EUR_FILL_HYPER = {
+  **EUR_FILL_BAR_STOP,
+  **_EUR_FILL_HYPER_FAST,
+}
+EUR_FILL_HYPER_WIDE = {
+  **EUR_FILL_HYPER,
+  "anti_chase_fixed_rsi": 62.0,
+  "anti_chase_fixed_vwap": 2.0,
+}
+# Softer confirm (ss_lab 0.16) — LC2 densify had no confirm; WR floor is 50.
+EUR_FILL_HYPER_SOFT = {
+  **EUR_FILL_HYPER,
+  "confirm_r": 0.16,
+  "confirm_wait_bars": 5,
+  "confirm_cancel_r": 0.55,
+}
 GBP_FILL_BAR_STOP = {
   **GBP_FILL_SPARKSTOP,
   "label_rr": 1.0,
@@ -759,6 +812,15 @@ GBP_FILL_BAR_STOP = {
   "oos_exit_mode": "hybrid",
   "oos_trail_activate_r": 2.4,
   "oos_trail_distance_r": 0.40,
+}
+GBP_FILL_HYPER = {
+  **GBP_FILL_R50_CLIP,
+  **_EUR_FILL_HYPER_FAST,
+}
+GBP_FILL_HYPER_WIDE = {
+  **GBP_FILL_HYPER,
+  "anti_chase_fixed_rsi": 62.0,
+  "anti_chase_fixed_vwap": 2.0,
 }
 
 # LiveCheck2 elite_60_3_vwap / elite_or_quality (WR67/+111R, WR62/+109R) used
@@ -928,6 +990,13 @@ PRESET_LABELS: dict[str, str] = {
   "eur_fill_r50": "EUR R50 · densify n + trail 2.4R (WR>50 R>50)",
   "eur_fill_r50_clip": "EUR R50 · TP ATR×RR (nhiều hit hơn)",
   "eur_fill_bar_stop": "EUR bar-spread · sparkstop confirm + TP clip + trail 2.4R",
+  "eur_fill_bar_wait": "EUR bar_stop · wait 8 nến (cùng confirm 0.20)",
+  "eur_fill_bar_gap4": "EUR bar_stop · gap 4 nến + TPW 10",
+  "eur_fill_bar_n": "EUR bar_stop · gap 4 + wait 6 (thêm lệnh)",
+  "eur_fill_bar_hyb28": "EUR bar_stop · trail muộn 2.8R (cùng entry)",
+  "eur_fill_hyper": "EUR LC2-hyper · veto lúc rank + sàn 2.2 lệnh/tuần (Bid/Ask)",
+  "eur_fill_hyper_wide": "EUR LC2-hyper · RSI62 VWAP2.0 (thêm lệnh)",
+  "eur_fill_hyper_soft": "EUR LC2-hyper · confirm 0.16 (WR>50, nhiều fill hơn)",
   "eur_fill_elite_vwap": "EUR fill-elite · RSI58 OR VWAP1.2 (Bid/Ask)",
   "eur_fill_elite_or": "EUR fill-elite · RSI58 OR VWAP1.5 (Bid/Ask)",
   "eur_fill_ss_plus": "EUR ss_more · gap 8 + hold 128 (R↑ giữ WR)",
@@ -951,6 +1020,8 @@ PRESET_LABELS: dict[str, str] = {
   "gbp_fill_r50": "GBP R50 · densify n + trail 2.4R (WR>50 R>50)",
   "gbp_fill_r50_clip": "GBP R50 · TP ATR×RR (nhiều hit hơn)",
   "gbp_fill_bar_stop": "GBP bar-spread · sparkstop confirm + TP clip + trail 2.4R",
+  "gbp_fill_hyper": "GBP LC2-hyper · veto lúc rank + sàn 2.2 lệnh/tuần (Bid/Ask)",
+  "gbp_fill_hyper_wide": "GBP LC2-hyper · RSI62 VWAP2.0 (thêm lệnh)",
   "gbp_fill_elite_vwap": "GBP fill-elite · RSI58 OR VWAP1.2 (Bid/Ask)",
   "gbp_fill_elite_or": "GBP fill-elite · RSI58 OR VWAP1.5 (Bid/Ask)",
   "gbp_fill_ss_tight_hyb24": "GBP ss_tight · trail muộn 2.4R (cùng entry)",
@@ -1119,6 +1190,41 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "knobs": "confirm 0.20 wait4 · clip · gap 6 · trail OOS 2.4R · TPW 8",
     "tradeoff": "n↑ vs sparkstop thuần · WR tụt nếu densify kéo setup yếu",
   },
+  "eur_fill_bar_wait": {
+    "intent": "EUR bar_stop — thêm fill cùng chất (chờ confirm lâu hơn, không hạ 0.20R)",
+    "knobs": "confirm 0.20 wait8 cancel 0.60 · clip · gap 6 · trail 2.4R",
+    "tradeoff": "n↑ nếu pending timeout là miss · WR tụt nếu fill muộn là loser",
+  },
+  "eur_fill_bar_gap4": {
+    "intent": "EUR bar_stop — thêm lệnh sát nhau (gap 4 nến), giữ confirm 0.20",
+    "knobs": "confirm 0.20 wait4 · gap 4 · TPW 10 · clip · trail 2.4R",
+    "tradeoff": "n↑ · cluster loss nếu gap 4 kéo setup yếu",
+  },
+  "eur_fill_bar_n": {
+    "intent": "EUR bar_stop densify — gap 4 + wait 6, vẫn confirm 0.20 Bid/Ask",
+    "knobs": "confirm 0.20 wait6 cancel 0.60 · gap 4 · TPW 10 · clip · trail 2.4R",
+    "tradeoff": "n↑ mạnh hơn gap4/wait lẻ · WR dễ tụt hơn bar_stop",
+  },
+  "eur_fill_bar_hyb28": {
+    "intent": "EUR bar_stop — cùng entry, trail muộn hơn để winner chạy TP",
+    "knobs": "cùng bar_stop · trail OOS 2.8R dist 0.55",
+    "tradeoff": "R/win↑ nếu timeout/giveback là winner · DD↑ nếu trail muộn giữ loser",
+  },
+  "eur_fill_hyper": {
+    "intent": "EUR Bid/Ask — densify kiểu LiveCheck2 eur_r100_hyper, giữ confirm",
+    "knobs": "veto lúc rank · sàn 2.2 tpw · tpd 4 · gap 4/8 · TPW 12 · confirm 0.20 · TP clip",
+    "tradeoff": "n↑ nếu miner từng pick rule bị veto xóa · WR có thể về gần 50",
+  },
+  "eur_fill_hyper_wide": {
+    "intent": "EUR hyper — nới RSI/VWAP như LC2 eur_r100_wide",
+    "knobs": "cùng hyper · RSI 62 · VWAP 2.0",
+    "tradeoff": "thêm fill trong band RSI 38–62 · WR tụt nếu chase là loser",
+  },
+  "eur_fill_hyper_soft": {
+    "intent": "EUR hyper — confirm 0.16 (LC2 hyper không confirm; sàn WR 50)",
+    "knobs": "cùng hyper · confirm 0.16 wait5",
+    "tradeoff": "n↑ vs confirm 0.20 · WR dễ xuống 50–55",
+  },
   "eur_fill_r50": {
     "intent": "EUR — WR>50 và Total R>50 trên OOS 6 tháng (nếu EV đủ, thiếu lệnh)",
     "knobs": "confirm 0.15 wait6 · gap 6 · TPW 8 · RR 2.2–3.0 · trail OOS 2.4R",
@@ -1263,6 +1369,16 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "intent": "GBP R50 — TP ATR×RR trên cùng DNA densify",
     "knobs": "cùng r50 · TP không nhân spread buffer",
     "tradeoff": "WR↑ · R/win nhỏ hơn",
+  },
+  "gbp_fill_hyper": {
+    "intent": "GBP Bid/Ask — densify kiểu LiveCheck2 hyper trên DNA r50_clip",
+    "knobs": "veto lúc rank · sàn 2.2 tpw · tpd 4 · gap 4/8 · confirm 0.12 · TP clip",
+    "tradeoff": "n↑ · WR có thể về gần 50",
+  },
+  "gbp_fill_hyper_wide": {
+    "intent": "GBP hyper — nới RSI/VWAP như LC2 eur_r100_wide",
+    "knobs": "cùng hyper · RSI 62 · VWAP 2.0",
+    "tradeoff": "thêm fill · WR tụt nếu chase là loser",
   },
   "gbp_fill_ss_tight_hyb24": {
     "intent": "Cùng entry ss_tight — trail muộn 2.4R sau khi mine full TP",
@@ -1537,6 +1653,13 @@ PRESETS: dict[str, dict] = {
   "eur_fill_r50": deepcopy(EUR_FILL_R50),
   "eur_fill_r50_clip": deepcopy(EUR_FILL_R50_CLIP),
   "eur_fill_bar_stop": deepcopy(EUR_FILL_BAR_STOP),
+  "eur_fill_bar_wait": deepcopy(EUR_FILL_BAR_WAIT),
+  "eur_fill_bar_gap4": deepcopy(EUR_FILL_BAR_GAP4),
+  "eur_fill_bar_n": deepcopy(EUR_FILL_BAR_N),
+  "eur_fill_bar_hyb28": deepcopy(EUR_FILL_BAR_HYB28),
+  "eur_fill_hyper": deepcopy(EUR_FILL_HYPER),
+  "eur_fill_hyper_wide": deepcopy(EUR_FILL_HYPER_WIDE),
+  "eur_fill_hyper_soft": deepcopy(EUR_FILL_HYPER_SOFT),
   "eur_fill_elite_vwap": deepcopy(EUR_FILL_ELITE_VWAP),
   "eur_fill_elite_or": deepcopy(EUR_FILL_ELITE_OR),
   "gbp_fill_book": deepcopy(GBP_FILL_BOOK),
@@ -1556,6 +1679,8 @@ PRESETS: dict[str, dict] = {
   "gbp_fill_r50": deepcopy(GBP_FILL_R50),
   "gbp_fill_r50_clip": deepcopy(GBP_FILL_R50_CLIP),
   "gbp_fill_bar_stop": deepcopy(GBP_FILL_BAR_STOP),
+  "gbp_fill_hyper": deepcopy(GBP_FILL_HYPER),
+  "gbp_fill_hyper_wide": deepcopy(GBP_FILL_HYPER_WIDE),
   "gbp_fill_elite_vwap": deepcopy(GBP_FILL_ELITE_VWAP),
   "gbp_fill_elite_or": deepcopy(GBP_FILL_ELITE_OR),
   "gbp_fill_sniper": deepcopy(GBP_FILL_SNIPER),

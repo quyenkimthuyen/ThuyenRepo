@@ -9,7 +9,7 @@ from config import (
   MIN_TRAIN_BARS, TRAIN_WEEKS,
 )
 from data_loader import get_train_window_indices, get_week_indices
-from execution import adjust_entry_price, stop_and_target_distances
+from execution import adjust_entry_price, effective_rr, stop_and_target_distances
 from feature_engine import FeatureMatrix
 from mt5_bridge.history_sync import utc_to_broker_time
 from optimizer import optimize_on_window
@@ -79,7 +79,7 @@ def _project_signal_levels(
     "sl": round(sl, 5),
     "tp": round(tp, 5),
     "risk_pips": round(risk_pips, 1),
-    "rr": strat.rr_ratio,
+    "rr": round(effective_rr(entry_price, sl, tp, fallback=float(strat.rr_ratio)), 4),
     "hour": int(fm.hours[bar_idx]),
   }
 

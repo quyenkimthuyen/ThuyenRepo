@@ -16,6 +16,7 @@ from typing import Any
 from mt5_bridge.trade_journal import process_fill
 from execution import (
   POINT as _POINT, PIP as _PIP, carry_spread_points, spread_from_quote,
+  rebase_fill_levels, confirm_bar_result, confirm_fill_price,
 )
 
 
@@ -104,6 +105,9 @@ class PaperBook:
   last_spread_pts: float = 0.0
   _spread_px_cached: float = 0.0
   _fills: list[dict] = field(default_factory=list, repr=False)
+  _confirm_wait: int = 0
+  _confirm_ref: float = 0.0
+  _confirm_sl_d: float = 0.0
 
   def queue_decision(self, decision: dict | None) -> None:
     """Queue BUY/SELL for open at the *next* bar's open."""
@@ -116,6 +120,9 @@ class PaperBook:
     if sid and sid == self.last_signal_id:
       return
     self.pending = dict(decision)
+    self._confirm_wait = 0
+    self._confirm_ref = 0.0
+    self._confirm_sl_d = 0.0
 
   def on_bar(
     self,
@@ -132,11 +139,14 @@ class PaperBook:
     emitted: list[dict] = []
     if self.pending and not self.open:
       fill = self._open_from_decision(
-        self.pending, float(open_), bar_time, spread_points=pts,
+        self.pending, float(open_), bar_time,
+        spread_points=pts, high=float(high), low=float(low),
       )
-      self.pending = None
       if fill:
         emitted.append(fill)
+        self.pending = None
+      elif self.pending is not None and float(self.pending.get("confirm_r") or 0) <= 0:
+        self.pending = None
 
     if self.open:
       close_fill = self._manage(
@@ -157,6 +167,8 @@ class PaperBook:
     bar_time: str,
     *,
     spread_points: int | float = 0,
+    high: float | None = None,
+    low: float | None = None,
   ) -> dict | None:
     action = str(decision.get("action") or "").upper()
     if action not in ("BUY", "SELL"):
@@ -168,12 +180,57 @@ class PaperBook:
     spread = float(decision.get("spread_pips") or 0.0)
     spr = _resolve_spread_px(spread_points, spread)
     # Same as live OrderSend / HistoryFeed EA: BUY at Ask, SELL at Bid.
-    fill_entry = float(entry_price) + spr if action == "BUY" else float(entry_price)
+    quote_fill = float(entry_price) + spr if action == "BUY" else float(entry_price)
 
     planned = float(decision.get("entry") or 0.0)
     sl = float(decision.get("sl") or 0.0)
     tp = float(decision.get("tp") or 0.0)
-    if sl <= 0 or tp <= 0 or fill_entry <= 0:
+    if sl <= 0 or tp <= 0 or quote_fill <= 0:
+      return None
+
+    direction = 1 if action == "BUY" else -1
+    planned_risk = abs(planned - sl) if planned > 0 else 0.0
+    confirm_r = float(decision.get("confirm_r") or 0.0)
+    fill_entry = quote_fill
+    if confirm_r > 0:
+      wait_n = max(1, int(decision.get("confirm_wait_bars") or 4))
+      if self._confirm_wait == 0:
+        self._confirm_ref = quote_fill
+        self._confirm_sl_d = planned_risk if planned_risk > 0 else abs(quote_fill - sl)
+      if self._confirm_wait >= wait_n:
+        self.pending = None
+        self._confirm_wait = 0
+        return None
+      hit = confirm_bar_result(
+        direction=direction,
+        ref_price=self._confirm_ref,
+        sl_d=self._confirm_sl_d,
+        confirm_r=confirm_r,
+        cancel_r=float(decision.get("confirm_cancel_r") or 0.5),
+        bid_high=float(high if high is not None else entry_price),
+        bid_low=float(low if low is not None else entry_price),
+        spread_px=spr,
+      )
+      self._confirm_wait += 1
+      if hit == "cancel":
+        self.pending = None
+        self._confirm_wait = 0
+        return None
+      if hit == "wait":
+        return None
+      fill_entry = confirm_fill_price(
+        direction, self._confirm_ref, self._confirm_sl_d, confirm_r,
+      )
+
+    sl, tp, sl_dist = rebase_fill_levels(
+      direction=direction,
+      fill_entry=fill_entry,
+      planned_entry=planned,
+      planned_sl=sl,
+      planned_tp=tp,
+      rr=decision.get("rr"),
+    )
+    if sl_dist <= 0.0 or sl_dist < 0.5 * _PIP:
       return None
 
     self.exit_mode = _exit_mode_code(decision.get("exit_mode"))
@@ -182,29 +239,7 @@ class PaperBook:
     self.max_hold = int(decision.get("max_hold_bars") or 96)
     self.spread_pips = spread
     self._spread_px_cached = spr
-
-    planned_risk = abs(planned - sl) if planned > 0 else 0.0
-    rr = float(decision.get("rr") or 0.0)
-    if rr <= 0.0 and planned_risk > 0.0 and planned > 0.0:
-      rr = abs(tp - planned) / planned_risk
-    if rr <= 0.0:
-      rr = 2.0
-
-    if planned_risk > 0.0:
-      if action == "BUY":
-        sl = fill_entry - planned_risk
-        tp = fill_entry + planned_risk * rr
-      else:
-        sl = fill_entry + planned_risk
-        tp = fill_entry - planned_risk * rr
-    elif planned > 0.0:
-      delta = fill_entry - planned
-      sl += delta
-      tp += delta
-
-    sl_dist = abs(fill_entry - sl)
-    if sl_dist <= 0.0 or sl_dist < 0.5 * _PIP:
-      return None
+    self._confirm_wait = 0
 
     self.ticket += 1
     self.signal_id = sid

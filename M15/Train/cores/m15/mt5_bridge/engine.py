@@ -34,6 +34,7 @@ from mt5_bridge.protocol import DEFAULT_MAGIC, DEFAULT_MODEL_ID, utc_now_iso
 from mt5_bridge.risk_limits import resolve_max_trades_per_day
 from mt5_bridge.trade_journal import load_trades, trade_mode
 from optimizer import get_knowledge_base, optimize_on_window, set_kb_profile
+from execution import effective_rr
 from paper_monitor import _project_signal_levels, _week_bounds_for_ts
 from strategy_miner import (
   apply_oos_exit_overlay,
@@ -850,6 +851,11 @@ class BridgeEngine:
         _stamp_signal_wait(decision, wait, slots_left=slots_left),
       )
 
+    live_strat = apply_oos_exit_overlay(strat, search_space)
+    geom_rr = effective_rr(
+      proj["entry_px"], proj["sl"], proj["tp"],
+      fallback=float(live_strat.rr_ratio),
+    )
     action = "BUY" if direction == 1 else "SELL"
     sig_id = _signal_id(model_id, bar_ts, action)
     expires = bar_ts + pd.Timedelta(minutes=15)
@@ -865,15 +871,19 @@ class BridgeEngine:
       "entry_time": proj["entry_time"],
       "model_id": model_id,
       "expires_bar_time": _fmt_bar(expires),
-      "atr_mult_sl": float(strat.atr_mult_sl),
-      "rr": float(strat.rr_ratio),
-      "exit_mode": strat.exit_mode,
-      "trail_activate_r": float(strat.trail_activate_r),
-      "trail_distance_r": float(strat.trail_distance_r),
-      "max_hold_bars": int(strat.max_hold_bars),
+      "atr_mult_sl": float(live_strat.atr_mult_sl),
+      "rr": float(geom_rr),
+      "exit_mode": live_strat.exit_mode,
+      "trail_activate_r": float(live_strat.trail_activate_r),
+      "trail_distance_r": float(live_strat.trail_distance_r),
+      "max_hold_bars": int(live_strat.max_hold_bars),
+      "tp_ignores_spread_buffer": bool(getattr(live_strat, "tp_ignores_spread_buffer", False)),
+      "confirm_r": float(getattr(live_strat, "confirm_r", 0.0) or 0.0),
+      "confirm_wait_bars": int(getattr(live_strat, "confirm_wait_bars", 4) or 4),
+      "confirm_cancel_r": float(getattr(live_strat, "confirm_cancel_r", 0.5) or 0.5),
       "slots_remaining": slots_left - 1,
       "week_start": str(week_start.date()),
-      "strategy_name": strat.name,
+      "strategy_name": live_strat.name,
       "updated_at": utc_now_iso(),
       "reason": "signal",
       "conditions_fp": self.conditions_fp,
