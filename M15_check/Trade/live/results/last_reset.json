@@ -1,11 +1,11 @@
 {
-  "updated_at": "2026-09-02T11:39:17+07:00",
+  "updated_at": "2026-09-07T06:20:20+07:00",
   "stopped": {
     "bridge": {
       "stopped": true,
       "pids": [
-        18616,
-        21832
+        8416,
+        3612
       ],
       "autostart": {
         "ok": true,
@@ -17,33 +17,33 @@
           "start_bridge": false,
           "delay_sec": 45,
           "port": 8801,
-          "updated_at": "2026-09-02T11:39:17+07:00"
+          "updated_at": "2026-09-07T06:20:20+07:00"
         },
         "task": {
           "ok": true,
           "skipped": false,
           "reason": null,
-          "stdout": "Task EdgeMinerLive2Boot already absent\n",
+          "stdout": "Removed Scheduled Task EdgeMinerLive2Boot\n",
           "stderr": "",
           "code": 0
         },
-        "message": "Task EdgeMinerLive2Boot already absent"
+        "message": "Removed Scheduled Task EdgeMinerLive2Boot"
       },
       "sim": false
     },
     "replay": {
       "stopped": true,
-      "at": "2026-09-02T11:39:18+07:00",
+      "at": "2026-09-07T06:20:22+07:00",
       "sim": null
     }
   },
   "bridges": {
     "bridge_live": {
       "files": 2,
-      "dirs": 0
+      "dirs": 1
     },
     "bridge_live_eurusd_m15": {
-      "files": 13,
+      "files": 18,
       "dirs": 1
     },
     "bridge_live_eurusd_m5": {
@@ -51,7 +51,7 @@
       "dirs": 0
     },
     "bridge_live_gbpusd_m15": {
-      "files": 13,
+      "files": 16,
       "dirs": 1
     },
     "bridge_live_gbpusd_m5": {
@@ -60,18 +60,19 @@
     },
     "bridge_sim_live": {
       "files": 1,
-      "dirs": 0
+      "dirs": 1
     },
     "bridge_sim_live_eurusd_m15": {
       "files": 1,
-      "dirs": 0
+      "dirs": 1
     },
     "bridge_sim_live_gbpusd_m15": {
       "files": 1,
-      "dirs": 0
+      "dirs": 1
     }
   },
   "results_removed": [
+    "replay_oos_batch.json",
     "replay_strategy_stats.json",
     "kill_switch.json",
     "live_workers.json",
@@ -80,24 +81,38 @@
     "trade_models.json"
   ],
   "cache_removed": true,
-  "packages_removed": 10,
-  "roster_cleared": true,
-  "reseed": [],
+  "packages_removed": 0,
+  "roster_cleared": false,
+  "reseed": [
+    {
+      "symbol": "EURUSD",
+      "timeframe": "M15",
+      "bars": 66539,
+      "sha256": "f41cb139ca10b72c77fd1e475a44bf32bf4a416d03171cf6abdec5a23c417d41"
+    },
+    {
+      "symbol": "GBPUSD",
+      "timeframe": "M15",
+      "bars": 66537,
+      "sha256": "3d0cf85ebfc29b966111bc3899403547178150fdef3c2841031e6021832611d9"
+    }
+  ],
   "live_weeks_kept": [
-    "tm_fine_wr52_rr2_66_54r_2fda252b_live_weeks.json",
-    "tm_m15q_elite_55_4_wr59_rr2_95__aac3ed9f_live_weeks.json",
-    "tm_m15q_elite_60_3_vwap_wr51_rr_0dc9024d_live_weeks.json",
-    "tm_m15q_elite_60_3_vwap_wr67_rr_17f02183_live_weeks.json",
-    "tm_m15q_elite_60_3_wr51_rr2_89__3b1c042f_live_weeks.json",
-    "tm_m15q_elite_60_3_wr63_rr2_73__3d3a5f7a_live_weeks.json",
-    "tm_m15q_elite_or_quality_wr62_r_0b140e51_live_weeks.json",
-    "tm_m15r_anti_chase_fixed_70_wr4_4a4a914b_live_weeks.json",
-    "tm_m15r_anti_chase_fixed_70_wr4_be1c40b6_live_weeks.json",
-    "tm_m15r_edge_gentle_wr40_rr2_24_af189802_live_weeks.json"
+    "chk_eur1_wr59r36_live_weeks.json",
+    "chk_eur2_wr60r40_live_weeks.json",
+    "chk_gbp1_wr59r99_live_weeks.json",
+    "chk_gbp2_wr57r79_live_weeks.json",
+    "m15_eur1_wr51r45_live_weeks.json",
+    "m15_eur2_wr55r25_live_weeks.json",
+    "m15_gbp1_wr53r71_live_weeks.json",
+    "m15_gbp2_wr76r61_live_weeks.json",
+    "tm_wr60r40_d634912b_live_weeks.json",
+    "tm_wr76r61_afd20fd7_live_weeks.json"
   ],
   "errors": [],
   "kill_disarmed": true,
-  "trade_models_files_removed": 20,
+  "trade_models_files_removed": 16,
+  "worker_logs_removed": 3,
   "cache_files_removed": 4,
   "ok": true
 }

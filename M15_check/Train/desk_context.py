@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from clone_identity import overlay_desk_identity
+
 try:
   import yaml  # type: ignore
 except ImportError:  # pragma: no cover
@@ -63,6 +65,7 @@ def load_desk(desk_id: str | None = None) -> dict[str, Any]:
   if not isinstance(cfg, dict):
     raise ValueError(f"Invalid desk yaml: {path}")
   cfg["id"] = str(cfg.get("id") or desk_id).lower()
+  cfg = overlay_desk_identity(cfg, train_root=TRAINAPP_ROOT)
   runtime = RUNTIME_DIR / cfg["id"]
   cfg["runtime_root"] = str(runtime.resolve())
   cfg["core_root"] = str((CORES_DIR / str(cfg.get("core") or "m15")).resolve())
@@ -138,7 +141,27 @@ def _relocate_under_root(raw: str, *, root: Path) -> str | None:
     return str(abs_p)
 
 
-def _heal_json_paths(path: Path, *, root: Path) -> bool:
+def _maybe_clone_bridge_leaf(relocated: str, want: str | None) -> str:
+  if not want or not relocated:
+    return relocated
+  text = relocated.replace("\\", "/")
+  name = Path(text).name
+  if name == want:
+    return relocated
+  if want.startswith(name + "_"):
+    parent = Path(text).parent.as_posix()
+    if parent in (".", ""):
+      return f"mt5/{want}" if "mt5" not in text else want
+    return f"{parent}/{want}"
+  return relocated
+
+
+def _heal_json_paths(
+  path: Path,
+  *,
+  root: Path,
+  bridge_subdir: str | None = None,
+) -> bool:
   if not path.is_file():
     return False
   try:
@@ -156,6 +179,8 @@ def _heal_json_paths(path: Path, *, root: Path) -> bool:
       for k, v in list(node.items()):
         if isinstance(v, str) and k in ("bridge_dir", "archive_path"):
           relocated = _relocate_under_root(v, root=root)
+          if relocated:
+            relocated = _maybe_clone_bridge_leaf(relocated, bridge_subdir)
           if relocated and relocated != v:
             node[k] = relocated
             changed = True
@@ -172,7 +197,11 @@ def _heal_json_paths(path: Path, *, root: Path) -> bool:
   return True
 
 
-def heal_runtime_paths(runtime_root: str | Path | None = None) -> int:
+def heal_runtime_paths(
+  runtime_root: str | Path | None = None,
+  *,
+  bridge_subdir: str | None = None,
+) -> int:
   """Rewrite stale absolute paths in runtime JSON so a copied folder still works."""
   root = Path(runtime_root or os.environ.get("TRAINAPP_RUNTIME") or "").resolve()
   if not root.is_dir():
@@ -180,9 +209,56 @@ def heal_runtime_paths(runtime_root: str | Path | None = None) -> int:
   n = 0
   results = root / "results"
   for name in ("mt5_bridge_config.json", "mt5_bridge_sim_state.json"):
-    if _heal_json_paths(results / name, root=root):
+    if _heal_json_paths(results / name, root=root, bridge_subdir=bridge_subdir):
       n += 1
   return n
+
+
+_BRIDGE_MIGRATE_FILES = (
+  "models.json",
+  "trades.json",
+  "decision.json",
+  "status.json",
+  "sim_control.json",
+  "features.json",
+  "command.json",
+)
+
+
+def migrate_clone_bridge_dirs(runtime_root: str | Path, cfg: dict[str, Any]) -> None:
+  """Seed clone-unique bridge folders from the template-named copy (journal/roster)."""
+  slug = str(cfg.get("clone_slug") or "")
+  if not slug:
+    return
+  mt5 = Path(runtime_root) / "mt5"
+  if not mt5.is_dir():
+    return
+  suffix = f"_{slug}"
+  for key in ("bridge_subdir", "bridge_sim_subdir"):
+    want = str(cfg.get(key) or "")
+    if not want.endswith(suffix):
+      continue
+    old = mt5 / want[: -len(suffix)]
+    new = mt5 / want
+    try:
+      if not old.is_dir() or new.exists():
+        continue
+      new.mkdir(parents=True, exist_ok=True)
+      (new / "decisions").mkdir(exist_ok=True)
+      for name in _BRIDGE_MIGRATE_FILES:
+        src = old / name
+        if src.is_file():
+          import shutil
+          shutil.copy2(src, new / name)
+      dec = old / "decisions"
+      if dec.is_dir():
+        import shutil
+        dest_dec = new / "decisions"
+        if dest_dec.exists():
+          shutil.rmtree(dest_dec)
+        shutil.copytree(dec, dest_dec)
+    except OSError:
+      pass
 
 
 def apply_desk_env(desk_id: str) -> dict[str, Any]:
@@ -191,7 +267,8 @@ def apply_desk_env(desk_id: str) -> dict[str, Any]:
   os.environ["TRAINAPP_RUNTIME"] = cfg["runtime_root"]
   os.environ["TRAINAPP_CORE"] = cfg["core_root"]
   os.environ["TRAINAPP_ROOT"] = str(TRAINAPP_ROOT)
-  heal_runtime_paths(cfg["runtime_root"])
+  migrate_clone_bridge_dirs(cfg["runtime_root"], cfg)
+  heal_runtime_paths(cfg["runtime_root"], bridge_subdir=str(cfg.get("bridge_subdir") or "") or None)
   return cfg
 
 

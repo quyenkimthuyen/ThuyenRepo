@@ -12,6 +12,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+  sys.path.insert(0, str(ROOT))
+from clone_identity import overlay_desk_identity  # noqa: E402
+
 TEMPLATE = ROOT / "mt5" / "template" / "ForgeBridgeDesk.mq5.template"
 
 # Defaults for runtime desks (yaml may override instance_id / magic / bridge_subdir).
@@ -100,7 +104,10 @@ def main(argv: list[str] | None = None) -> int:
   for base in DESKS:
     if want and base["desk"] not in want:
       continue
-    cfg = {**base, **_load_yaml_overrides(base["desk"])}
+    cfg = overlay_desk_identity(
+      {**base, **_load_yaml_overrides(base["desk"])},
+      train_root=ROOT,
+    )
     rendered.append(render_one(cfg, template))
   if not rendered:
     print("No desks rendered.", file=sys.stderr)

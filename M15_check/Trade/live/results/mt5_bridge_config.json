@@ -6,8 +6,14 @@
   "mode": "process",
   "poll_sec": 0.5,
   "model_ids": [
-    "tm_wr60r40_d634912b",
-    "tm_wr76r61_afd20fd7"
+    "chk_eur1_wr59r36",
+    "chk_eur2_wr60r40",
+    "m15_eur1_wr51r45",
+    "m15_eur2_wr55r25",
+    "chk_gbp1_wr59r99",
+    "chk_gbp2_wr57r79",
+    "m15_gbp1_wr53r71",
+    "m15_gbp2_wr76r61"
   ],
   "risk_pct": 1.0,
   "monitor_port": 9801,
@@ -24,10 +30,10 @@
   "loss_guard_tripped_reason": null,
   "loss_guard_halted_models": [],
   "last_error": null,
-  "updated_at": "2026-09-06T06:46:33+05:30",
-  "service_pid": 27328,
-  "bridge_dir": "C:\\Work\\ThuyenRepo\\M15\\Trade\\mt5\\bridge_live_eurusd_m15",
-  "workers": 1,
+  "updated_at": "2026-09-07T06:20:37+07:00",
+  "service_pid": 22964,
+  "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_eurusd_m15",
+  "workers": 2,
   "last_deploy": {
     "ok": true,
     "skipped": false,
@@ -48,22 +54,24 @@
           "symbol": "EURUSD",
           "timeframe": "M15",
           "bridge_subdir": "bridge_live_eurusd_m15",
-          "bridge_dir": "C:\\Work\\ThuyenRepo\\M15\\Trade\\mt5\\bridge_live_eurusd_m15",
-          "magic": 20283001,
+          "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_eurusd_m15",
+          "magic": 20283003,
           "risk_pct": 1.0,
           "model_ids": [
-            "tm_wr41r21dd3_b74c811e",
-            "tm_wr56r43_8bedf200"
+            "chk_eur1_wr59r36",
+            "chk_eur2_wr60r40",
+            "m15_eur1_wr51r45",
+            "m15_eur2_wr55r25"
           ],
-          "n_models": 2,
+          "n_models": 4,
           "sim": false,
           "online": true,
-          "age_sec": 0.7091937065124512,
+          "age_sec": 1.9099187850952148,
           "chart": {
-            "bridge_dir": "C:\\Work\\ThuyenRepo\\M15\\Trade\\mt5\\bridge_live_eurusd_m15",
+            "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_eurusd_m15",
             "symbol": "EURUSD",
             "timeframe": "M15",
-            "source": "bar.json",
+            "source": "connection.json",
             "connected": true,
             "raw": {
               "symbol": "EURUSD",
@@ -72,10 +80,41 @@
             }
           },
           "connected": true
+        },
+        {
+          "symbol": "GBPUSD",
+          "timeframe": "M15",
+          "bridge_subdir": "bridge_live_gbpusd_m15",
+          "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_gbpusd_m15",
+          "magic": 20283005,
+          "risk_pct": 1.0,
+          "model_ids": [
+            "chk_gbp1_wr59r99",
+            "chk_gbp2_wr57r79",
+            "m15_gbp1_wr53r71",
+            "m15_gbp2_wr76r61"
+          ],
+          "n_models": 4,
+          "sim": false,
+          "online": true,
+          "age_sec": 1.1940042972564697,
+          "chart": {
+            "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_gbpusd_m15",
+            "symbol": "GBPUSD",
+            "timeframe": "M15",
+            "source": "connection.json",
+            "connected": true,
+            "raw": {
+              "symbol": "GBPUSD",
+              "period": "M15",
+              "account": 318391274
+            }
+          },
+          "connected": true
         }
       ],
-      "n_books": 1,
-      "n_online": 1,
+      "n_books": 2,
+      "n_online": 2,
       "all_online": true,
       "missing": [],
       "mt5_running": true
@@ -86,22 +125,24 @@
           "symbol": "EURUSD",
           "timeframe": "M15",
           "bridge_subdir": "bridge_live_eurusd_m15",
-          "bridge_dir": "C:\\Work\\ThuyenRepo\\M15\\Trade\\mt5\\bridge_live_eurusd_m15",
-          "magic": 20283001,
+          "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_eurusd_m15",
+          "magic": 20283003,
           "risk_pct": 1.0,
           "model_ids": [
-            "tm_wr41r21dd3_b74c811e",
-            "tm_wr56r43_8bedf200"
+            "chk_eur1_wr59r36",
+            "chk_eur2_wr60r40",
+            "m15_eur1_wr51r45",
+            "m15_eur2_wr55r25"
           ],
-          "n_models": 2,
+          "n_models": 4,
           "sim": false,
           "online": true,
-          "age_sec": 0.7109508514404297,
+          "age_sec": 1.913050889968872,
           "chart": {
-            "bridge_dir": "C:\\Work\\ThuyenRepo\\M15\\Trade\\mt5\\bridge_live_eurusd_m15",
+            "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_eurusd_m15",
             "symbol": "EURUSD",
             "timeframe": "M15",
-            "source": "bar.json",
+            "source": "connection.json",
             "connected": true,
             "raw": {
               "symbol": "EURUSD",
@@ -110,10 +151,41 @@
             }
           },
           "connected": true
+        },
+        {
+          "symbol": "GBPUSD",
+          "timeframe": "M15",
+          "bridge_subdir": "bridge_live_gbpusd_m15",
+          "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_gbpusd_m15",
+          "magic": 20283005,
+          "risk_pct": 1.0,
+          "model_ids": [
+            "chk_gbp1_wr59r99",
+            "chk_gbp2_wr57r79",
+            "m15_gbp1_wr53r71",
+            "m15_gbp2_wr76r61"
+          ],
+          "n_models": 4,
+          "sim": false,
+          "online": true,
+          "age_sec": 1.197272539138794,
+          "chart": {
+            "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_gbpusd_m15",
+            "symbol": "GBPUSD",
+            "timeframe": "M15",
+            "source": "connection.json",
+            "connected": true,
+            "raw": {
+              "symbol": "GBPUSD",
+              "period": "M15",
+              "account": 318391274
+            }
+          },
+          "connected": true
         }
       ],
-      "n_books": 1,
-      "n_online": 1,
+      "n_books": 2,
+      "n_online": 2,
       "all_online": true,
       "missing": [],
       "mt5_running": true,
@@ -125,14 +197,32 @@
         "symbol": "EURUSD",
         "timeframe": "M15",
         "bridge_subdir": "bridge_live_eurusd_m15",
-        "bridge_dir": "C:\\Work\\ThuyenRepo\\M15\\Trade\\mt5\\bridge_live_eurusd_m15",
-        "magic": 20283001,
+        "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_eurusd_m15",
+        "magic": 20283003,
         "risk_pct": 1.0,
         "model_ids": [
-          "tm_wr41r21dd3_b74c811e",
-          "tm_wr56r43_8bedf200"
+          "chk_eur1_wr59r36",
+          "chk_eur2_wr60r40",
+          "m15_eur1_wr51r45",
+          "m15_eur2_wr55r25"
         ],
-        "n_models": 2,
+        "n_models": 4,
+        "sim": false
+      },
+      {
+        "symbol": "GBPUSD",
+        "timeframe": "M15",
+        "bridge_subdir": "bridge_live_gbpusd_m15",
+        "bridge_dir": "C:\\Work\\ThuyenRepo\\M15_check\\Trade\\mt5\\bridge_live_gbpusd_m15",
+        "magic": 20283005,
+        "risk_pct": 1.0,
+        "model_ids": [
+          "chk_gbp1_wr59r99",
+          "chk_gbp2_wr57r79",
+          "m15_gbp1_wr53r71",
+          "m15_gbp2_wr76r61"
+        ],
+        "n_models": 4,
         "sim": false
       }
     ]

@@ -52,3 +52,40 @@ def test_chart_server_matches_bridge_rejects_foreign_folder(tmp_path):
   finally:
     server.shutdown()
     server.server_close()
+
+
+def test_ensure_chart_server_falls_back_when_port_is_foreign(tmp_path):
+  import json
+  import socket
+  import time
+
+  ours = tmp_path / "ours"
+  other = tmp_path / "other"
+  ours.mkdir()
+  other.mkdir()
+  (ours / "connection.json").write_text(
+    json.dumps({"connected": True, "instance_id": "LC2E21", "bid": 1.16}),
+    encoding="utf-8",
+  )
+  (other / "connection.json").write_text(
+    json.dumps({"connected": True, "instance_id": "LC2E21", "bid": 1.15}),
+    encoding="utf-8",
+  )
+  sock = socket.socket()
+  sock.bind(("127.0.0.1", 0))
+  port = sock.getsockname()[1]
+  sock.close()
+  foreign = live_monitor_server.start_live_monitor_server(other, port)
+  live_monitor_server._CHART_SERVER = None
+  live_monitor_server._CHART_BIND_PORT = None
+  try:
+    time.sleep(0.15)
+    assert live_monitor_server.ensure_chart_server(ours, port)
+    bind = live_monitor_server.active_chart_port(port)
+    assert bind != port
+    assert live_monitor_server.chart_server_matches_bridge(bind, ours)
+    assert not live_monitor_server.chart_server_matches_bridge(port, ours)
+  finally:
+    live_monitor_server._stop_live_chart_server()
+    foreign.shutdown()
+    foreign.server_close()

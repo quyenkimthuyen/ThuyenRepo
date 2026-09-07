@@ -56,6 +56,37 @@ if (-not $Symbol) { throw "desks\$Desk.yaml missing symbol" }
 if (-not $TfLabel) { $TfLabel = "M15" }
 if (-not $BridgeSubdirLive) { $BridgeSubdirLive = "bridge_$($InstanceId.ToLowerInvariant())" }
 
+# Clone overlay (M15_check vs M15): unique junction / EA / ports for this folder.
+$pythonForId = $null
+foreach ($c in @("python", "py")) {
+  $cmd = Get-Command $c -ErrorAction SilentlyContinue
+  if ($cmd) { $pythonForId = $cmd.Source; break }
+}
+if ($pythonForId) {
+  $idCode = @"
+import json, sys
+sys.path.insert(0, r'$AppRoot')
+from desk_context import load_desk
+print(json.dumps(load_desk('$Desk')))
+"@
+  try {
+    $ident = & $pythonForId -c $idCode | ConvertFrom-Json
+    if ($ident.instance_id) { $InstanceId = [string]$ident.instance_id }
+    if ($ident.bridge_subdir) { $BridgeSubdirLive = [string]$ident.bridge_subdir }
+    if ($ident.core) { $CoreName = [string]$ident.core }
+    if ($ident.symbol) { $Symbol = [string]$ident.symbol }
+    if ($ident.tf) { $TfLabel = [string]$ident.tf }
+    if ($ident.magic) { $yaml["magic"] = [string]$ident.magic }
+    if ($ident.chart_port) { $yaml["chart_port"] = [string]$ident.chart_port }
+    if ($ident.clone_slug) {
+      Write-Host ("Clone identity: slug={0} instance={1} bridge={2} chart_port={3}" -f `
+        $ident.clone_slug, $InstanceId, $BridgeSubdirLive, $yaml["chart_port"])
+    }
+  } catch {
+    Write-Warning "Clone identity overlay skipped: $($_.Exception.Message)"
+  }
+}
+
 $PeriodSize = 15
 if ($yaml.ContainsKey("bar_minutes") -and $yaml["bar_minutes"]) {
   $PeriodSize = [int]$yaml["bar_minutes"]

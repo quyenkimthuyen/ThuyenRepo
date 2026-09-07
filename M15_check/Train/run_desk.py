@@ -46,6 +46,12 @@ def main(argv: list[str] | None = None) -> int:
   print(f"  core    = {core}")
   print(f"  runtime = {runtime}")
   print(f"  bridge  = {cfg.get('bridge_subdir')} magic={cfg.get('magic')}")
+  slug = str(cfg.get("clone_slug") or "")
+  if slug:
+    print(
+      f"  clone   = {slug} offset={cfg.get('clone_port_offset')} "
+      f"instance={cfg.get('instance_id')}"
+    )
 
   # Shared GUI first on path, then desk core (config / mt5_bridge / data_loader).
   path_prefix = [str(ROOT), str(core)]

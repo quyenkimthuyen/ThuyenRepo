@@ -28,7 +28,7 @@ from gui.ui_preferences import preference_callback, restore_widget, set_preferen
 from mt5_bridge.history_sync import get_history_status, start_history_sync
 from mt5_bridge import background as bridge_bg
 from mt5_bridge.comm_log import append_event, clear_log, read_events
-from mt5_bridge.live_monitor_server import desk_chart_port
+from mt5_bridge.live_monitor_server import active_chart_port, desk_chart_port
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
   BRIDGE_SIM_DIR,
@@ -1076,8 +1076,10 @@ def _live_chart_recover_fragment(max_bars: int) -> None:
   from mt5_bridge.live_monitor_server import ensure_chart_server
 
   port = desk_chart_port()
-  ensure_chart_server(resolve_live_bridge_dir(), port)
-  if _chart_server_healthy(f"http://127.0.0.1:{port}", resolve_live_bridge_dir()):
+  bridge_dir = resolve_live_bridge_dir()
+  ensure_chart_server(bridge_dir, port)
+  bind = active_chart_port(port)
+  if _chart_server_healthy(f"http://127.0.0.1:{bind}", bridge_dir):
     if st.session_state.get("_live_chart_recovered"):
       return
     if not st.session_state.get("_live_chart_recover_armed"):
@@ -1101,13 +1103,13 @@ def _render_live_chart(max_bars: int, *, model_id: str | None = None) -> None:
   legend = "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — overlay giống Compare/Sim."
   if model_id is None and len(_live_roster_model_ids()) > 1:
     legend = "▲▼ ENTRY màu theo model · ✕ exit — chọn 1 model để xem SL/TP zone."
-  port = desk_chart_port()
-  monitor_url = f"http://127.0.0.1:{port}"
-  model_q = model_id or "all"
-
   from mt5_bridge.live_monitor_server import ensure_chart_server
-  ensure_chart_server(resolve_live_bridge_dir(), port)
-  server_ready = _chart_server_healthy(monitor_url, resolve_live_bridge_dir())
+  port = desk_chart_port()
+  ensure_chart_server(bridge_dir, port)
+  bind = active_chart_port(port)
+  monitor_url = f"http://127.0.0.1:{bind}"
+  model_q = model_id or "all"
+  server_ready = _chart_server_healthy(monitor_url, bridge_dir)
   # Iframe Plotly.react (pan + scrollZoom) — same UX as Compare. Snapshot is
   # Streamlit plotly_chart and remounts on rerun, so it feels sticky/laggy.
   # URL already filters by model=; do not gate iframe on model_id is None.

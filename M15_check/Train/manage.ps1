@@ -28,9 +28,26 @@ foreach ($c in @("python", "py")) {
 }
 if (-not $Python) { throw "Python not found on PATH" }
 
-$Catalog = [ordered]@{
-  e21 = @{ Port = 8911; Label = "E21" }
-  g23 = @{ Port = 8931; Label = "G23" }
+function Get-DeskCfg([string]$DeskId) {
+  $code = @"
+import json, sys
+sys.path.insert(0, r'$Root')
+from desk_context import load_desk
+print(json.dumps(load_desk('$DeskId')))
+"@
+  $raw = & $Python -c $code
+  if ($LASTEXITCODE -ne 0) { throw "load_desk failed for $DeskId" }
+  return $raw | ConvertFrom-Json
+}
+
+$Catalog = [ordered]@{}
+foreach ($id in @("e21", "g23")) {
+  $c = Get-DeskCfg $id
+  $Catalog[$id] = @{
+    Port  = [int]$c.port
+    Label = [string]$c.label
+    Bridge = [string]$c.bridge_subdir
+  }
 }
 
 function Resolve-DeskIds([string[]]$Requested) {
@@ -63,18 +80,18 @@ function Resolve-DeskIds([string[]]$Requested) {
 
 function Get-DeskProcesses([string]$DeskId, [int]$Port) {
   $rows = @()
+  $runDesk = [regex]::Escape((Join-Path $Root "run_desk.py"))
   Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
     Where-Object {
       $_.CommandLine -and
       $_.CommandLine -match "streamlit" -and
-      (
-        $_.CommandLine -match [regex]::Escape($Root) -or
-        $_.CommandLine -match [regex]::Escape("LiveCheck2\Train\") -or
-        $_.CommandLine -match [regex]::Escape("LiveCheck2/Train/")
-      ) -and
+      $_.CommandLine -match [regex]::Escape($Root) -and
       (
         $_.CommandLine -match "--server.port $Port" -or
-        $_.CommandLine -match "server.port=$Port"
+        $_.CommandLine -match "server.port=$Port" -or
+        $_.CommandLine -match "$runDesk $DeskId" -or
+        $_.CommandLine -match [regex]::Escape("runtime\$DeskId") -or
+        $_.CommandLine -match [regex]::Escape("runtime/$DeskId")
       )
     } |
     ForEach-Object { $rows += $_ }
@@ -82,7 +99,9 @@ function Get-DeskProcesses([string]$DeskId, [int]$Port) {
   Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
     ForEach-Object {
       $proc = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" -ErrorAction SilentlyContinue
-      if ($proc -and $proc.CommandLine -match "streamlit") { $rows += $proc }
+      if ($proc -and $proc.CommandLine -match "streamlit" -and (Test-IsTrainAppProcess $proc)) {
+        $rows += $proc
+      }
     }
   $rows | Sort-Object ProcessId -Unique
 }
@@ -114,11 +133,9 @@ function Start-Desk([string]$DeskId) {
     return
   }
   if ($existing.Count -gt 0) {
-    Write-Host "Releasing port $port from old Train desk..."
-    foreach ($row in $existing) {
-      Stop-Process -Id $row.ProcessId -Force -ErrorAction SilentlyContinue
-    }
-    Start-Sleep -Seconds 1
+    Write-Host "Port $port is in use by another Streamlit (not this folder). Not killing it." -ForegroundColor Yellow
+    Write-Host "Start this desk from $($Root) only, or stop the other copy first."
+    return
   }
   Write-Host ("==== {0} ({1}) port {2} - Start ====" -f $label, $DeskId, $port) -ForegroundColor Cyan
   $env:TRAINAPP_DESK = $DeskId

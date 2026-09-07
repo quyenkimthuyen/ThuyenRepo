@@ -40,6 +40,11 @@ def _is_windows_abs(text: str) -> bool:
   return len(text) >= 2 and text[1] == ":"
 
 
+def this_train_root() -> Path:
+  """Train folder that contains this copy of cores/m15 (not a sibling clone)."""
+  return Path(__file__).resolve().parents[2]
+
+
 def relocate_under_root(
   raw: str | os.PathLike | None,
   *,
@@ -48,9 +53,9 @@ def relocate_under_root(
 ) -> Path | None:
   """Map a stored path onto this app copy.
 
-  Relative paths join ``root``. Absolute paths already under ``root`` are kept.
-  Absolute paths from another machine/folder are remapped by leaf name
-  (``mt5/bridge_*`` or ``results/simulate_runs/*``).
+  Relative paths join ``root``. Absolute paths already under ``root`` or this
+  Train tree are kept. Paths from a sibling clone (M15, LiveCheck2, …) are
+  remapped even if that folder still exists on disk.
   """
   if raw is None:
     return None
@@ -58,6 +63,7 @@ def relocate_under_root(
   if not text:
     return None
   root = Path(root).resolve()
+  train = this_train_root()
   norm = text.replace("\\", "/")
   p = Path(text)
   if not p.is_absolute() and not _is_windows_abs(norm):
@@ -67,6 +73,11 @@ def relocate_under_root(
       return p.resolve()
     except OSError:
       return root / p.name
+  try:
+    if p.exists() and _is_under(p, train):
+      return p.resolve()
+  except OSError:
+    pass
   parts = _normalized_parts(text)
   parts_l = [x.lower() for x in parts]
   bridge = _bridge_folder_from_parts(parts)
@@ -83,41 +94,43 @@ def relocate_under_root(
   return (root / default_parent / name).resolve()
 
 
+def _trusted_train_root() -> Path:
+  here = this_train_root()
+  app_root = (os.environ.get("TRAINAPP_ROOT") or "").strip()
+  if app_root:
+    cand = Path(app_root).resolve()
+    if cand == here or _is_under(cand, here):
+      return cand
+  return here
+
+
 def get_root() -> Path:
   """Writable desk workspace: data / results / learning / mt5."""
   desk = (os.environ.get("TRAINAPP_DESK") or "").strip().lower()
-  app_root = (os.environ.get("TRAINAPP_ROOT") or "").strip()
   runtime = (os.environ.get("TRAINAPP_RUNTIME") or "").strip()
-  if app_root:
-    root = Path(app_root).resolve()
-    if runtime:
-      rt = runtime.replace("\\", "/")
-      if not _is_windows_abs(rt):
-        rp = Path(runtime)
-        if _is_under(rp, root):
-          return rp.resolve()
-    if desk:
-      return (root / "runtime" / desk).resolve()
-    return root
+  root = _trusted_train_root()
+  here = Path(__file__).resolve().parent
   if runtime:
-    return Path(runtime).resolve()
-  return Path(__file__).resolve().parent
+    try:
+      rp = Path(runtime).resolve()
+    except OSError:
+      rp = Path(runtime)
+    if _is_under(rp, root):
+      return rp
+  if desk:
+    return (root / "runtime" / desk).resolve()
+  return here
 
 
 def get_core_root() -> Path:
-  env = (os.environ.get("TRAINAPP_CORE") or "").strip()
-  app_root = (os.environ.get("TRAINAPP_ROOT") or "").strip()
   here = Path(__file__).resolve().parent
-  if app_root:
-    root = Path(app_root).resolve()
-    if env:
-      ev = env.replace("\\", "/")
-      if not _is_windows_abs(ev):
-        p = Path(env)
-        if _is_under(p, root):
-          return p.resolve()
-    if _is_under(here, root):
-      return here
+  train = this_train_root()
+  env = (os.environ.get("TRAINAPP_CORE") or "").strip()
   if env:
-    return Path(env).resolve()
+    try:
+      p = Path(env).resolve()
+    except OSError:
+      p = Path(env)
+    if p == here or _is_under(p, train):
+      return p
   return here

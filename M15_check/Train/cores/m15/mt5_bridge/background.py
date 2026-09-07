@@ -961,12 +961,24 @@ def start_process_worker() -> bool:
     logf = open(SERVICE_LOG, "a", encoding="utf-8")
     logf.write(f"\n--- start {_now_iso()} ---\n")
     logf.flush()
+    train_root = Path(CORE_ROOT).resolve().parent.parent
+    env = os.environ.copy()
+    env["TRAINAPP_ROOT"] = str(train_root)
+    env["TRAINAPP_CORE"] = str(Path(CORE_ROOT).resolve())
+    env["TRAINAPP_RUNTIME"] = str(Path(ROOT).resolve())
+    desk = (env.get("TRAINAPP_DESK") or "").strip()
+    if desk:
+      env["TRAINAPP_DESK"] = desk
+    prefix = [str(train_root), str(Path(CORE_ROOT).resolve())]
+    old_pp = [p for p in (env.get("PYTHONPATH") or "").split(os.pathsep) if p and p not in prefix]
+    env["PYTHONPATH"] = os.pathsep.join(prefix + old_pp)
     popen_kw: dict = dict(
       cwd=str(ROOT),
       stdout=logf,
       stderr=subprocess.STDOUT,
       start_new_session=True,
       close_fds=True,
+      env=env,
     )
     if sys.platform == "win32":
       # python.exe is a console app; without this a black window stays open.

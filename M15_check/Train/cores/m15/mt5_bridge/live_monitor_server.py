@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -19,10 +21,27 @@ from mt5_bridge.protocol import (
 from mt5_bridge.trade_journal import load_trades
 
 DEFAULT_MONITOR_PORT = 9975
-# Dedicated Simulate chart port (avoid stale Live monitor on 8765 lacking mode=sim)
-SIM_MONITOR_PORT = 10086
-# Dedicated Compare Trade chart port (iframe Plotly.react, same UX as Simulate)
-COMPARE_MONITOR_PORT = 10196
+
+
+def _clone_port_offset() -> int:
+  try:
+    import sys
+    from pathlib import Path
+
+    train = Path(__file__).resolve().parents[3]
+    if str(train) not in sys.path:
+      sys.path.insert(0, str(train))
+    from clone_identity import clone_port_offset
+
+    return int(clone_port_offset())
+  except Exception:
+    return 0
+
+
+_CLONE_OFF = _clone_port_offset()
+# Dedicated Simulate / Compare chart ports (offset when this folder is a clone)
+SIM_MONITOR_PORT = 10086 + _CLONE_OFF
+COMPARE_MONITOR_PORT = 10196 + _CLONE_OFF
 
 
 def desk_chart_port() -> int:
@@ -46,6 +65,7 @@ def desk_chart_port() -> int:
 
 _CHART_SERVER = None
 _CHART_SERVER_LOCK = threading.Lock()
+_CHART_BIND_PORT: int | None = None
 _SIM_CHART_SERVER = None
 _SIM_CHART_SERVER_LOCK = threading.Lock()
 _COMPARE_CHART_SERVER = None
@@ -1024,10 +1044,11 @@ def start_live_monitor_server(
   bridge_dir: Path,
   port: int = DEFAULT_MONITOR_PORT,
 ) -> ThreadingHTTPServer:
-  bridge_dir = Path(bridge_dir)
+  served_dir = Path(bridge_dir).resolve()
   plotly_js = _plotly_js_path()
 
   class Handler(BaseHTTPRequestHandler):
+    bridge_root = served_dir
     def _send(self, code: int, body: bytes, content_type: str) -> None:
       self.send_response(code)
       self.send_header("Content-Type", content_type)
@@ -1039,14 +1060,15 @@ def start_live_monitor_server(
 
     def do_GET(self) -> None:
       parsed = urlparse(self.path)
+      root = self.bridge_root
       if parsed.path == "/health":
         self._send(200, b"ok", "text/plain; charset=utf-8")
         return
       if parsed.path == "/whoami":
-        conn = read_json(connection_path(bridge_dir)) or {}
+        conn = read_json(connection_path(root)) or {}
         body = json.dumps({
           "ok": True,
-          "bridge_dir": str(Path(bridge_dir).resolve()),
+          "bridge_dir": str(root),
           "instance_id": conn.get("instance_id"),
         }).encode("utf-8")
         self._send(200, body, "application/json; charset=utf-8")
@@ -1081,9 +1103,9 @@ def start_live_monitor_server(
             "application/json; charset=utf-8",
           )
           return
-        conn_file = connection_path(bridge_dir)
-        trades = load_trades(bridge_dir)
-        decision = read_json(decision_path(bridge_dir)) or {}
+        conn_file = connection_path(root)
+        trades = load_trades(root)
+        decision = read_json(decision_path(root)) or {}
         action = str(decision.get("action") or "").upper()
         signal_id = decision.get("signal_id")
         known_signal = any(
@@ -1103,7 +1125,7 @@ def start_live_monitor_server(
             "strategy_name": decision.get("strategy_name"),
           })
         model_q = (query.get("model") or ["all"])[0]
-        roster_ids, roster_labels = _live_chart_model_labels(bridge_dir)
+        roster_ids, roster_labels = _live_chart_model_labels(root)
         trades = prepare_live_chart_trades(
           trades,
           model_ids=roster_ids,
@@ -1111,10 +1133,10 @@ def start_live_monitor_server(
           labels=roster_labels,
         )
         payload = {
-          "history": read_json(bars_path(bridge_dir)) or {},
+          "history": read_json(bars_path(root)) or {},
           "connection": read_json(conn_file) or {},
           "connection_mtime": conn_file.stat().st_mtime if conn_file.exists() else None,
-          "bridge_dir": str(Path(bridge_dir).resolve()),
+          "bridge_dir": str(root),
           "trades": trades,
           "decision": decision,
         }
@@ -1163,6 +1185,18 @@ def start_live_monitor_server(
   return server
 
 
+def _same_bridge_dir(a: Path | str | None, b: Path | str | None) -> bool:
+  if not a or not b:
+    return False
+  try:
+    pa, pb = Path(a).resolve(), Path(b).resolve()
+  except OSError:
+    return False
+  if pa == pb:
+    return True
+  return os.path.normcase(str(pa)) == os.path.normcase(str(pb))
+
+
 def chart_server_matches_bridge(
   port: int,
   bridge_dir: Path | None = None,
@@ -1184,7 +1218,7 @@ def chart_server_matches_bridge(
       data = json.loads(r.read().decode("utf-8"))
     raw = str(data.get("bridge_dir") or "").strip()
     if raw:
-      return Path(raw).resolve() == want
+      return _same_bridge_dir(raw, want)
   except Exception:
     pass
   try:
@@ -1199,7 +1233,7 @@ def chart_server_matches_bridge(
       snap = json.loads(r.read().decode("utf-8"))
     snap_dir = str(snap.get("bridge_dir") or "").strip()
     if snap_dir:
-      return Path(snap_dir).resolve() == want
+      return _same_bridge_dir(snap_dir, want)
     conn_file = connection_path(want)
     if not conn_file.exists():
       return True
@@ -1211,12 +1245,58 @@ def chart_server_matches_bridge(
     return False
 
 
+def active_chart_port(requested: int | None = None) -> int:
+  """Port the Live iframe should hit (yaml port or fallback if that was foreign)."""
+  if _CHART_BIND_PORT:
+    return int(_CHART_BIND_PORT)
+  if requested:
+    return int(requested)
+  return desk_chart_port()
+
+
+def _http_ok(port: int, timeout: float = 0.3) -> bool:
+  import urllib.request
+
+  try:
+    with urllib.request.urlopen(f"http://127.0.0.1:{int(port)}/health", timeout=timeout) as r:
+      return r.read() == b"ok"
+  except Exception:
+    return False
+
+
+def _stop_live_chart_server() -> None:
+  global _CHART_SERVER, _CHART_BIND_PORT
+  if _CHART_SERVER is None:
+    return
+  try:
+    _CHART_SERVER.shutdown()
+    _CHART_SERVER.server_close()
+  except Exception:
+    pass
+  _CHART_SERVER = None
+  _CHART_BIND_PORT = None
+
+
+def _fallback_chart_ports(preferred: int) -> list[int]:
+  skip = {int(SIM_MONITOR_PORT), int(COMPARE_MONITOR_PORT)}
+  ordered = [int(preferred), int(preferred) + 2000]
+  ordered.extend(range(int(preferred) + 2001, int(preferred) + 2011))
+  seen: set[int] = set()
+  out: list[int] = []
+  for p in ordered:
+    if p in skip or p in seen or p <= 0 or p > 65535:
+      continue
+    seen.add(p)
+    out.append(p)
+  return out
+
+
 def ensure_chart_server(
   bridge_dir: Path | None = None,
   port: int = DEFAULT_MONITOR_PORT,
 ) -> bool:
   """Start chart HTTP server once. Use SIM/COMPARE ports for dedicated iframes."""
-  global _CHART_SERVER, _SIM_CHART_SERVER, _COMPARE_CHART_SERVER
+  global _CHART_SERVER, _SIM_CHART_SERVER, _COMPARE_CHART_SERVER, _CHART_BIND_PORT
   import urllib.request
 
   port = int(port)
@@ -1231,17 +1311,38 @@ def ensure_chart_server(
     lock = _CHART_SERVER_LOCK
 
   def _healthy() -> bool:
-    try:
-      with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=0.4) as r:
-        return r.read() == b"ok"
-    except Exception:
+    return _http_ok(port, 0.4)
+
+  if not is_compare and not is_sim:
+    with lock:
+      want = Path(want_dir).resolve()
+      if _CHART_BIND_PORT and chart_server_matches_bridge(_CHART_BIND_PORT, want):
+        return True
+      for cand in _fallback_chart_ports(port):
+        if chart_server_matches_bridge(cand, want, timeout=0.25):
+          _CHART_BIND_PORT = cand
+          return True
+        if _http_ok(cand, 0.2):
+          continue
+        _stop_live_chart_server()
+        try:
+          _CHART_SERVER = start_live_monitor_server(want, cand)
+          _CHART_BIND_PORT = cand
+        except OSError:
+          _CHART_SERVER = None
+          _CHART_BIND_PORT = None
+          continue
+        matched = False
+        for _ in range(8):
+          if chart_server_matches_bridge(cand, want, timeout=0.25):
+            matched = True
+            break
+          time.sleep(0.05)
+        if matched:
+          return True
+        _stop_live_chart_server()
       return False
 
-  def _ours() -> bool:
-    return chart_server_matches_bridge(port, want_dir)
-
-  if _healthy() and not is_sim and not is_compare:
-    return _ours()
   with lock:
     if is_compare:
       if _COMPARE_CHART_SERVER is not None and _healthy():
@@ -1265,37 +1366,23 @@ def ensure_chart_server(
         pass
       return _healthy()
 
-    if is_sim:
-      # Always prefer a server we started on SIM port (fresh code)
-      if _SIM_CHART_SERVER is not None and _healthy():
-        return True
-      if _healthy():
-        # Probe sim snapshot
-        try:
-          with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/snapshot?mode=sim&bars=48", timeout=1.0
-          ) as r:
-            data = json.loads(r.read().decode("utf-8"))
-          if "sim" in data or (data.get("history") or {}).get("source") == "sim_cache":
-            return True
-        except Exception:
-          pass
-      try:
-        _SIM_CHART_SERVER = start_live_monitor_server(
-          Path(bridge_dir) if bridge_dir else BRIDGE_SIM_DIR,
-          port=port,
-        )
-      except OSError:
-        pass
-      return _healthy()
-
+    if _SIM_CHART_SERVER is not None and _healthy():
+      return True
     if _healthy():
-      return _ours()
+      try:
+        with urllib.request.urlopen(
+          f"http://127.0.0.1:{port}/snapshot?mode=sim&bars=48", timeout=1.0
+        ) as r:
+          data = json.loads(r.read().decode("utf-8"))
+        if "sim" in data or (data.get("history") or {}).get("source") == "sim_cache":
+          return True
+      except Exception:
+        pass
     try:
-      _CHART_SERVER = start_live_monitor_server(
-        want_dir,
+      _SIM_CHART_SERVER = start_live_monitor_server(
+        Path(bridge_dir) if bridge_dir else BRIDGE_SIM_DIR,
         port=port,
       )
     except OSError:
       pass
-    return _ours()
+    return _healthy()

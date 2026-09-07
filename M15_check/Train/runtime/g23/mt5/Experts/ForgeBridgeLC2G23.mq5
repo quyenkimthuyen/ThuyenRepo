@@ -134,10 +134,6 @@ int      g_slot_max_hold[MAX_MODELS];
 double   g_slot_sync_sl[MAX_MODELS];
 double   g_slot_sync_tp[MAX_MODELS];
 bool     g_slot_user_intervened[MAX_MODELS];
-int      g_slot_confirm_wait[MAX_MODELS];
-double   g_slot_confirm_ref[MAX_MODELS];
-double   g_slot_confirm_sld[MAX_MODELS];
-bool     g_confirm_kept_pending = false;
 
 // Replay table
 string   g_rep_time[];
@@ -190,13 +186,6 @@ bool TryReadDecisionForBar(const string want_bar_time, const string model_id, st
 bool ApplyLiveDecisionSlot(const int slot, const string json, bool &any_open);
 void TryRecoverLateDecisions();
 void WaitHistoryDecisionsForBar(const string want);
-double PlannedGeometryRR(const double planned, const double sl, const double tp, const double json_rr);
-int ConfirmBarHit(const int direction, const double ref_price, const double sl_d,
-                  const double confirm_r, const double cancel_r,
-                  const double bid_h, const double bid_l, const double spr);
-void IncrementConfirmWaits();
-void TryFillConfirmPendings();
-bool OpenFromDecision(const string json);
 
 string DecisionPathForModel(const string model_id)
 {
@@ -395,9 +384,6 @@ int OnInit()
    {
       g_slot_pending[i] = "";
       g_slot_user_intervened[i] = false;
-      g_slot_confirm_wait[i] = 0;
-      g_slot_confirm_ref[i] = 0.0;
-      g_slot_confirm_sld[i] = 0.0;
    }
 
    FolderCreate(InpBridgeSubdir);
@@ -772,47 +758,6 @@ bool JsonGetBool(const string json, const string key, const bool def = false)
    if(StringFind(rest, "true") == 0) return true;
    if(StringFind(rest, "false") == 0) return false;
    return def;
-}
-
-double PlannedGeometryRR(const double planned, const double sl, const double tp, const double json_rr)
-{
-   // Prefer SL/TP geometry over genome "rr" so tp_ignores_spread_buffer survives rebase.
-   const double risk = (planned > 0.0 && sl > 0.0) ? MathAbs(planned - sl) : 0.0;
-   if(risk > 0.0 && tp > 0.0)
-   {
-      const double geom = MathAbs(tp - planned) / risk;
-      if(geom > 0.0)
-         return geom;
-   }
-   if(json_rr > 0.0)
-      return json_rr;
-   return 2.0;
-}
-
-int ConfirmBarHit(const int direction, const double ref_price, const double sl_d,
-                  const double confirm_r, const double cancel_r,
-                  const double bid_h, const double bid_l, const double spr)
-{
-   // -1 cancel, 1 fill, 0 wait. Same-bar confirm+cancel → cancel (path unknown).
-   if(sl_d <= 0.0 || confirm_r <= 0.0)
-      return 0;
-   const double fill_px = ref_price + direction * sl_d * confirm_r;
-   const double cancel_px = ref_price - direction * sl_d * cancel_r;
-   if(direction > 0)
-   {
-      if(bid_l <= cancel_px)
-         return -1;
-      if(bid_h >= fill_px)
-         return 1;
-      return 0;
-   }
-   const double ask_h = bid_h + spr;
-   const double ask_l = bid_l + spr;
-   if(ask_h >= cancel_px)
-      return -1;
-   if(ask_l <= fill_px)
-      return 1;
-   return 0;
 }
 
 //+------------------------------------------------------------------+
@@ -1427,23 +1372,6 @@ bool ApplyLiveDecisionSlot(const int slot, const string json, bool &any_open)
       return true;
    }
    SetActiveSlot(slot);
-   const double confirm_r = JsonGetDouble(json, "confirm_r", 0.0);
-   string cmd0 = JsonGetString(json, "cmd");
-   StringToLower(cmd0);
-   string reason0 = JsonGetString(json, "reason");
-   StringToLower(reason0);
-   string sid0 = JsonGetString(json, "signal_id");
-   const bool manual_open = (cmd0 == "market") || (StringFind(reason0, "manual") >= 0)
-                            || (StringFind(sid0, "manual_test") == 0);
-   if(confirm_r > 0.0 && !manual_open)
-   {
-      g_slot_pending[slot] = json;
-      g_slot_confirm_wait[slot] = 0;
-      g_slot_confirm_ref[slot] = 0.0;
-      g_slot_confirm_sld[slot] = 0.0;
-      PublishBarSyncModel(slot, "PENDING", action, "confirm");
-      return true;
-   }
    if(OpenFromDecision(json))
    {
       any_open = true;
@@ -1485,7 +1413,14 @@ void TryRecoverLateDecisions()
       }
       else
       {
-         ApplyLiveDecisionSlot(s, json, any_open);
+         SetActiveSlot(s);
+         if(OpenFromDecision(json))
+         {
+            any_open = true;
+            PublishBarSyncModel(s, "ENTERED", action, "late");
+         }
+         else
+            PublishBarSyncModel(s, "FAIL", action, "OrderSend");
       }
       changed = true;
    }
@@ -1771,10 +1706,14 @@ bool OpenFromDecision(const string json)
    }
 
    // Same as HistoryFeed paper: decision SL/TP are vs planned entry; live fills
-   // at current bid/ask. Rebase with planned-geometry RR (clip-safe) so
-   // tp_ignores_spread_buffer is not undone by genome rr.
+   // at current bid/ask. Rebase so risk/RR (and lot size) stay as intended —
+   // otherwise risk collapses → oversized lots + inflated R.
    double planned_risk = (planned > 0.0) ? MathAbs(planned - sl) : 0.0;
-   double rr = PlannedGeometryRR(planned, sl, tp, JsonGetDouble(json, "rr", 0.0));
+   double rr = JsonGetDouble(json, "rr", 0.0);
+   if(rr <= 0.0 && planned_risk > 0.0 && planned > 0.0)
+      rr = MathAbs(tp - planned) / planned_risk;
+   if(rr <= 0.0)
+      rr = 2.0;
 
    if(planned_risk > 0.0)
    {
@@ -2298,9 +2237,6 @@ bool LoadHistoryRatesRange()
       g_slot_pending[i] = "";
       g_slot_ticket[i] = 0;
       g_slot_sid[i] = "";
-      g_slot_confirm_wait[i] = 0;
-      g_slot_confirm_ref[i] = 0.0;
-      g_slot_confirm_sld[i] = 0.0;
    }
    Print("ForgeBridgeLC2G23 HistoryFeed loaded bars=", g_hist_n,
          " from=", TimeToString(g_hist_rates[0].time, TIME_DATE | TIME_MINUTES),
@@ -2427,112 +2363,6 @@ void ManagePaperHistory(const MqlRates &r)
                        TimeToString(r.time, TIME_DATE | TIME_MINUTES));
 }
 
-void IncrementConfirmWaits()
-{
-   for(int s = 0; s < g_model_n; s++)
-   {
-      if(g_slot_pending[s] == "")
-         continue;
-      const double cr = JsonGetDouble(g_slot_pending[s], "confirm_r", 0.0);
-      if(cr <= 0.0 || g_slot_confirm_ref[s] <= 0.0)
-         continue;
-      g_slot_confirm_wait[s]++;
-      int wait_n = (int)JsonGetDouble(g_slot_pending[s], "confirm_wait_bars", 4.0);
-      if(wait_n < 1)
-         wait_n = 4;
-      if(g_slot_confirm_wait[s] >= wait_n)
-      {
-         Print("ForgeBridge confirm timeout model=", g_model_ids[s]);
-         g_slot_pending[s] = "";
-         g_slot_confirm_wait[s] = 0;
-         g_slot_confirm_ref[s] = 0.0;
-         g_slot_confirm_sld[s] = 0.0;
-      }
-   }
-}
-
-void TryFillConfirmPendings()
-{
-   if(InpMode == BRIDGE_HISTORY_FEED)
-      return;
-   LoadModelsRoster();
-   const double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   const double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   const double spr = MathMax(0.0, ask - bid);
-   double bid_h = iHigh(_Symbol, Period(), 0);
-   double bid_l = iLow(_Symbol, Period(), 0);
-   if(bid_h <= 0.0 || bid_l <= 0.0)
-   {
-      bid_h = bid;
-      bid_l = bid;
-   }
-   for(int s = 0; s < g_model_n; s++)
-   {
-      if(g_slot_pending[s] == "")
-         continue;
-      if(PositionsByMagic(g_model_magics[s]) > 0)
-      {
-         g_slot_pending[s] = "";
-         g_slot_confirm_wait[s] = 0;
-         g_slot_confirm_ref[s] = 0.0;
-         g_slot_confirm_sld[s] = 0.0;
-         continue;
-      }
-      const string json = g_slot_pending[s];
-      const double confirm_r = JsonGetDouble(json, "confirm_r", 0.0);
-      if(confirm_r <= 0.0)
-         continue;
-      string action = JsonGetString(json, "action");
-      StringToUpper(action);
-      if(action != "BUY" && action != "SELL")
-         continue;
-      const double planned = JsonGetDouble(json, "entry", 0.0);
-      const double sl0 = JsonGetDouble(json, "sl", 0.0);
-      const double planned_risk = (planned > 0.0) ? MathAbs(planned - sl0) : 0.0;
-      const double quote = (action == "BUY") ? ask : bid;
-      if(g_slot_confirm_ref[s] <= 0.0)
-      {
-         g_slot_confirm_ref[s] = quote;
-         g_slot_confirm_sld[s] = (planned_risk > 0.0) ? planned_risk : MathAbs(quote - sl0);
-      }
-      int wait_n = (int)JsonGetDouble(json, "confirm_wait_bars", 4.0);
-      if(wait_n < 1)
-         wait_n = 4;
-      if(g_slot_confirm_wait[s] >= wait_n)
-      {
-         g_slot_pending[s] = "";
-         g_slot_confirm_wait[s] = 0;
-         g_slot_confirm_ref[s] = 0.0;
-         g_slot_confirm_sld[s] = 0.0;
-         continue;
-      }
-      const int dir = (action == "BUY") ? 1 : -1;
-      const double cancel_r = JsonGetDouble(json, "confirm_cancel_r", 0.5);
-      const int hit = ConfirmBarHit(dir, g_slot_confirm_ref[s], g_slot_confirm_sld[s],
-                                   confirm_r, cancel_r, bid_h, bid_l, spr);
-      if(hit < 0)
-      {
-         Print("ForgeBridge confirm cancel model=", g_model_ids[s]);
-         g_slot_pending[s] = "";
-         g_slot_confirm_wait[s] = 0;
-         g_slot_confirm_ref[s] = 0.0;
-         g_slot_confirm_sld[s] = 0.0;
-         continue;
-      }
-      if(hit == 0)
-         continue;
-      SetActiveSlot(s);
-      if(OpenFromDecision(json))
-      {
-         Print("ForgeBridge confirm fill model=", g_model_ids[s], " ", action);
-         g_slot_pending[s] = "";
-         g_slot_confirm_wait[s] = 0;
-         g_slot_confirm_ref[s] = 0.0;
-         g_slot_confirm_sld[s] = 0.0;
-      }
-   }
-}
-
 bool PaperOpenFromDecision(const string json, const MqlRates &r, const string bar_time = "")
 {
    string action = JsonGetString(json, "action");
@@ -2576,77 +2406,41 @@ bool PaperOpenFromDecision(const string json, const MqlRates &r, const string ba
    g_trail_dist = JsonGetDouble(json, "trail_distance_r", 0.5);
    g_max_hold = (int)JsonGetDouble(json, "max_hold_bars", InpMaxHoldBars);
 
-   // Rebase SL/TP onto Bid/Ask (or confirm-stop) fill using planned geometry RR.
-   g_confirm_kept_pending = false;
-   const double json_rr = JsonGetDouble(json, "rr", 0.0);
-   const double rr = PlannedGeometryRR(planned, sl, tp, json_rr);
-   const double planned_risk = (planned > 0.0) ? MathAbs(planned - sl) : 0.0;
-   const double planned_sl = sl;
-   const double planned_tp = tp;
-   double fill_entry = entry_price;
-   const double confirm_r = JsonGetDouble(json, "confirm_r", 0.0);
-   const int cslot = (g_active_slot >= 0) ? g_active_slot : 0;
-   if(confirm_r > 0.0)
-   {
-      int wait_n = (int)JsonGetDouble(json, "confirm_wait_bars", 4.0);
-      if(wait_n < 1)
-         wait_n = 4;
-      const double cancel_r = JsonGetDouble(json, "confirm_cancel_r", 0.5);
-      if(g_slot_confirm_wait[cslot] == 0)
-      {
-         g_slot_confirm_ref[cslot] = entry_price;
-         g_slot_confirm_sld[cslot] = (planned_risk > 0.0) ? planned_risk : MathAbs(entry_price - sl);
-      }
-      if(g_slot_confirm_wait[cslot] >= wait_n)
-      {
-         g_slot_confirm_wait[cslot] = 0;
-         g_slot_confirm_ref[cslot] = 0.0;
-         g_slot_confirm_sld[cslot] = 0.0;
-         return false;
-      }
-      const int dir = (action == "BUY") ? 1 : -1;
-      const int hit = ConfirmBarHit(dir, g_slot_confirm_ref[cslot], g_slot_confirm_sld[cslot],
-                                   confirm_r, cancel_r, r.high, r.low, spr);
-      g_slot_confirm_wait[cslot]++;
-      if(hit < 0)
-      {
-         g_slot_confirm_wait[cslot] = 0;
-         g_slot_confirm_ref[cslot] = 0.0;
-         g_slot_confirm_sld[cslot] = 0.0;
-         return false;
-      }
-      if(hit == 0)
-      {
-         g_confirm_kept_pending = true;
-         return false;
-      }
-      fill_entry = g_slot_confirm_ref[cslot] + dir * g_slot_confirm_sld[cslot] * confirm_r;
-      g_slot_confirm_wait[cslot] = 0;
-      g_slot_confirm_ref[cslot] = 0.0;
-      g_slot_confirm_sld[cslot] = 0.0;
-   }
+   // Rebase SL/TP onto Bid/Ask fill using planned risk/RR from App decision.
+   // Decision levels are vs lab spread-adjusted entry; live also rebases onto
+   // current Ask/Bid so lot size and R stay as intended.
+   double planned_risk = (planned > 0.0) ? MathAbs(planned - sl) : 0.0;
+   double rr = JsonGetDouble(json, "rr", 0.0);
+   if(rr <= 0.0 && planned_risk > 0.0 && planned > 0.0)
+      rr = MathAbs(tp - planned) / planned_risk;
+   if(rr <= 0.0)
+      rr = 2.0;
 
    if(planned_risk > 0.0)
    {
       if(action == "BUY")
       {
-         sl = fill_entry - planned_risk;
-         tp = fill_entry + planned_risk * rr;
+         sl = entry_price - planned_risk;
+         tp = entry_price + planned_risk * rr;
       }
       else
       {
-         sl = fill_entry + planned_risk;
-         tp = fill_entry - planned_risk * rr;
+         sl = entry_price + planned_risk;
+         tp = entry_price - planned_risk * rr;
       }
    }
-   else if(planned > 0.0)
+   else
    {
-      const double delta = fill_entry - planned;
-      sl = planned_sl + delta;
-      tp = planned_tp + delta;
+      // No planned entry: shift absolute levels by fill delta if possible
+      if(planned > 0.0)
+      {
+         double delta = entry_price - planned;
+         sl += delta;
+         tp += delta;
+      }
    }
 
-   double sl_dist = MathAbs(fill_entry - sl);
+   double sl_dist = MathAbs(entry_price - sl);
    if(sl_dist <= 0.0)
       return false;
    // Guard: refuse near-zero risk (< 0.5 pip) after rebase
@@ -2662,7 +2456,7 @@ bool PaperOpenFromDecision(const string json, const MqlRates &r, const string ba
    g_open_ticket = g_paper_ticket;
    g_open_signal_id = sid;
    g_open_action = action;
-   g_open_entry = fill_entry;
+   g_open_entry = entry_price;
    g_open_sl = sl;
    g_open_sl_initial = sl;
    g_open_tp = tp;
@@ -2678,9 +2472,9 @@ bool PaperOpenFromDecision(const string json, const MqlRates &r, const string ba
    if(bt == "")
       bt = g_sim_last_bar;
    WriteFillJsonEx("open", sid, action, true, "opened",
-                   g_open_ticket, fill_entry, sl, tp, lots, 0, "opened",
+                   g_open_ticket, entry_price, sl, tp, lots, 0, "opened",
                    false, "strategy", bt);
-   Print("ForgeBridgeLC2G23 HistoryFeed paper ", action, " @", fill_entry,
+   Print("ForgeBridgeLC2G23 HistoryFeed paper ", action, " @", entry_price,
          " sl=", sl, " tp=", tp, " risk=", sl_dist,
          " spread=", spr, " sid=", sid, " bar=", bt);
    return true;
@@ -2702,7 +2496,6 @@ void ApplyPendingOpen(const MqlRates &r)
       else if(PositionsByMagic(g_model_magics[s]) > 0)
          continue;
       SetActiveSlot(s);
-      g_confirm_kept_pending = false;
       bool ok = false;
       if(UsePaperFills())
          ok = PaperOpenFromDecision(g_slot_pending[s], r, bt);
@@ -2726,8 +2519,7 @@ void ApplyPendingOpen(const MqlRates &r)
          g_slot_trail_dist[s] = g_trail_dist;
          g_slot_max_hold[s] = g_max_hold;
       }
-      if(!g_confirm_kept_pending)
-         g_slot_pending[s] = "";
+      g_slot_pending[s] = "";
    }
    // Compat aliases
    g_paper_open = false;
@@ -3137,10 +2929,6 @@ void OnTick()
    TryRecoverLateDecisions();
 
    datetime t0 = iTime(_Symbol, Period(), 0);
-   if(t0 != 0 && g_last_bar != 0 && t0 != g_last_bar)
-      IncrementConfirmWaits();
-   TryFillConfirmPendings();
-
    if(t0 == 0 || t0 == g_last_bar)
       return;
    g_last_bar = t0;
@@ -3179,11 +2967,6 @@ void OnTick()
       if(PositionsByMagic(g_model_magics[s]) > 0)
       {
          PublishBarSyncModel(s, "OPEN", "-", "skip");
-         continue;
-      }
-      if(g_slot_pending[s] != "")
-      {
-         PublishBarSyncModel(s, "PENDING", "-", "confirm");
          continue;
       }
       pending[s] = true;
