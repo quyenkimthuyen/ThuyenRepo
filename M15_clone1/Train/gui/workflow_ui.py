@@ -1,0 +1,129 @@
+"""UI quy trình live — stepper & hành động nhanh."""
+from __future__ import annotations
+
+import html
+
+import streamlit as st
+
+from gui.live_workflow import (
+  assess_workflow,
+  mark_compare_started,
+  save_workflow_state,
+  workflow_steps,
+)
+from gui.ui_preferences import set_widget_preference
+
+
+def _status_mark(done: bool, active: bool) -> str:
+  if done:
+    return "Xong"
+  if active:
+    return "Đang làm"
+  return "Chờ"
+
+
+def _go(page: str, *, learning_tab: str | None = None):
+  set_widget_preference("nav_page", page, "navigation.page")
+  if learning_tab:
+    set_widget_preference("learning_tab", learning_tab, "navigation.learning_tab")
+  st.rerun()
+
+
+def render_workflow_stepper(*, compact: bool = False):
+  """Thanh bước — dùng trên Tổng quan."""
+  wf = assess_workflow()
+  cur = wf["current_step"]
+  steps = workflow_steps()
+  cards = []
+  for spec in steps:
+    sid = spec["id"]
+    info = wf["steps"][sid]
+    done = bool(info["done"])
+    active = sid == cur and not done
+    cls = "ff-step"
+    if done:
+      cls += " is-done"
+    elif active:
+      cls += " is-active"
+    title = html.escape(spec["title"] if not compact else spec.get("short", f"B{sid}"))
+    sub = html.escape(spec.get("subtitle") or "") if not compact else ""
+    mark = _status_mark(done, active)
+    sub_html = f'<div class="ff-step-sub">{sub}</div>' if sub else ""
+    cards.append(
+      f'<div class="{cls}">'
+      f'<div class="ff-step-top">{sid} · {mark}</div>'
+      f'<div class="ff-step-title">{title}</div>'
+      f"{sub_html}</div>"
+    )
+  try:
+    st.html(f'<div class="ff-steps">{"".join(cards)}</div>')
+  except Exception:
+    st.markdown(f'<div class="ff-steps">{"".join(cards)}</div>', unsafe_allow_html=True)
+
+
+def render_workflow_panel():
+  """Panel quy trình gọn — một stepper + một CTA."""
+  wf = assess_workflow()
+  cur = wf["current_step"]
+  state = wf["state"]
+  steps = workflow_steps()
+  spec = steps[cur - 1]
+  info = wf["steps"][cur]
+
+  st.markdown("##### Quy trình trước khi live")
+  render_workflow_stepper()
+
+  st.markdown(f"**Bước {cur}: {spec['title']}** — {spec['detail']}")
+  st.caption(f"Tiến độ: {info['progress']}")
+
+  c1, c2 = st.columns(2)
+  with c1:
+    if st.button(
+      f"Làm bước {cur}",
+      type="primary",
+      use_container_width=True,
+      key=f"wf_go_{cur}",
+      icon=":material/play_arrow:",
+    ):
+      if cur == 4:
+        mark_compare_started()
+      _go(spec["nav_page"], learning_tab=spec.get("learning_tab"))
+  with c2:
+    if not info["done"] and st.button(
+      "Đánh dấu xong",
+      use_container_width=True,
+      key=f"wf_done_{cur}",
+      icon=":material/check:",
+    ):
+      manual = dict(state.get("manual") or {})
+      manual[str(cur)] = True
+      state["manual"] = manual
+      save_workflow_state(state)
+      st.toast(f"Đã đánh dấu bước {cur}")
+      st.rerun()
+
+  with st.expander("Tất cả các bước", expanded=False):
+    for step in steps:
+      sid = step["id"]
+      sinfo = wf["steps"][sid]
+      mark = "✓" if sinfo["done"] else "·"
+      st.markdown(f"{mark} **{sid}. {step['title']}** — {sinfo['progress']}")
+
+
+def render_workflow_banner(*, page_step: int | None = None):
+  """Banner ngắn quy trình (Compare / Bridge)."""
+  wf = assess_workflow()
+  cur = wf["current_step"]
+  steps = workflow_steps()
+  spec = steps[(page_step or cur) - 1]
+  info = wf["steps"][spec["id"]]
+  if info["done"] and page_step is None:
+    return
+  st.caption(
+    f"Quy trình · Bước {spec['id']}/5: **{spec['title']}** — {info['progress']}"
+  )
+
+
+def render_baseline_hint():
+  """Deprecated — không còn bước KB OFF."""
+  return
