@@ -196,7 +196,7 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
   ea_status = str(ctrl.get("ea_status") or st.get("ea_status") or "idle")
   enabled = bool(ctrl.get("enabled"))
   last_bar = ctrl.get("last_bar") or st.get("last_bar") or ""
-  if enabled or ea_status == "running":
+  if enabled:
     status = "running"
   elif ea_status == "paused" or st.get("status") == "paused":
     status = "paused"

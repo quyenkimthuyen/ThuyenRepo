@@ -69,6 +69,27 @@ def test_protocol_aliases_sim_dir_to_live():
   assert "return resolve_live_bridge_dir()" in text
 
 
+def test_history_replay_active_ignores_stale_ea_status(tmp_path):
+  """Stop + dead EA left ea_status=running; picker must still unlock."""
+  from mt5_bridge.protocol import atomic_write_json, history_replay_active
+
+  atomic_write_json(
+    tmp_path / "sim_control.json",
+    {
+      "enabled": False,
+      "ea_status": "running",
+      "bars_done": 514,
+      "bars_total": 929,
+    },
+  )
+  assert history_replay_active(tmp_path) is False
+  atomic_write_json(
+    tmp_path / "sim_control.json",
+    {"enabled": True, "ea_status": "idle"},
+  )
+  assert history_replay_active(tmp_path) is True
+
+
 def test_deploy_script_is_live_only():
   text = (ROOT / "scripts" / "deploy_xm_forgebridge.ps1").read_text(encoding="utf-8-sig")
   assert "One Live EA" in text

@@ -451,11 +451,13 @@ def read_sim_control(bridge_dir: Path | None = None) -> dict[str, Any]:
 
 
 def history_replay_active(bridge_dir: Path | None = None) -> bool:
-  """True while the Live EA is running a from/to history test."""
+  """True while the App has a from/to history test enabled on this bridge.
+
+  Leftover ``ea_status=running`` after Stop (enabled=false) must not count.
+  That ghost locked Live Trade → Trade Models until a new feed rewrote the file.
+  """
   ctrl = read_sim_control(bridge_dir)
-  if bool(ctrl.get("enabled")):
-    return True
-  return str(ctrl.get("ea_status") or "") == "running"
+  return bool(ctrl.get("enabled"))
 
 
 def write_sim_control(

@@ -271,6 +271,8 @@ def _render_bridge_models_tab() -> list[str]:
     options=labels,
     multiple=True,
   )
+  if not (st.session_state.get("mt5_bridge_models") or []) and default_labels:
+    st.session_state["mt5_bridge_models"] = list(default_labels)
   st.subheader("Trade Models · Bridge")
   st.caption(
     "Chọn model **một lần** — dùng cho **Live** và **test lịch sử**. "
@@ -304,7 +306,28 @@ def _render_bridge_models_tab() -> list[str]:
     pass
 
   if running:
+    live_on = bool(bridge_bg.get_status().get("running"))
+    feed_on = bool(bridge_bg.get_sim_status().get("running"))
     st.info("Live hoặc test lịch sử đang chạy — Stop trước khi đổi model.")
+    stop_l, stop_f = st.columns(2)
+    if live_on:
+      if stop_l.button(
+        "Stop Bridge",
+        key="bridge_models_stop_live",
+        use_container_width=True,
+        type="primary",
+      ):
+        bridge_bg.stop_worker()
+        st.rerun()
+    if feed_on:
+      if stop_f.button(
+        "Stop test lịch sử",
+        key="bridge_models_stop_feed",
+        use_container_width=True,
+        type="primary",
+      ):
+        bridge_bg.stop_sim_worker()
+        st.rerun()
 
   remine_on = bool(cfg.get("remine_each_week", True))
   restore_widget(
