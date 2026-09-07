@@ -1002,17 +1002,16 @@ GBP_FILL_WK5_BANK = {
 }
 
 # App-recommended direction after Bid/Ask fills (BUY Ask / SELL Bid).
-# Elite OR-quality (RR 3.2–4) was fit on half-spread lab fills — do not
-# re-offer it as the EUR default.
-RECOMMENDED_PRESET = "eur_fill_2pd"
+# Desk winners on clone OOS 2026-h1: EUR wk5_mid, GBP wk5_bank.
+RECOMMENDED_PRESET = "eur_fill_wk5_mid"
 
-# EUR Settings: volume hunt first (5 tpw × WR>50), then 2/day densify.
+# EUR Settings: OOS winners first (mid / wk5 / bank), then volume hunt + 2pd.
 EUR_FILL_CURATED: tuple[str, ...] = (
+  "eur_fill_wk5_mid",
   "eur_fill_wk5",
+  "eur_fill_wk5_bank",
   "eur_fill_wk5_mkt",
   "eur_fill_wk5_open",
-  "eur_fill_wk5_bank",
-  "eur_fill_wk5_mid",
   "eur_fill_2pd",
   "eur_fill_r50_clip",
   "eur_fill_r50",
@@ -1024,8 +1023,10 @@ EUR_FILL_CURATED: tuple[str, ...] = (
   "eur_fill_ss_more",
 )
 
-# GBP Settings: same volume hunt first.
+# GBP Settings: OOS winners first (bank / lift), then volume hunt.
 GBP_FILL_CURATED: tuple[str, ...] = (
+  "gbp_fill_wk5_bank",
+  "gbp_fill_wk5_lift",
   "gbp_fill_wk5",
   "gbp_fill_wk5_mkt",
   "gbp_fill_wk5_open",
@@ -1529,6 +1530,16 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "knobs": "confirm 0 · RSI70 AND VWAP2.5 · gap 2 · ML 0.28–0.36",
     "tradeoff": "n cao nhất · WR dễ dưới 50 nếu DNA yếu",
   },
+  "gbp_fill_wk5_bank": {
+    "intent": "GBP đã thắng OOS — volume open + trail 1.6R (WR54R76)",
+    "knobs": "flow_frontier · confirm 0 · trail OOS 1.6/0.40 · RR 2.0–2.6",
+    "tradeoff": "n dày · WR sát 50–54 · DNA bank không cắt giờ",
+  },
+  "gbp_fill_wk5_lift": {
+    "intent": "GBP volume — open + cắt giờ độc + trail 1.8R (WR51R65)",
+    "knobs": "confirm 0 · surgery hour · trail OOS 1.8 · cùng DNA open",
+    "tradeoff": "WR có thể thấp hơn bank · R vẫn dương trên 2025-h2",
+  },
   "gbp_fill_ss_tight_hyb24": {
     "intent": "Cùng entry ss_tight — trail muộn 2.4R sau khi mine full TP",
     "knobs": "confirm 0.13 wait6 · OOS hybrid 2.4/0.40 · miner vẫn exit:full",
@@ -1628,7 +1639,7 @@ def recommended_preset() -> str:
   """Desk-aware default mining direction (EUR Bid/Ask vs GBP fill)."""
   desk = _desk_id()
   if desk.startswith("g"):
-    return "gbp_fill_2pd"
+    return "gbp_fill_wk5_bank"
   return RECOMMENDED_PRESET
 
 

@@ -422,6 +422,52 @@ def format_model_oneline(m: dict, *, report: dict | None = None) -> str:
   return line
 
 
+def _oos_span_weeks(start, end) -> float | None:
+  """Calendar weeks between OOS dates (same window the book was scored on)."""
+  if not start or not end:
+    return None
+  try:
+    a = datetime.strptime(str(start)[:10], "%Y-%m-%d")
+    b = datetime.strptime(str(end)[:10], "%Y-%m-%d")
+  except (TypeError, ValueError):
+    return None
+  days = (b - a).days
+  if days <= 0:
+    return None
+  return days / 7.0
+
+
+def realized_trades_per_week(model: dict, oos: dict | None = None) -> float | None:
+  """OOS lệnh/tuần for tables. Prefer stored field; else n_trades / OOS span.
+
+  Grid rows have trades_per_week; older TMs often omitted it so the catalog
+  showed None while n_trades was present.
+  """
+  for src in (oos or {}, model or {}):
+    raw = src.get("trades_per_week")
+    if raw is None:
+      continue
+    try:
+      return round(float(raw), 2)
+    except (TypeError, ValueError):
+      continue
+  n = None
+  for src in (oos or {}, model or {}):
+    if src.get("n_trades") is not None:
+      n = src.get("n_trades")
+      break
+  try:
+    n_f = float(n)
+  except (TypeError, ValueError):
+    return None
+  start = (oos or {}).get("oos_from") or (model or {}).get("oos_from")
+  end = (oos or {}).get("oos_to") or (model or {}).get("oos_to")
+  weeks = _oos_span_weeks(start, end)
+  if not weeks:
+    return None
+  return round(n_f / weeks, 2)
+
+
 def _mining_space_brief(ss: dict | None) -> str:
   """Compact mining knobs for compare tables."""
   ss = ss or {}
@@ -564,7 +610,7 @@ def build_trade_models_compare_rows(
     dd = _num("max_drawdown_r", "max_dd_r")
     pf = _num("profit_factor", "pf")
     n_trades = _num("n_trades", "trades")
-    tpw = _num("trades_per_week")
+    tpw = realized_trades_per_week(m, oos)
     if n_trades is not None:
       try:
         n_trades = int(n_trades)
@@ -921,6 +967,7 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     "max_drawdown_r": row.get("max_drawdown_r"),
     "profit_factor": row.get("profit_factor"),
     "n_trades": row.get("n_trades"),
+    "trades_per_week": row.get("trades_per_week"),
     "feature_profile": row.get("feature_profile") or DEFAULT_FEATURE_PROFILE,
     "mining_search_space": row.get("mining_search_space"),
     "source": "grid_search",
@@ -1066,12 +1113,14 @@ def create_trade_model(
       # Ensure older models get a KB pin when reused.
       try:
         from trade_model_kb_pin import ensure_model_kb_pin
+        from kb_profiles import protect_from_models
         store = load_models_store()
         for m in store["models"]:
           if m.get("id") != existing["id"]:
             continue
           before = m.get("kb_fingerprint")
           ensure_model_kb_pin(m)
+          protect_from_models([m])
           if m.get("kb_fingerprint") != before:
             existing = m
             save_models_store(store)
@@ -1098,6 +1147,8 @@ def create_trade_model(
   try:
     from trade_model_kb_pin import ensure_model_kb_pin
     ensure_model_kb_pin(model)
+    from kb_profiles import protect_from_models
+    protect_from_models([model])
   except Exception:
     pass
   store = load_models_store()

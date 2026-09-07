@@ -1,6 +1,6 @@
 """Export a TrainApp Trade Model to a Live `.tmpkg` package.
 
-Writes the same v1 layout Trade imports at http://127.0.0.1:8801/?nav=Models
+Writes the same v1 layout Trade imports at the clone Live Models URL
 (`manifest.json` + `model.json` + `kb_pin.json` + `schedule.json`).
 """
 from __future__ import annotations
@@ -21,6 +21,19 @@ from gui.navigation import LABEL_TAB_OOS  # noqa: E402
 
 def trade_app_root() -> Path:
   return TRAINAPP_ROOT.parent / "Trade"
+
+
+def trade_models_import_url() -> str:
+  """Clone Trade Live Models tab (port from Trade/shared/constants.py)."""
+  try:
+    root = trade_app_root()
+    if str(root) not in sys.path:
+      sys.path.insert(0, str(root))
+    from shared.constants import LIVE_APP_PORT
+    port = int(LIVE_APP_PORT)
+  except Exception:
+    port = 9001
+  return f"http://127.0.0.1:{port}/?nav=Models"
 
 
 def default_export_dir() -> Path:
@@ -96,7 +109,16 @@ def metrics_from_model(m: dict) -> dict:
     "total_r", "profit_factor", "win_rate_pct", "max_drawdown_r",
     "n_trades", "trades_per_week", "oos_from", "oos_to",
   )
-  return {k: m.get(k) for k in keys if m.get(k) is not None}
+  out = {k: m.get(k) for k in keys if m.get(k) is not None}
+  if out.get("trades_per_week") is None:
+    try:
+      from gui.trade_model import realized_trades_per_week
+      tpw = realized_trades_per_week(m)
+      if tpw is not None:
+        out["trades_per_week"] = tpw
+    except Exception:
+      pass
+  return out
 
 
 def resolve_mining_search_space(model: dict) -> dict | None:

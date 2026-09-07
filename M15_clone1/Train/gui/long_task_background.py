@@ -796,7 +796,9 @@ def _worker_kb_then_grid(state: dict):
       "learn_until": era["learn_until"],
     }
     out = ensure_profile_learned(spec, epochs=loops, reset=reset)
-    if out.get("skipped"):
+    if out.get("protected"):
+      skipped.append(era["kb_profile"])
+    elif out.get("skipped"):
       skipped.append(era["kb_profile"])
     else:
       learned.append(era["kb_profile"])

@@ -6,7 +6,9 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from gui.export_live_package import default_export_dir, export_model_tmpkg, export_readiness
+from gui.export_live_package import (
+  default_export_dir, export_model_tmpkg, export_readiness, trade_models_import_url,
+)
 from gui.trade_model import (
   OVERVIEW_HIGH_DD_R,
   bridge_ghost_model_ids,
@@ -22,6 +24,7 @@ from gui.trade_model import (
   load_model_report,
   overview_row_visible,
   prune_bridge_roster,
+  realized_trades_per_week,
   rename_trade_model,
   reset_trade_model_label,
   set_active_trade_model,
@@ -514,7 +517,7 @@ def _render_models_overview(models: list[dict], active: dict | None):
         f"Package `{pkg.name}` · {exp.get('weeks') or 0} tuần OOS · `{pkg}`"
       )
       st.caption(
-        "Trade import: [http://127.0.0.1:8801/?nav=Models](http://127.0.0.1:8801/?nav=Models) "
+        f"Trade import: [{trade_models_import_url()}]({trade_models_import_url()}) "
         "(tab **Models**, không phải Live). Live chỉ chạy roster đã import."
       )
       if pkg.is_file():
@@ -643,11 +646,13 @@ def _render_model_info(active: dict):
     o = report.get("overall_oos") or {}
     y = report.get("last_1_year") or {}
     items = backtest_kpi_items(o, y)
-    if o.get("trades_per_week") is not None:
+    tpw = realized_trades_per_week(active, o)
+    if tpw is not None:
+      n_show = o.get("n_trades", active.get("n_trades"))
       items.append((
         METRIC_LABELS["trades_per_week"],
-        f"{o['trades_per_week']}",
-        f"{o.get('n_trades', '—')} lệnh",
+        f"{tpw}",
+        f"{n_show} lệnh" if n_show is not None else "",
       ))
     kpi_row(items)
 

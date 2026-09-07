@@ -327,6 +327,64 @@ def lookup_week_strategy(model_id: str, week_start) -> dict | None:
   return entry
 
 
+def schedule_feature_usage(payload: dict | None) -> dict:
+  """BUY/SELL feature counts across OOS weekly genomes (weeks present + common thr)."""
+  from collections import Counter
+
+  weekly = (payload or {}).get("weekly") or []
+  long_weeks: Counter[str] = Counter()
+  short_weeks: Counter[str] = Counter()
+  long_thr: dict[str, Counter[str]] = {}
+  short_thr: dict[str, Counter[str]] = {}
+  n_weeks = 0
+
+  def _eat(rules, week_c: Counter[str], thr_c: dict[str, Counter[str]]) -> None:
+    seen: set[str] = set()
+    for r in rules or []:
+      if not isinstance(r, dict):
+        continue
+      feat = str(r.get("feat") or r.get("feature") or "").strip()
+      if not feat:
+        continue
+      if feat not in seen:
+        week_c[feat] += 1
+        seen.add(feat)
+      op = str(r.get("op") or "")
+      thr = r.get("thr", r.get("threshold"))
+      key = f"{op} {thr}".strip()
+      thr_c.setdefault(feat, Counter())[key] += 1
+
+  for row in weekly:
+    if not isinstance(row, dict):
+      continue
+    strat = row.get("strategy")
+    if not isinstance(strat, dict):
+      continue
+    n_weeks += 1
+    _eat(strat.get("long_rules"), long_weeks, long_thr)
+    _eat(strat.get("short_rules"), short_weeks, short_thr)
+
+  def _rows(week_c: Counter[str], thr_c: dict[str, Counter[str]]) -> list[dict]:
+    out: list[dict] = []
+    for feat, weeks in week_c.most_common(24):
+      common = ""
+      if feat in thr_c and thr_c[feat]:
+        common = thr_c[feat].most_common(1)[0][0]
+      out.append({
+        "feat": feat,
+        "weeks": int(weeks),
+        "pct_weeks": round(100.0 * weeks / n_weeks, 1) if n_weeks else 0.0,
+        "common_thr": common,
+      })
+    return out
+
+  return {
+    "n_weeks": n_weeks,
+    "long": _rows(long_weeks, long_thr),
+    "short": _rows(short_weeks, short_thr),
+  }
+
+
 def append_live_week(model_id: str, week_entry: dict) -> Path:
   """Append or replace a future week genome without touching OOS schedule."""
   with _lock:

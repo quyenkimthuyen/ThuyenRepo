@@ -176,6 +176,10 @@ def render(embedded: bool = False):
   _init_widget_state(s, era_options, option_to_key, oos_options, oos_option_to_key)
 
   st.markdown("#### Chiến lược")
+  st.caption(
+    "**Cửa sổ tuần** dưới đây là khung mine của **Grid Search**. "
+    "Học KB không dùng số tuần này — KB học cả giai đoạn đã chọn, miner mặc định + yaml tpw."
+  )
   train_weeks = st.multiselect(
     "Cửa sổ học chiến lược (tuần)",
     TRAIN_WEEK_OPTIONS,
@@ -184,7 +188,10 @@ def render(embedded: bool = False):
   )
 
   st.markdown("#### Học bộ nhớ")
-  st.caption("Giai đoạn học lưu trong Cài đặt — có thể thêm/bớt, không hard-code.")
+  st.caption(
+    "Giai đoạn học lưu trong Cài đặt. Pipeline học KB **không** đọc preset mining — "
+    "chỉ Grid Search dùng list preset."
+  )
   _render_era_catalog(s)
 
   picked_eras = st.multiselect(
@@ -340,23 +347,23 @@ def render(embedded: bool = False):
   )
   if is_gbp:
     mining_help = (
-      "Hướng **GBP >5 lệnh/tuần, WR>50**: `gbp_fill_wk5` (flow_frontier, nới confirm). "
-      "`gbp_fill_2pd` giữ confirm 0.12 nếu muốn sách thưa WR cao. "
-      "Bỏ trống = miner baseline cũ (không khuyến nghị)."
+      "Preset **chỉ cho Grid Search**. Học KB bỏ qua list này. "
+      "Đã thắng OOS: `gbp_fill_wk5_bank` (WR54R76), `gbp_fill_wk5_lift`. "
+      "`gbp_fill_2pd` / r50 vẫn chọn được nếu muốn sách thưa."
     )
     rec_cap = (
-      "Reset / chạy lại GBP: **wk5** (`gbp_fill_wk5,gbp_fill_wk5_mkt,gbp_fill_wk5_open`) · OOS **2026-h1**. "
-      f"`{rec}` vẫn là hướng 2pd cũ. Trade Model active mang search space riêng cho Live."
+      "Mặc định GBP: **bank + lift** (`gbp_fill_wk5_bank,gbp_fill_wk5_lift,gbp_fill_wk5`) · "
+      f"OOS **2026-h1** · era **2025-h2**. Khuyến nghị Grid: `{rec}`."
     )
   else:
     mining_help = (
-      "Hướng **EUR Total R↑, WR>50**: `eur_fill_wk5` (confirm 0.08, đã in ~+68R / tpw~3). "
-      "`eur_fill_wk5_bank` = DNA g23 trail 1.6R. Ép tpw>5 (`wk5_open`) kéo WR xuống ~43%. "
-      "`eur_fill_2pd` sách thưa. Bỏ trống = miner baseline cũ (không khuyến nghị)."
+      "Preset **chỉ cho Grid Search**. Học KB bỏ qua list này. "
+      "Đã thắng OOS: `eur_fill_wk5_mid` (WR61R61), `eur_fill_wk5`, `eur_fill_wk5_bank`. "
+      "Không filter tpw>5 — Total R thắng ở ~3 lệnh/tuần."
     )
     rec_cap = (
-      "Reset / chạy lại EUR: **wk5** (`eur_fill_wk5,eur_fill_wk5_bank,eur_fill_wk5_mid`) · OOS **2026-h1**. "
-      "Không filter tpw>5 — Total R thắng ở ~3 lệnh/tuần. Trade Model active mang search space riêng cho Live."
+      "Mặc định EUR: **wk5_mid / wk5 / bank** · OOS **2026-h1** · era **2024-h1**. "
+      f"Khuyến nghị Grid: `{rec}`."
     )
   st.caption(fill_cap)
   mining_option_names = st.session_state.get("_settings_mining_option_names") or []
@@ -422,7 +429,8 @@ def render(embedded: bool = False):
   st.markdown("#### Pipeline một lần")
   st.caption(
     "Học đủ epoch cho mọi giai đoạn đã chọn trong Cài đặt, rồi chạy Grid Search "
-    "(train × KB × epoch × mining) theo cấu hình hiện tại. Chạy nền — có thể đổi tab."
+    "(train × KB × epoch × mining) theo cấu hình hiện tại. "
+    "Học KB = miner mặc định + yaml tpw; Grid mới đọc preset mining. Chạy nền — có thể đổi tab."
   )
   from gui.grid_search_background import is_grid_running
   from gui.long_task_background import is_task_running, start_job
@@ -434,8 +442,10 @@ def render(embedded: bool = False):
     "Reset & học lại mọi KB từ đầu",
     value=False,
     key="settings_pipeline_reset",
-    help="Tắt = bỏ qua profile đã đủ epoch. Bật = xóa KB rồi học lại từ đầu.",
+    help="Tắt = bỏ qua profile đã đủ epoch. Bật = xóa KB chưa khóa rồi học lại. KB đã khóa (pin Trade Model) không đụng.",
   )
+  if reset_pipe:
+    st.caption("KB đã khóa sẽ được **bỏ qua** — không xóa, không học đè.")
   n_eras = len(current["learning_era_keys"])
   loops = int(current["learning_loops"])
   if st.button(

@@ -126,7 +126,10 @@ def _ensure_kb(desk: str, *, reset: bool) -> dict:
       "learn_until": era["learn_until"],
     }
     out = ensure_profile_learned(spec, epochs=loops, reset=reset)
-    if out.get("skipped"):
+    if out.get("protected"):
+      skipped.append(era["kb_profile"])
+      _log(desk, f"KB locked skip · {era['kb_profile']} epochs={out.get('epochs')}")
+    elif out.get("skipped"):
       skipped.append(era["kb_profile"])
       _log(desk, f"KB skip (đã đủ) · {era['kb_profile']} epochs={out.get('epochs')}")
     else:

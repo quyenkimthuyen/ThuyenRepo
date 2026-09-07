@@ -189,9 +189,9 @@ def test_elite_presets_opt_in():
   assert space.anti_chase is True
   assert space.anti_chase_fixed_rsi == 58.0
   assert MiningSearchSpace().exit_modes_full_only is False
-  assert RECOMMENDED_PRESET == "eur_fill_2pd"
-  assert recommended_preset() == "eur_fill_2pd"
-  two = mining_search_space_from_dict(get_preset(RECOMMENDED_PRESET))
+  assert RECOMMENDED_PRESET == "eur_fill_wk5_mid"
+  assert recommended_preset() == "eur_fill_wk5_mid"
+  two = mining_search_space_from_dict(get_preset("eur_fill_2pd"))
   assert two.label_rr == 1.0
   assert two.confirm_r == pytest.approx(0.15)
   assert two.confirm_wait_bars == 6
@@ -200,7 +200,8 @@ def test_elite_presets_opt_in():
   assert two.max_hold_bars == (96,)
   assert two.max_trades_per_day == 2
   assert two.rr_ratios == (2.2, 2.6, 3.0)
-  assert "2 lệnh/ngày" in preset_label(RECOMMENDED_PRESET)
+  assert "5 lệnh/tuần" in preset_label(RECOMMENDED_PRESET)
+  assert "2 lệnh/ngày" in preset_label("eur_fill_2pd")
   lab = mining_search_space_from_dict(get_preset("eur_fill_ss_lab"))
   assert lab.confirm_r == pytest.approx(0.16)
   eoq = mining_search_space_from_dict(get_preset("elite_or_quality"))
@@ -215,7 +216,7 @@ def test_elite_presets_opt_in():
   assert list_curated_presets() == list(EUR_FILL_CURATED)
   assert "eur_fill_2pd" in EUR_FILL_CURATED
   assert "eur_fill_wk5" in EUR_FILL_CURATED
-  assert EUR_FILL_CURATED[0] == "eur_fill_wk5"
+  assert EUR_FILL_CURATED[0] == "eur_fill_wk5_mid"
   assert "eur_fill_wk5_bank" in EUR_FILL_CURATED
   assert "eur_fill_wk5_mid" in EUR_FILL_CURATED
   assert "eur_fill_ss_more" in EUR_FILL_CURATED
@@ -419,20 +420,20 @@ def test_preset_blurbs_and_direction_line():
   assert catalog and all("Ý định" in row for row in catalog)
   assert match_preset_name(get_preset(RECOMMENDED_PRESET)) == RECOMMENDED_PRESET
   line = space_direction_line(get_preset(RECOMMENDED_PRESET))
-  assert "Bid/Ask" in line or "label 1.0" in line.lower()
+  assert "confirm" in line.lower() or "wr" in line.lower() or "Bid/Ask" in line
   assert "Baseline miner" in space_direction_line(None)
 
 
 def test_app_settings_default_mining_preset(monkeypatch):
   monkeypatch.setenv("TRAINAPP_DESK", "e21")
   from gui.app_settings import DEFAULT_SETTINGS, _sanitize_settings, default_settings_for_desk
-  assert DEFAULT_SETTINGS["mining_presets"] == ["eur_fill_2pd"]
+  assert DEFAULT_SETTINGS["mining_presets"] == ["eur_fill_wk5_mid"]
   assert DEFAULT_SETTINGS["strategy_train_weeks"] == [8]
   assert DEFAULT_SETTINGS["learning_era_keys"] == ["2025-h1"]
   assert DEFAULT_SETTINGS["oos_window_keys"] == ["2026-h1"]
   assert DEFAULT_SETTINGS["backtest_to"] == "2026-06-30"
   cleaned = _sanitize_settings({"learning_eras": DEFAULT_SETTINGS["learning_eras"]})
-  assert cleaned["mining_presets"] == ["eur_fill_2pd"]
+  assert cleaned["mining_presets"] == ["eur_fill_wk5_mid"]
   assert cleaned["oos_window_keys"] == ["2026-h1"]
   assert [w["key"] for w in cleaned["oos_windows"]] == ["2026-h1", "2025-h2"]
   pinned = _sanitize_settings({"spread_pips": 5.0, "slippage_pips": 0.8})
@@ -440,14 +441,17 @@ def test_app_settings_default_mining_preset(monkeypatch):
   assert pinned["slippage_pips"] == float(DEFAULT_SETTINGS["slippage_pips"])
   s = default_settings_for_desk()
   assert s["mining_presets"] == [
-    "eur_fill_wk5", "eur_fill_wk5_bank", "eur_fill_wk5_mid",
-    "eur_fill_2pd", "eur_fill_r50_clip", "eur_fill_r50",
+    "eur_fill_wk5_mid", "eur_fill_wk5", "eur_fill_wk5_bank",
   ]
   assert s["strategy_train_weeks"] == [8]
-  assert s["learning_era_keys"] == ["2025-h1"]
+  assert s["learning_era_keys"] == ["2024-h1"]
   assert s["oos_window_keys"] == ["2026-h1"]
   assert s["backtest_from"] == "2026-01-01"
   assert s["backtest_to"] == "2026-06-30"
+  from gui.app_settings import format_settings_summary
+  summary = format_settings_summary(s)
+  assert "chỉ Grid" in summary
+  assert "yaml" in summary.lower()
 
 
 def test_g23_fill_aware_defaults(monkeypatch):
@@ -456,10 +460,12 @@ def test_g23_fill_aware_defaults(monkeypatch):
   from mining_presets import GBP_FILL_CURATED, get_preset, list_curated_presets, recommended_preset
   from strategy_miner import mining_search_space_from_dict
 
-  assert recommended_preset() == "gbp_fill_2pd"
+  assert recommended_preset() == "gbp_fill_wk5_bank"
   assert list(list_curated_presets()) == list(GBP_FILL_CURATED)
   assert "gbp_fill_2pd" in GBP_FILL_CURATED
-  assert GBP_FILL_CURATED[0] == "gbp_fill_wk5"
+  assert GBP_FILL_CURATED[0] == "gbp_fill_wk5_bank"
+  assert "gbp_fill_wk5_bank" in GBP_FILL_CURATED
+  assert "gbp_fill_wk5_lift" in GBP_FILL_CURATED
   assert "gbp_fill_wk5" in GBP_FILL_CURATED
   assert "gbp_fill_ss_tight" in GBP_FILL_CURATED
   assert "gbp_fill_elite_vwap" in GBP_FILL_CURATED
@@ -475,10 +481,10 @@ def test_g23_fill_aware_defaults(monkeypatch):
   assert max(book.rr_ratios) <= 3.2
   s = default_settings_for_desk()
   assert s["mining_presets"] == [
-    "gbp_fill_2pd", "gbp_fill_r50_clip", "gbp_fill_r50", "gbp_fill_bar_stop",
-    "gbp_fill_ss_clip", "gbp_fill_elite_or",
+    "gbp_fill_wk5_bank", "gbp_fill_wk5_lift", "gbp_fill_wk5",
   ]
   assert s["strategy_train_weeks"] == [6]
+  assert s["learning_era_keys"] == ["2025-h2"]
   vol = mining_search_space_from_dict(get_preset("gbp_fill_ss_vol"))
   assert vol.label_rr == 1.0
   assert vol.confirm_r == pytest.approx(0.12)

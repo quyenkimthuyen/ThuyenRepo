@@ -107,7 +107,7 @@ DEFAULT_SETTINGS = {
   "slippage_pips": DEFAULT_SLIPPAGE_PIPS,
   "grid_objective": "quality",
   # EUR 6m recipe. Desk g23 override in default_settings_for_desk().
-  "mining_presets": ["eur_fill_2pd"],
+  "mining_presets": ["eur_fill_wk5_mid"],
   "updated_at": None,
 }
 
@@ -137,15 +137,13 @@ def default_settings_for_desk() -> dict:
     out["strategy_train_weeks"] = [6]
     out["learning_era_keys"] = ["2025-h2"]
     out["mining_presets"] = [
-      "gbp_fill_2pd", "gbp_fill_r50_clip", "gbp_fill_r50", "gbp_fill_bar_stop",
-      "gbp_fill_ss_clip", "gbp_fill_elite_or",
+      "gbp_fill_wk5_bank", "gbp_fill_wk5_lift", "gbp_fill_wk5",
     ]
   else:
     out["strategy_train_weeks"] = [8]
-    out["learning_era_keys"] = ["2025-h1"]
+    out["learning_era_keys"] = ["2024-h1"]
     out["mining_presets"] = [
-      "eur_fill_wk5", "eur_fill_wk5_bank", "eur_fill_wk5_mid",
-      "eur_fill_2pd", "eur_fill_r50_clip", "eur_fill_r50",
+      "eur_fill_wk5_mid", "eur_fill_wk5", "eur_fill_wk5_bank",
     ]
   return out
 
@@ -716,10 +714,11 @@ def format_settings_summary(settings: dict | None = None) -> str:
   except Exception:
     msp = ", ".join(s.get("mining_presets") or []) or "baseline miner"
   return (
-    f"Học chiến lược: **{trains}** · Giai đoạn học: **{eras}** · "
-    f"Vòng học: **{s.get('learning_loops', 4)}** · Kiểm chứng: **{oos}** · "
+    f"Grid train: **{trains}** · Giai đoạn KB: **{eras}** · "
+    f"Vòng học KB: **{s.get('learning_loops', 4)}** · Kiểm chứng: **{oos}** · "
     f"Fill Bid/Ask: **SpreadPoints nến** · "
-    f"Mining: **{msp}**"
+    f"Mining (chỉ Grid): **{msp}** · "
+    f"Học KB: miner mặc định + desk yaml tpw — **không** dùng preset mining."
   )
 
 

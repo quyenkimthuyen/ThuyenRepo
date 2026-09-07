@@ -30,7 +30,7 @@ from feature_engine import FeatureMatrix
 from knowledge_base import KnowledgeBase, KNOWLEDGE_PATH
 from kb_profiles import (
   create_profile, register_profile, slice_df_for_period,
-  profile_path, DEFAULT_PROFILE_ID,
+  profile_path, DEFAULT_PROFILE_ID, is_profile_protected,
 )
 from config import TRAIN_WEEKS, MIN_TRAIN_BARS, DEFAULT_SPREAD_PIPS, DEFAULT_SLIPPAGE_PIPS
 from meta_learner import mine_strategy_learning, record_trade_learning
@@ -187,11 +187,17 @@ def main():
   args = parser.parse_args()
 
   profile_id = args.kb_profile
+  if is_profile_protected(profile_id):
+    print(f"KB `{profile_id}` đã khóa — không reset / học đè.")
+    return 2
   if profile_id != DEFAULT_PROFILE_ID and not profile_path(profile_id).exists():
     create_profile(profile_id, args.kb_name or profile_id)
 
   kb_path = profile_path(profile_id)
   if args.reset and kb_path.exists():
+    if is_profile_protected(profile_id):
+      print(f"KB `{profile_id}` đã khóa — bỏ --reset.")
+      return 2
     kb_path.unlink()
     print(f"Đã xóa KB profile: {profile_id}")
 

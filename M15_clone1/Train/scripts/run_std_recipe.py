@@ -115,7 +115,10 @@ def _ensure_kb(desk: str, *, reset: bool) -> dict:
     }
     t0 = time.time()
     out = ensure_profile_learned(spec, epochs=loops, reset=reset)
-    if out.get("skipped"):
+    if out.get("protected"):
+      skipped.append(era["kb_profile"])
+      _log(desk, f"KB locked skip · {era['kb_profile']} epochs={out.get('epochs')}")
+    elif out.get("skipped"):
       skipped.append(era["kb_profile"])
       _log(desk, f"KB skip · {era['kb_profile']} epochs={out.get('epochs')}")
     else:
@@ -236,19 +239,36 @@ def _create_models(desk: str, run: dict) -> list[dict]:
 
 
 def _wipe_learn_artifacts(desk: str) -> None:
-  """Xóa KB / grid / trade model / compare cũ. Giữ parquet, settings, bridge live."""
+  """Xóa grid / TM / compare cũ. KB đã khóa (pin Trade Model) được giữ."""
   import shutil
 
   rt = Path(os.environ["TRAINAPP_RUNTIME"])
   removed: list[str] = []
-  kb = rt / "learning" / "kb_profiles"
-  if kb.exists():
-    shutil.rmtree(kb)
-    removed.append("kb_profiles")
+  try:
+    from kb_profiles import protect_from_trade_models, wipe_unprotected_profiles
+
+    locked = protect_from_trade_models()
+    kb_out = wipe_unprotected_profiles()
+    if kb_out.get("deleted"):
+      removed.append("kb:" + ",".join(kb_out["deleted"]))
+    if locked or kb_out.get("kept"):
+      _log(
+        desk,
+        "KB locked kept "
+        + ", ".join(kb_out.get("kept") or locked or []),
+      )
+  except Exception as exc:
+    _log(desk, f"KB protect wipe skipped: {exc}")
   know = rt / "learning" / "knowledge.json"
+  # default knowledge.json: wipe_unprotected already unlinks unless locked
   if know.exists():
-    know.unlink()
-    removed.append("knowledge.json")
+    try:
+      from kb_profiles import DEFAULT_PROFILE_ID, is_profile_protected
+      if not is_profile_protected(DEFAULT_PROFILE_ID):
+        know.unlink()
+        removed.append("knowledge.json")
+    except Exception:
+      pass
   for rel in (
     "results/grid_search",
     "results/trade_models",

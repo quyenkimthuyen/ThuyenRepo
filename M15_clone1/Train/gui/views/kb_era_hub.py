@@ -5,8 +5,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from kb_profiles import (
-  DEFAULT_PROFILE_ID, delete_profile, get_profile, list_disk_profile_ids,
-  list_profiles, purge_orphan_snapshots,
+  DEFAULT_PROFILE_ID, delete_profile, get_profile, is_profile_protected,
+  list_disk_profile_ids, list_profiles, protect_from_trade_models,
+  protect_profile, purge_orphan_snapshots, unprotect_profile,
 )
 from gui.components import (
   settings_era_presets, list_kb_profiles_df, suggested_oos_range,
@@ -156,7 +157,7 @@ def _tab_profiles():
   if pdf.empty:
     st.info("Chưa có profile. Dùng tab **Học bộ nhớ** để tạo profile đầu tiên.")
   else:
-    show = [c for c in ["giai_doan", "id", "trained_from", "trained_to", "epochs", "exists"] if c in pdf.columns]
+    show = [c for c in ["giai_doan", "id", "protected", "trained_from", "trained_to", "epochs", "exists"] if c in pdf.columns]
     st.dataframe(pdf[show], use_container_width=True, hide_index=True)
 
   sel = st.selectbox(
@@ -192,15 +193,52 @@ def _tab_profiles():
         st.rerun()
 
   st.divider()
+  st.markdown("#### Khóa KB")
+  st.caption(
+    "KB khóa **không** bị Reset / pipeline wipe / học đè. "
+    "Tạo Trade Model tự khóa profile nguồn. Không tách file theo epoch."
+  )
+  era_list = _list_era_profiles()
+  lock_ids = [p["id"] for p in era_list]
+  c_lock1, c_lock2 = st.columns(2)
+  with c_lock1:
+    if st.button("Khóa KB đang gắn Trade Model", key="hub_protect_tms"):
+      locked = protect_from_trade_models()
+      if locked:
+        st.success("Đã khóa: " + ", ".join(locked))
+      else:
+        st.info("Không có Trade Model nào gắn KB.")
+      st.rerun()
+  with c_lock2:
+    if lock_ids:
+      lock_pick = st.selectbox("Profile khóa / bỏ khóa", lock_ids, key="hub_lock_pick")
+      locked_now = is_profile_protected(lock_pick)
+      b1, b2 = st.columns(2)
+      with b1:
+        if st.button("Khóa", key="hub_lock_btn", disabled=locked_now):
+          protect_profile(lock_pick, reason="manual")
+          st.rerun()
+      with b2:
+        if st.button("Bỏ khóa", key="hub_unlock_btn", disabled=not locked_now):
+          unprotect_profile(lock_pick)
+          st.rerun()
+      if locked_now:
+        st.caption(f"🔒 `{lock_pick}` đang khóa.")
+
+  st.divider()
   c1, c2 = st.columns(2)
   with c1:
     del_candidates = [p["id"] for p in list_profiles() if p["id"] != DEFAULT_PROFILE_ID]
     if del_candidates:
       del_id = st.selectbox("Xóa profile", del_candidates, key="hub_del")
       if st.button("Xóa profile", type="secondary", key="hub_del_btn"):
-        delete_profile(del_id)
-        st.warning(f"Đã xóa **{del_id}**")
-        st.rerun()
+        if is_profile_protected(del_id):
+          st.error(f"KB `{del_id}` đã khóa — bỏ khóa trước khi xóa.")
+        elif delete_profile(del_id):
+          st.warning(f"Đã xóa **{del_id}**")
+          st.rerun()
+        else:
+          st.warning("Không xóa được.")
   with c2:
     pick = st.selectbox(
       "Chọn profile → backtest",
@@ -286,7 +324,9 @@ def _tab_learn():
   era_labels = ", ".join(e["label"] for e in resolve_learning_eras(s)) or "—"
   st.caption(
     f"Theo **Cài đặt**: giai đoạn **{era_labels}** · "
-    f"**{loops}** vòng học · kiểm chứng **{s.get('backtest_from')} → {s.get('backtest_to')}**"
+    f"**{loops}** vòng học · kiểm chứng **{s.get('backtest_from')} → {s.get('backtest_to')}**. "
+    "Học KB dùng **miner mặc định + desk yaml `target_trades_per_week`** — "
+    "**không** đọc preset mining (preset chỉ cho Grid Search)."
   )
 
   render_task_status(key_prefix="hub_learn")
@@ -348,14 +388,21 @@ def _tab_learn():
     )
 
   existing = get_profile(new_id.strip())
-  if existing and existing.get("exists"):
+  pid_learn = (new_id or "").strip()
+  locked_learn = bool(pid_learn) and is_profile_protected(pid_learn)
+  if locked_learn:
+    st.error(
+      f"KB **{pid_learn}** đã khóa — không học đè / reset. "
+      "Bỏ khóa ở tab Danh sách nếu thật sự muốn học lại."
+    )
+  elif existing and existing.get("exists"):
     st.info(f"Profile **{new_id}** đã tồn tại — học tiếp sẽ **cộng dồn** KB (trừ khi bật Reset).")
 
   if st.button(
     "▶ Học & lưu profile",
     type="primary",
     key="hub_learn_run",
-    disabled=running,
+    disabled=running or locked_learn,
   ):
     try:
       start_job(
@@ -378,7 +425,7 @@ def _tab_learn():
   with st.expander("Reset dữ liệu KB", expanded=False):
     st.caption(
       "Xóa file bộ nhớ + snapshot trên đĩa (kể cả orphan). Không xóa giai đoạn trong **Cài đặt**. "
-      "Profile `default` không xóa được."
+      "Profile `default` không xóa được. **KB đã khóa bị bỏ qua.**"
     )
     eras = resolve_learning_eras(s)
     era_ids = [e["kb_profile"] for e in eras if e.get("kb_profile")]
@@ -388,19 +435,23 @@ def _tab_learn():
     ]
     disk_ids = [pid for pid in list_disk_profile_ids() if pid != DEFAULT_PROFILE_ID]
     options = sorted(set(era_ids) | set(all_profiles) | set(disk_ids))
+    locked_ids = [pid for pid in options if is_profile_protected(pid)]
+    free_ids = [pid for pid in options if pid not in locked_ids]
+    if locked_ids:
+      st.caption("Đang khóa (không xóa): " + ", ".join(locked_ids))
     also_related = st.checkbox(
       "Cũng xóa backtest/report + file Trade Model orphan",
       key="hub_kb_reset_related",
     )
-    if not options and not also_related:
-      st.caption("Chưa có profile KB / snapshot để xóa.")
+    if not free_ids and not also_related:
+      st.caption("Không còn profile KB chưa khóa để xóa.")
     else:
       pick_reset = st.multiselect(
         "Profile cần xóa",
-        options,
-        default=[pid for pid in era_ids if pid in options],
+        free_ids,
+        default=[pid for pid in era_ids if pid in free_ids],
         key="hub_kb_reset_pick",
-      ) if options else []
+      ) if free_ids else []
       confirm_kb = st.checkbox(
         "Xác nhận xóa vĩnh viễn dữ liệu đã chọn",
         key="hub_kb_reset_confirm",
@@ -414,6 +465,8 @@ def _tab_learn():
       ):
         deleted = []
         for pid in pick_reset:
+          if is_profile_protected(pid):
+            continue
           if delete_profile(pid):
             deleted.append(pid)
         orphans = purge_orphan_snapshots()
@@ -469,7 +522,8 @@ def render_training_only():
   loops = int(s.get("learning_loops") or 4)
   eras = ", ".join(e["label"] for e in resolve_learning_eras(s)) or "—"
   st.caption(
-    f"Mặc định **{loops} vòng học** · giai đoạn **{eras}** theo Cài đặt — chỉnh tại **Cài đặt**."
+    f"Mặc định **{loops} vòng học** · giai đoạn **{eras}** theo Cài đặt — chỉnh tại **Cài đặt**. "
+    "Học KB không dùng preset mining."
   )
 
   _tab_learn()

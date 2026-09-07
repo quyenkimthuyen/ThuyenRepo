@@ -62,6 +62,8 @@ def _render_doc_expander(title: str, path: Path, fallback: str) -> None:
 def render():
   render_page_header(ALL_ITEMS["guide"], show_workspace=False)
   d = _desk_ctx()
+  from gui.export_live_package import trade_models_import_url
+  trade_url = trade_models_import_url()
 
   st.caption(
     f"Desk **{d['instance']}** · {d['pair_label']} {d['tf']} · "
@@ -183,7 +185,7 @@ Module `paper_fill` / `PaperBook` / port chart legacy = **sim fills Bid/Ask** (B
 - Mặc định ẩn catalog (Bridge luôn hiện nếu còn trên roster)
 - Click dòng → **Đổi tên** · **Archive** · **Xóa cứng** (xác nhận) · **Export .tmpkg**
 - Export ghi `Trade/live/packages_inbox/*.tmpkg` (cần schedule từ tab **{LABEL_TAB_OOS}**)
-- Trade import: `http://127.0.0.1:8801/?nav=Models` — tab Live chỉ chạy roster đã import
+- Trade import: `{trade_url}` — tab Live chỉ chạy roster đã import
 - Cảnh báo id ma + nút Dọn Bridge
 
 **{LABEL_TAB_OOS}** — report OOS, KB ON/OFF, mining space vs baseline.

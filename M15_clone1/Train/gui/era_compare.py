@@ -64,11 +64,20 @@ def profile_exists(profile_id: str) -> bool:
 
 
 def ensure_profile_learned(spec: dict, epochs: int, reset: bool = False) -> dict:
-  """Học KB profile theo spec nếu chưa đủ epoch."""
+  """Học KB profile theo spec nếu chưa đủ epoch. KB khóa thì bỏ qua (không đè)."""
   from gui.services import execute_learning
+  from kb_profiles import get_profile, is_profile_protected
+
   p = spec["kb_profile"]
+  if is_profile_protected(p):
+    meta = get_profile(p) or {}
+    return {
+      "skipped": True,
+      "protected": True,
+      "profile": p,
+      "epochs": meta.get("epochs"),
+    }
   if profile_exists(p) and not reset:
-    from kb_profiles import get_profile
     meta = get_profile(p) or {}
     if int(meta.get("epochs") or 0) >= epochs:
       return {"skipped": True, "profile": p, "epochs": meta.get("epochs")}

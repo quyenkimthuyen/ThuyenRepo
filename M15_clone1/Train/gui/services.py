@@ -186,13 +186,21 @@ def execute_learning(
   until_date: str | None = None,
   on_epoch_done=None,
 ) -> dict:
-  from kb_profiles import profile_path as kb_path_fn
+  from kb_profiles import is_profile_protected, profile_path as kb_path_fn
+
+  if is_profile_protected(kb_profile):
+    raise ValueError(
+      f"KB `{kb_profile}` đã khóa — không reset / học đè. "
+      "Bỏ khóa tại tab KB nếu thật sự muốn học lại."
+    )
 
   if kb_profile != DEFAULT_PROFILE_ID and not kb_path_fn(kb_profile).exists():
     create_profile(kb_profile, kb_name or kb_profile)
 
   path = kb_path_fn(kb_profile)
   if reset_kb and path.exists():
+    if is_profile_protected(kb_profile):
+      raise ValueError(f"KB `{kb_profile}` đã khóa — không xóa file.")
     path.unlink()
 
   kb = KnowledgeBase(path)

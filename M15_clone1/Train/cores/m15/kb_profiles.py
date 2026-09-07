@@ -222,6 +222,7 @@ def list_profiles() -> list[dict]:
     })
   for p in profiles:
     p["exists"] = profile_path(p["id"]).exists()
+    p["protected"] = bool(p.get("protected"))
   return profiles
 
 
@@ -243,6 +244,164 @@ def get_profile(profile_id: str) -> dict | None:
     if p["id"] == profile_id:
       return p
   return None
+
+
+def _norm_snapshot_epochs(raw) -> list[int]:
+  out: list[int] = []
+  for x in raw or []:
+    try:
+      out.append(int(x))
+    except (TypeError, ValueError):
+      continue
+  return sorted(set(out))
+
+
+def _update_profile_fields(profile_id: str, **fields) -> dict:
+  """Merge metadata onto an index entry (creates a stub if missing)."""
+  pid = str(profile_id or "").strip()
+  if not pid:
+    raise ValueError("profile_id rỗng")
+  idx = _load_index()
+  profiles = [
+    p for p in idx.get("profiles", [])
+    if isinstance(p, dict) and str(p.get("id") or "").strip()
+  ]
+  found = False
+  for i, p in enumerate(profiles):
+    if p.get("id") == pid:
+      profiles[i] = {**p, **fields}
+      found = True
+      break
+  if not found:
+    profiles.append({
+      "id": pid,
+      "name": pid,
+      "path": profile_path(pid).name,
+      **fields,
+    })
+  idx["profiles"] = profiles
+  if idx.get("default") is None:
+    idx["default"] = DEFAULT_PROFILE_ID
+  _save_index(idx)
+  return get_profile(pid) or {"id": pid, **fields}
+
+
+def is_profile_protected(profile_id: str, profile: dict | None = None) -> bool:
+  """True if wipe / reset / learn-over must skip this profile."""
+  p = profile if profile is not None else get_profile(profile_id)
+  return bool(p and p.get("protected"))
+
+
+def is_snapshot_protected(
+  profile_id: str,
+  cumulative: int | None = None,
+  *,
+  profile: dict | None = None,
+) -> bool:
+  """Locked profile keeps every snapshot (main file + epNNN). Do not split by epoch."""
+  if not is_profile_protected(profile_id, profile=profile):
+    return False
+  return True
+
+
+def protect_profile(
+  profile_id: str,
+  *,
+  snapshots: list[int] | None = None,
+  reason: str = "",
+) -> dict:
+  """Lock a KB profile so wipe/reset cannot delete or overwrite it."""
+  pid = str(profile_id or "").strip()
+  if not pid:
+    raise ValueError("profile_id rỗng — không khóa KB.")
+  existing = get_profile(pid) or {}
+  merged = _norm_snapshot_epochs(existing.get("protected_snapshots"))
+  if snapshots is not None:
+    merged = sorted(set(merged) | set(_norm_snapshot_epochs(snapshots)))
+  reasons = [str(x) for x in (existing.get("protected_reasons") or []) if x]
+  if reason and reason not in reasons:
+    reasons.append(reason)
+  return _update_profile_fields(
+    pid,
+    protected=True,
+    protected_snapshots=merged,
+    protected_reasons=reasons,
+    protected_reason=reason or existing.get("protected_reason") or "",
+    protected_at=datetime.now(timezone.utc).isoformat(),
+  )
+
+
+def unprotect_profile(profile_id: str) -> dict:
+  """Manual unlock. Existing Trade Models can re-lock via protect_from_trade_models()."""
+  pid = str(profile_id or "").strip()
+  if not pid:
+    raise ValueError("profile_id rỗng")
+  return _update_profile_fields(pid, protected=False)
+
+
+def protect_from_models(models: list[dict], *, reason: str = "trade_model") -> list[str]:
+  """Lock every KB profile pinned by Trade Models. Returns locked profile ids."""
+  locked: list[str] = []
+  for m in models or []:
+    if not isinstance(m, dict):
+      continue
+    if not m.get("use_kb", True):
+      continue
+    pid = str(m.get("kb_profile") or "").strip()
+    if not pid:
+      continue
+    snaps = None
+    snap = m.get("kb_snapshot")
+    if snap is not None and snap not in ("", LATEST_SNAPSHOT, "latest"):
+      try:
+        snaps = [int(snap)]
+      except (TypeError, ValueError):
+        snaps = None
+    mid = str(m.get("id") or m.get("label") or "").strip()
+    tag = f"{reason}:{mid}" if mid else reason
+    protect_profile(pid, snapshots=snaps, reason=tag)
+    locked.append(pid)
+  return sorted(set(locked))
+
+
+def protect_from_trade_models() -> list[str]:
+  """Scan the desk Trade Model catalog and lock their KB profiles."""
+  try:
+    from gui.trade_model import list_trade_models
+  except Exception:
+    return []
+  try:
+    models = list_trade_models()
+  except Exception:
+    return []
+  return protect_from_models(models)
+
+
+def wipe_unprotected_profiles() -> dict:
+  """Delete unprotected KB profiles. Keep locked profiles + their snapshots."""
+  kept: list[str] = []
+  deleted: list[str] = []
+  ids: set[str] = set(list_disk_profile_ids())
+  for p in list_profiles():
+    pid = str(p.get("id") or "").strip()
+    if pid:
+      ids.add(pid)
+  for pid in sorted(ids):
+    if pid == DEFAULT_PROFILE_ID:
+      continue
+    if is_profile_protected(pid):
+      kept.append(pid)
+      continue
+    if delete_profile(pid, force=True):
+      deleted.append(pid)
+  if is_profile_protected(DEFAULT_PROFILE_ID):
+    kept.append(DEFAULT_PROFILE_ID)
+  else:
+    path = profile_path(DEFAULT_PROFILE_ID)
+    if path.exists():
+      path.unlink()
+      deleted.append(DEFAULT_PROFILE_ID)
+  return {"kept": kept, "deleted": deleted}
 
 
 def load_kb(profile_id: str | None = None, snapshot_epoch: int | str | None = None) -> KnowledgeBase:
@@ -350,6 +509,8 @@ def purge_orphan_snapshots() -> list[str]:
     pid = path.name
     if pid == DEFAULT_PROFILE_ID:
       continue
+    if is_profile_protected(pid):
+      continue
     if profile_path(pid).exists():
       continue
     shutil.rmtree(path)
@@ -357,8 +518,10 @@ def purge_orphan_snapshots() -> list[str]:
   return removed
 
 
-def delete_profile(profile_id: str) -> bool:
+def delete_profile(profile_id: str, *, force: bool = False) -> bool:
   if profile_id == DEFAULT_PROFILE_ID:
+    return False
+  if is_profile_protected(profile_id) and not force:
     return False
   path = profile_path(profile_id)
   snap_root = SNAPSHOTS_DIR / profile_id
