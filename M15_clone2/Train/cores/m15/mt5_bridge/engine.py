@@ -102,6 +102,16 @@ def _bar_index_in_fm(fm, bar_ts: pd.Timestamp) -> int | None:
   return int(idx)
 
 
+def _causal_scan_end(oos_e: int, bar_idx: int) -> int:
+  """Exclusive end index for live/replay signal scan.
+
+  Daily slot fill is causal (first bars of the day, same as OOS / grid).
+  Still cap ``end`` at the closed bar so this decision does not scan a week
+  tip that has not closed yet.
+  """
+  return min(int(oos_e), int(bar_idx) + 1)
+
+
 def _journal_last_auto_signal_idx(
   fm,
   bridge_dir: Path,
@@ -250,6 +260,8 @@ class BridgeEngine:
     self._fm_key: tuple | None = None
     self._last_bar_key: str | None = None
     self._last_decision: dict | None = None
+    self._causal_working: bool = False
+    self._causal_from: str | None = None
     self._model = resolve_model(model_id)
     self._params = get_model_run_params(self._model, model_id)
 
@@ -280,11 +292,15 @@ class BridgeEngine:
       self._fm_key = None
     return changed
 
-  def _feature_matrix(self, df: pd.DataFrame, feature_profile: str) -> FeatureMatrix:
+  def _feature_matrix(
+    self, df: pd.DataFrame, feature_profile: str, *, cache: bool = True,
+  ) -> FeatureMatrix:
     """Build FeatureMatrix like OOS walk-forward (full series, cached).
 
     Do not clip lookback before features: ``htf_trend`` (H4 EMA200) and
     ``roc_5`` (global std) change under short windows and diverge from Health KB ON.
+    ``cache=False`` for remine-on-canonical during causal replay so the signal
+    FM stays on the growing working tip.
     """
     if df.empty:
       raise ValueError("empty history for FeatureMatrix")
@@ -301,19 +317,25 @@ class BridgeEngine:
       str(df.index[-1]),
       spread_tag,
     )
-    if self._fm is None or self._fm_key != key:
-      ensure_label_cache_for_df(len(df))
-      self._fm = FeatureMatrix(df, profile=feature_profile)
+    if cache and self._fm is not None and self._fm_key == key:
+      return self._fm
+    ensure_label_cache_for_df(len(df))
+    fm = FeatureMatrix(df, profile=feature_profile)
+    if cache:
+      self._fm = fm
       self._fm_key = key
-    return self._fm
+    return fm
 
   def ensure_history(self, force: bool = False) -> pd.DataFrame:
     """Load canonical broker history and request EA synchronization when needed."""
     if force:
       start_history_sync(force=True)
     if self.mt5_cache.exists():
-      df = pd.read_parquet(self.mt5_cache)
-      self._df = _normalize(df)
+      df = _normalize(pd.read_parquet(self.mt5_cache))
+      if self._causal_working:
+        self._df = self._causal_working_frame(df)
+      else:
+        self._df = df
       self._fm = None
       self._fm_key = None
       return self._df
@@ -328,6 +350,22 @@ class BridgeEngine:
       return self._df
     return self.ensure_history()
 
+  def _causal_working_frame(self, canonical: pd.DataFrame) -> pd.DataFrame:
+    """Prefix before replay ``date_from``, plus bars already appended this run."""
+    if canonical is None or canonical.empty or not self._causal_from:
+      return canonical
+    start = pd.Timestamp(str(self._causal_from).replace(".", "-")[:10]).date()
+    keep = [utc_to_broker_time(ts).date() < start for ts in canonical.index]
+    clipped = canonical.loc[keep]
+    cur = self._df
+    if cur is None or cur.empty:
+      return clipped
+    extra = cur.loc[~cur.index.isin(clipped.index)]
+    if extra.empty:
+      return clipped
+    out = pd.concat([clipped, extra]).sort_index()
+    return out[~out.index.duplicated(keep="last")]
+
   def _canonical_frame(self) -> pd.DataFrame:
     """Full parquet history for weekly remine (matches Health OOS / tip tests).
 
@@ -341,6 +379,9 @@ class BridgeEngine:
   def _sync_working_frame_from_canonical(self, canonical: pd.DataFrame) -> pd.DataFrame:
     """Prefer longer canonical series as working ``_df`` when safe."""
     if canonical is None or canonical.empty:
+      return self.load()
+    if self._causal_working:
+      # Remine may read canonical; do not inject future replay bars into the tip.
       return self.load()
     cur = self._df
     if cur is None or len(canonical) >= len(cur):
@@ -383,8 +424,12 @@ class BridgeEngine:
       return cached
 
     canonical = self._canonical_frame()
-    df_mine = self._sync_working_frame_from_canonical(canonical)
-    fm_mine = self._feature_matrix(df_mine, feature_profile)
+    df_mine = canonical if canonical is not None and not canonical.empty else self.load()
+    if not self._causal_working:
+      df_mine = self._sync_working_frame_from_canonical(df_mine)
+    fm_mine = self._feature_matrix(
+      df_mine, feature_profile, cache=not self._causal_working,
+    )
 
     kb = None
     if use_learning:
@@ -643,11 +688,12 @@ class BridgeEngine:
     )
 
   def decide_for_bar(self, bar: dict) -> dict:
-    """Produce decision.json for the closed M15 bar (Live + HistoryFeed + OOS-parity).
+    """Produce decision.json for the closed M15 bar (Live + HistoryFeed + Compare).
 
     Live and Simulate share this path: same Trade Model conditions, KB snapshot,
-    full-history FeatureMatrix, and weekly ``optimize_on_window`` as Health OOS.
-    Only execution differs (real fills vs paper HistoryFeed).
+    FeatureMatrix, and weekly ``optimize_on_window``. Signal scan stops at the
+    closed bar; daily slots fill in time order (same as OOS / grid). Only
+    execution differs (real fills vs paper HistoryFeed / Compare).
     """
     bar_ts = self.merge_bar(bar)
     bar_key = bar_ts.isoformat(sep=" ")
@@ -734,13 +780,22 @@ class BridgeEngine:
     if ml is not None and hasattr(ml, "refresh_for_fm"):
       ml.refresh_for_fm(fm)
 
-    oos_s, oos_e = get_week_indices(df, week_start, week_end)
+    oos_s, oos_e_week = get_week_indices(df, week_start, week_end)
     if oos_s is None:
       decision = self._flat(
         bar_ts, model_id, reason="no_oos_week", week_start=week_start,
       )
       return self._remember(bar_key, decision)
 
+    # Decision keyed to closed bar (= signal bar). Entry is next open (handled by EA).
+    bar_idx = _bar_index_in_fm(fm, bar_ts)
+    if bar_idx is None:
+      decision = self._flat(
+        bar_ts, model_id, reason="bar_not_in_series", week_start=week_start,
+      )
+      return self._remember(bar_key, decision)
+
+    oos_e = _causal_scan_end(oos_e_week, bar_idx)
     signals = generate_signals_mined(
       fm, strat, oos_s, oos_e, include_last_bar=True,
     )
@@ -749,17 +804,6 @@ class BridgeEngine:
       fm, bt_strat, signals, oos_s, oos_e,
       spread_pips=spread, slippage_pips=slip, return_open=True,
     )
-
-    # Decision keyed to closed bar (= signal bar). Entry is next open (handled by EA).
-    if bar_ts not in fm.index:
-      decision = self._flat(
-        bar_ts, model_id, reason="bar_not_in_series", week_start=week_start,
-      )
-      return self._remember(bar_key, decision)
-
-    bar_idx = int(fm.index.get_loc(bar_ts))
-    if isinstance(bar_idx, slice):
-      bar_idx = bar_idx.start
 
     try:
       wait = explain_bar_gates(fm, strat, bar_idx)

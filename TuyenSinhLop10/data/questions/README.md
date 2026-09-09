@@ -1,10 +1,11 @@
 # Question Seed Data
 
-Bộ dữ liệu này gồm 2.100 câu hỏi AI-generated theo ma trận ôn thi tuyển sinh lớp 10 TP.HCM, đã tái phân bổ theo blueprint rút từ đề thật TP.HCM 2022-2026:
+Bộ dữ liệu gồm 2.100 câu theo ma trận ôn thi tuyển sinh lớp 10 TP.HCM, cộng thêm 280 câu Cấu trúc câu (lớp 10-12) trong ngân hàng luyện tập Tiếng Anh:
 
 - `math.jsonl`: 600 câu Toán.
 - `literature.jsonl`: 600 câu Ngữ văn.
-- `english.jsonl`: 900 câu Tiếng Anh.
+- `english.jsonl`: 1.180 câu Tiếng Anh (900 câu ma trận TS10 + 280 câu Cấu trúc câu lớp 10-12).
+- `english-cautruc.jsonl`: bản tách 280 câu chuyên đề `CauTrucCau` (mức vận dụng cao).
 
 Mỗi dòng là một JSON object hợp lệ theo `question.schema.json`. Các câu này là dữ liệu seed/mẫu để phát triển sản phẩm, cần giáo viên kiểm duyệt trước khi sử dụng trong môi trường thương mại.
 

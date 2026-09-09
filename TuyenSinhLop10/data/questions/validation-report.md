@@ -1,17 +1,17 @@
 # Validation Report
 
-Total rows: 2100
+Total rows: 2380
 
 ## Rows By Subject
 - NguVan: 600
-- TiengAnh: 900
+- TiengAnh: 1180
 - Toan: 600
 
 ## Rows By Difficulty
 - NhanBiet: 525
 - ThongHieu: 525
 - VanDung: 525
-- VanDungCao: 525
+- VanDungCao: 805
 
 ## Topic Coverage
 ### NguVan
@@ -32,6 +32,7 @@ Total rows: 2100
 - VietDoanVan: 65
 ### TiengAnh
 - ClozeTest: 95
+- CauTrucCau: 280
 - Comparisons: 30
 - Conditionals: 50
 - DialogueCompletion: 40
@@ -66,7 +67,7 @@ Total rows: 2100
 ## Quality Audit
 - Toán: redistributed to 600 questions using the real-exam 2022-2026 priority map.
 - Ngữ văn: redistributed to 600 questions emphasizing reading comprehension, paragraph/social writing, evidence, expression repair and literary response.
-- Tiếng Anh: redistributed to 900 questions emphasizing WordForms, SentenceTransformation, ReadingComprehension and ClozeTest in the 40-question structure.
+- Tiếng Anh: 900 câu ma trận 40 câu TS10, cộng 280 câu chuyên đề CauTrucCau (VanDungCao) ôn collocation lớp 10-12.
 - Mock exams in the frontend should show answers and explanations from the same question bank.
 - Remaining content is AI-generated and still needs human teacher review before commercial use.
 

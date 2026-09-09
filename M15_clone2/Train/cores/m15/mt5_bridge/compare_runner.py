@@ -359,7 +359,9 @@ def run_compare(
       mt5_cache=cache_path,
       bridge_dir=mdir,
     )
-    # Prefill full history for remine (avoid per-bar parquet writes)
+    # Prefill full history for remine / indicator lookback (avoid per-bar parquet
+    # writes). Daily slots fill in time order (same as OOS / grid); scan still
+    # stops at the closed bar so paper fills do not simulate future entries.
     working = full.copy()
     if extra_pts:
       working = bump_spread_points(working, extra_pts, replay.index)

@@ -49,6 +49,47 @@ def test_signal_cap_is_two_per_broker_day():
   assert selected.to_series().groupby(selected.date).size().max() == 2
 
 
+def test_signal_cap_is_causal_not_best_score_of_day():
+  """Later higher-score bars must not steal the day's first live-like slots.
+
+  OOS / grid search score the whole week in one shot; Live fills slots as bars
+  close. Time-order selection keeps those paths aligned.
+  """
+  class _CausalCapMatrix:
+    def __init__(self):
+      self.index = pd.date_range("2026-09-09 07:00", periods=8, freq="15min")
+      self.n = len(self.index)
+      self.warmup = 0
+      self.hours = self.index.hour.to_numpy()
+      self._a = np.ones(self.n)
+      self._b = np.array([0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0])
+
+    def get(self, name):
+      if name == "feat_a":
+        return self._a
+      if name == "feat_b":
+        return self._b
+      return np.zeros(self.n)
+
+  fm = _CausalCapMatrix()
+  strategy = MinedStrategy(
+    long_rules=[
+      Rule("feat_a", "long", "gt", 0.5, weight=1.0),
+      Rule("feat_b", "long", "gt", 0.5, weight=10.0),
+    ],
+    min_rules_match=1,
+    score_threshold=0.5,
+    min_bars_between=1,
+    max_trades_per_day=1,
+    session_filter=False,
+    ml_prob_min=0.0,
+  )
+  signals = generate_signals_mined(fm, strategy)
+  picked = np.flatnonzero(signals).tolist()
+  assert picked == [0]
+  assert int(signals[4]) == 0
+
+
 def test_entry_cap_blocks_third_order_on_broker_day():
   fm = _SignalMatrix()
   fm.open = np.full(fm.n, 1.1)

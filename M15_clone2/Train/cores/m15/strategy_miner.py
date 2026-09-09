@@ -614,6 +614,12 @@ def _pa_confluence_bonus(fm, i: int, direction: int) -> float:
 def generate_signals_mined(
   fm, strat, start_idx=0, end_idx=None, *, include_last_bar: bool = False,
 ):
+  """Score each bar, then fill ``max_trades_per_day`` in time order (live-like).
+
+  Walk-forward OOS and grid search call this on a full week in one shot. Taking
+  the first qualifying bars of each broker day matches Live / Compare, which
+  decide bar-by-bar and cannot skip a morning fill for a later higher score.
+  """
   if end_idx is None:
     end_idx = fm.n
   signals = np.zeros(fm.n, dtype=np.int8)
@@ -682,7 +688,9 @@ def generate_signals_mined(
       broker_day = utc_to_broker_time(fm.index[i]).strftime("%Y-%m-%d")
       day_buckets.setdefault(broker_day, []).append((score, direction, i))
     for items in day_buckets.values():
-      items.sort(key=lambda x: x[0], reverse=True)
+      # Time order = live: first qualifying bars of the day keep the slots.
+      # Ranking the whole day by score looks ahead (afternoon steals morning).
+      items.sort(key=lambda x: x[2])
       selected: list[int] = []
       for score, direction, i in items:
         if len(selected) >= strat.max_trades_per_day:
@@ -692,7 +700,7 @@ def generate_signals_mined(
           selected.append(i)
 
   # Anti-chase void AFTER selection — cancel chase fills without promoting
-  # lower-ranked replacements (that pattern destroyed WR in earlier A/Bs).
+  # later replacements (that pattern destroyed WR in earlier A/Bs).
   if getattr(strat, "anti_chase", False):
     for i in range(fm.n):
       if signals[i] != 0 and _is_chase_entry(fm, strat, i, int(signals[i])):
@@ -1041,7 +1049,7 @@ def backtest_mined(
       if np.isnan(av) or av <= 0:
         i += 1
         continue
-      # Void chase signals without replacement (keeps ranking of the original book).
+      # Void chase signals without replacement (keeps the original time-order book).
       if _is_chase_entry(fm, strat, i, int(sig)):
         i += 1
         continue

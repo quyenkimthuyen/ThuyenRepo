@@ -6,7 +6,7 @@
 
 - `index.html`: giao diện chính.
 - `styles.css`: thiết kế responsive xanh dương, trắng, cam nhấn.
-- `questions-data.js`: đóng gói 2.100 câu hỏi ngay trong frontend.
+- `questions-data.js`: đóng gói ngân hàng câu hỏi (gồm 2.100 câu ma trận TS10 và 280 câu Cấu trúc câu lớp 10-12).
 - `app.js`: lọc câu hỏi, luyện tập, thi thử mô phỏng và phân tích phiên học.
 
 ## Cách Chạy

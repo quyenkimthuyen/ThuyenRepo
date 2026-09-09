@@ -234,6 +234,7 @@ def run_walk_forward(
       continue
 
     bt_strat = apply_oos_exit_overlay(strat, search_space)
+    # Same causal day-cap as Live: first bars of the day, not best score of the week.
     signals = generate_signals_mined(fm, strat, oos_start, oos_end)
     train_signals = generate_signals_mined(fm, strat, train_start_idx, train_end_idx)
     train_trades = backtest_mined(

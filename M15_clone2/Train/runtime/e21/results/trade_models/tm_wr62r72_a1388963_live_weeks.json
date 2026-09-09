@@ -2,7 +2,7 @@
   "meta": {
     "model_id": "tm_wr62r72_a1388963",
     "source": "live_remine",
-    "n_weeks": 9
+    "n_weeks": 10
   },
   "weekly": [
     {
@@ -787,6 +787,93 @@
       },
       "train_start_idx": 62222,
       "train_end_idx": 66062
+    },
+    {
+      "week_start": "2026-09-07",
+      "strategy": {
+        "name": "Forge RR3 full 2L4S range+price #7DB6|chase:fixed_and_rsi<65+vwap<2.2",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4,
+        "rr": 3.0,
+        "atr_mult": 1.05,
+        "score_threshold": 0.8,
+        "atr_mult_sl": 1.05,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 3,
+        "max_hold_bars": 64,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": true,
+        "anti_chase_rsi_short_max": 65.0,
+        "anti_chase_rsi_long_min": 35.0,
+        "anti_chase_vwap_short_max": 2.2,
+        "anti_chase_logic": "and",
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "long_rules": [
+          {
+            "feat": "range_buy",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.11232136363636559
+          },
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.036
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "range_sell",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.301758742676829
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.3381118020324585,
+            "w": 1.49440785227249
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.5814282205560004,
+            "w": 2.24600091723927
+          },
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 58.88094675015557,
+            "w": 1.883094237166234
+          }
+        ]
+      },
+      "train_start_idx": 62702,
+      "train_end_idx": 66542
     }
   ]
 }

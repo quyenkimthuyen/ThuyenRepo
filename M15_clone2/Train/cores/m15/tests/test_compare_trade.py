@@ -18,6 +18,8 @@ from mt5_bridge.compare_runner import (
   slice_replay_frame,
 )
 from mt5_bridge.engine import (
+  BridgeEngine,
+  _causal_scan_end,
   _journal_open_and_day_count,
   _journal_last_auto_signal_idx,
   _normalize,
@@ -403,6 +405,114 @@ def test_multi_model_daily_figure():
   fig = build_multi_model_daily_figure({"A": d_a, "B": d_b})
   assert fig is not None
   assert len(fig.data) >= 2
+
+
+def test_causal_scan_end_stops_at_closed_bar():
+  assert _causal_scan_end(100, 40) == 41
+  assert _causal_scan_end(41, 40) == 41
+  assert _causal_scan_end(40, 40) == 40
+
+
+def test_decide_for_bar_does_not_scan_future_week_bars(tmp_path, monkeypatch):
+  """Replay with full-week cache must not scan afternoon bars when deciding 08:00."""
+  import numpy as np
+  from mt5_bridge.history_sync import parse_broker_time, utc_to_broker_time
+
+  stamps = [
+    parse_broker_time(f"2026.09.07 {h:02d}:{m:02d}")
+    for h in range(7, 18)
+    for m in (0, 15, 30, 45)
+  ]
+  df = _normalize(pd.DataFrame({
+    "Open": [1.160 + i * 0.00001 for i in range(len(stamps))],
+    "High": [1.161 + i * 0.00001 for i in range(len(stamps))],
+    "Low": [1.159 + i * 0.00001 for i in range(len(stamps))],
+    "Close": [1.1605 + i * 0.00001 for i in range(len(stamps))],
+    "Volume": [10] * len(stamps),
+    "SpreadPoints": [16] * len(stamps),
+  }, index=pd.DatetimeIndex(stamps)))
+  cache = tmp_path / "mt5.parquet"
+  df.to_parquet(cache)
+  bridge = tmp_path / "bridge"
+  bridge.mkdir()
+
+  closed = parse_broker_time("2026.09.07 08:00")
+  closed_idx = int(df.index.get_loc(closed))
+  week_end_idx = get_week_indices_end(df, closed)
+  assert week_end_idx > closed_idx + 1
+
+  captured: dict = {}
+
+  def fake_gen(fm, strat, start_idx=0, end_idx=None, *, include_last_bar=False):
+    captured["end_idx"] = end_idx
+    captured["start_idx"] = start_idx
+    captured["include_last_bar"] = include_last_bar
+    captured["fm_n"] = fm.n
+    return np.zeros(fm.n, dtype=np.int8)
+
+  class _Strat:
+    name = "causal-replay"
+    max_trades_per_day = 2
+    min_bars_between = 0
+    ml_scorer = None
+    rr_ratio = 3.0
+    atr_mult_sl = 1.05
+    exit_mode = "full"
+    trail_activate_r = 1.0
+    trail_distance_r = 0.5
+    max_hold_bars = 64
+    tp_ignores_spread_buffer = True
+    confirm_r = 0.0
+    confirm_wait_bars = 4
+    confirm_cancel_r = 0.5
+
+  monkeypatch.setattr("mt5_bridge.engine.generate_signals_mined", fake_gen)
+  monkeypatch.setattr("mt5_bridge.engine.backtest_mined", lambda *a, **k: ([], None))
+  monkeypatch.setattr("mt5_bridge.engine.explain_bar_gates", lambda *a, **k: None)
+  monkeypatch.setattr("mt5_bridge.engine.apply_oos_exit_overlay", lambda s, *_a, **_k: s)
+
+  eng = BridgeEngine(model_id="tm_causal_replay", mt5_cache=cache, bridge_dir=bridge)
+  eng._model = {
+    "id": "tm_causal_replay",
+    "data_source": "mt5_ea",
+    "data_timeframe": "M15",
+    "feature_schema": 2,
+  }
+  eng._params = {
+    "trade_model_id": "tm_causal_replay",
+    "train_weeks": 8,
+    "use_learning": False,
+    "feature_profile": "current",
+    "spread_pips": 1.9,
+    "slippage_pips": 0.0,
+  }
+  eng._df = df.copy()
+  eng._remine_week_strategy = lambda **_k: _Strat()
+
+  row = df.loc[closed]
+  decision = eng.decide_for_bar({
+    "time": utc_to_broker_time(closed).strftime("%Y.%m.%d %H:%M"),
+    "open": float(row.Open),
+    "high": float(row.High),
+    "low": float(row.Low),
+    "close": float(row.Close),
+    "volume": float(row.Volume),
+    "spread_points": 16,
+  })
+  assert captured.get("end_idx") == closed_idx + 1
+  assert captured["end_idx"] < week_end_idx
+  assert captured["end_idx"] < captured["fm_n"]
+  assert decision.get("reason") in ("no_signal", "no_oos_week", "bar_not_in_series")
+
+
+def get_week_indices_end(df: pd.DataFrame, ts: pd.Timestamp) -> int:
+  from data_loader import get_week_indices
+  from paper_monitor import _week_bounds_for_ts
+
+  start, end = _week_bounds_for_ts(ts)
+  oos_s, oos_e = get_week_indices(df, start, end)
+  assert oos_s is not None
+  return int(oos_e)
 
 
 def test_multi_model_price_figure_markers():

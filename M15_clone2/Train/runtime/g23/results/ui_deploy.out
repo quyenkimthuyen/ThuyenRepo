@@ -1,25 +1,25 @@
 ==> Locate XM Global MT5
 Install : C:\Program Files\XM Global MT5
 Data    : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05
-Desk    : g23 (CL1G23 GBPUSD M15)
-Runtime : C:\Work\ThuyenRepo\M15_clone1\Train\runtime\g23
+Desk    : g23 (CL2G23 GBPUSD M15)
+Runtime : C:\Work\ThuyenRepo\M15_clone2\Train\runtime\g23
 Mode    : Live
 ==> Stop XM MT5 (unlock EA files / Files junction)
 ==> Link MQL5 Files to app
-Live    : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05\MQL5\Files\bridge_cl1_g23 -> C:\Work\ThuyenRepo\M15_clone1\Train\runtime\g23\mt5\bridge_cl1_g23
+Live    : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05\MQL5\Files\bridge_cl2_g23 -> C:\Work\ThuyenRepo\M15_clone2\Train\runtime\g23\mt5\bridge_cl2_g23
 ==> Render ForgeBridge EA v1.27 for desk g23
-OK runtime\g23\mt5\Experts\ForgeBridgeCL1G23.mq5
-==> Copy and compile ForgeBridgeCL1G23
-EX5     : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05\MQL5\Experts\EdgeMinerCL1G23\ForgeBridgeCL1G23.ex5
-==> Attach ForgeBridgeCL1G23 Live to GBPUSD M15
-Attach target: free GBPUSD M15 chart chart08.chr for ForgeBridgeCL1G23
-Attached ForgeBridgeCL1G23 (mode=0, subdir=bridge_cl1_g23) -> chart08.chr
-Chart   : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05\MQL5\Profiles\Charts\Default\chart08.chr
+OK runtime\g23\mt5\Experts\ForgeBridgeCL2G23.mq5
+==> Copy and compile ForgeBridgeCL2G23
+EX5     : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05\MQL5\Experts\EdgeMinerCL2G23\ForgeBridgeCL2G23.ex5
+==> Attach ForgeBridgeCL2G23 Live to GBPUSD M15
+Attach target: existing ForgeBridgeCL2G23 on chart12.chr
+Attached ForgeBridgeCL2G23 (mode=0, subdir=bridge_cl2_g23) -> chart12.chr
+Chart   : C:\Users\Thuyen\AppData\Roaming\MetaQuotes\Terminal\BB16F565FAAA6B23A20C26C49416FF05\MQL5\Profiles\Charts\Default\chart12.chr
 Trading : True
-History test: same EA + chart; App writes sim_control.json on bridge_cl1_g23
+History test: same EA + chart; App writes sim_control.json on bridge_cl2_g23
 ==> Restart MT5 Bridge service
-Service : PID 16792
+Service : PID 37876
 ==> Done
 Live EA ready. History test: App from/to writes sim_control.json on this same chart (no Sim EX5).
 Next update command:
-powershell -ExecutionPolicy Bypass -File "C:\Work\ThuyenRepo\M15_clone1\Train\scripts\deploy_xm_forgebridge.ps1" -Desk g23
+powershell -ExecutionPolicy Bypass -File "C:\Work\ThuyenRepo\M15_clone2\Train\scripts\deploy_xm_forgebridge.ps1" -Desk g23

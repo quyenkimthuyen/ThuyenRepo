@@ -85,6 +85,7 @@ const topicNames = {
   ThongDiepVanBan: "Thông điệp văn bản",
   VietDoanVan: "Viết đoạn văn",
   ClozeTest: "Điền từ vào đoạn văn",
+  CauTrucCau: "Cấu trúc câu",
   Comparisons: "So sánh",
   Conditionals: "Câu điều kiện",
   DialogueCompletion: "Hoàn thành hội thoại",
