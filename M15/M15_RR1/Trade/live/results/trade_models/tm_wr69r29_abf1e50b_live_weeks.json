@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "model_id": "tm_wr69r29_abf1e50b",
+    "source": "live_remine",
+    "n_weeks": 1
+  },
+  "weekly": [
+    {
+      "week_start": "2026-09-07",
+      "strategy": {
+        "name": "Forge RR3 full 2L2S range+pullback #8754|chase:fixed_and_rsi<65+vwap<2.2",
+        "exit_mode": "full",
+        "ml_prob_min": 0.36,
+        "rr": 2.2,
+        "atr_mult": 1.25,
+        "score_threshold": 1.2,
+        "atr_mult_sl": 1.25,
+        "rr_ratio": 2.2,
+        "min_rules_match": 1,
+        "max_trades_per_day": 6,
+        "min_bars_between": 3,
+        "max_hold_bars": 64,
+        "partial_pct": 0.62,
+        "partial_at_r": 1.15,
+        "partial_runner_trail_r": 0.4,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": true,
+        "anti_chase_rsi_short_max": 65.0,
+        "anti_chase_rsi_long_min": 35.0,
+        "anti_chase_vwap_short_max": 2.2,
+        "anti_chase_logic": "and",
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 2.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "long_rules": [
+          {
+            "feat": "range_buy",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 9.969854919433361
+          },
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.021080424675209375
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "sweep_high_fade",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.4
+          },
+          {
+            "feat": "pullback_short",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.4678644987947282
+          }
+        ]
+      },
+      "train_start_idx": 63660,
+      "train_end_idx": 66540
+    }
+  ]
+}

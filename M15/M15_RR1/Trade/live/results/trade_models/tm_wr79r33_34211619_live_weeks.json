@@ -1,0 +1,142 @@
+{
+  "meta": {
+    "model_id": "tm_wr79r33_34211619",
+    "source": "live_remine",
+    "n_weeks": 1
+  },
+  "weekly": [
+    {
+      "week_start": "2026-09-07",
+      "strategy": {
+        "name": "Forge RR1.8 hybrid 6L6S range+price #57C5|surg:h5,8+noS|chase:fixed_and_rsi<65+vwap<2.2",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.36,
+        "rr": 1.8,
+        "atr_mult": 1.25,
+        "score_threshold": 1.2,
+        "atr_mult_sl": 1.25,
+        "rr_ratio": 1.8,
+        "min_rules_match": 1,
+        "max_trades_per_day": 6,
+        "min_bars_between": 3,
+        "max_hold_bars": 64,
+        "partial_pct": 0.62,
+        "partial_at_r": 1.15,
+        "partial_runner_trail_r": 0.4,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [
+          5,
+          8
+        ],
+        "allow_long": true,
+        "allow_short": false,
+        "anti_chase": true,
+        "anti_chase_rsi_short_max": 65.0,
+        "anti_chase_rsi_long_min": 35.0,
+        "anti_chase_vwap_short_max": 2.2,
+        "anti_chase_logic": "and",
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 2.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "long_rules": [
+          {
+            "feat": "london_open",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.3291666666666666
+          },
+          {
+            "feat": "range_buy",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.167367022714989
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.20014202403642073,
+            "w": 0.8124999999999999
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.15691321950350842,
+            "w": 0.7430555555555557
+          },
+          {
+            "feat": "swing_strength",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.16936805464996618,
+            "w": 0.7951388888888888
+          },
+          {
+            "feat": "overlap_session",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.7625
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 58.6830115952958,
+            "w": 1.2604166666666672
+          },
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 53.800269502188385,
+            "w": 1.0793650793650795
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.9537412614159394,
+            "w": 1.2256944444444446
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.09537412614180027,
+            "w": 1.2256944444444446
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.5450504860763683,
+            "w": 1.4842336763606405
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.6658259099032091,
+            "w": 0.9479166666666672
+          }
+        ]
+      },
+      "train_start_idx": 63660,
+      "train_end_idx": 66540
+    }
+  ]
+}
