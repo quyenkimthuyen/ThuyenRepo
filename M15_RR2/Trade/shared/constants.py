@@ -1,16 +1,24 @@
 """Constants for split_app Live magic / ports."""
 from __future__ import annotations
 
-# LiveCheck2 identity — offset from LiveCheck Trade (8601 / 20263001 / LIVE1).
-LIVE_MAGIC_BASE = 20283201
-LIVE_SIM_MAGIC_BASE = 20284201
+from pathlib import Path
+
+# Folder name M15_RR2 → RR2. Off clone2 (9201/9311/8801) and RR1 (9501/9511).
+_CLONE_DIR = Path(__file__).resolve().parents[2].name
+CLONE_TAG = _CLONE_DIR.replace("M15_", "")
+
+LIVE_MAGIC_BASE = 20285201
+LIVE_SIM_MAGIC_BASE = 20286201
 LIVE_MAX_MODELS = 15          # global Live magic slots
 LIVE_MAX_MODELS_PER_CHART = 5  # ForgeBridgeLive MAX_MODELS per EA/chart
 
-LIVE_APP_PORT = 9201
-LIVE_BRIDGE_PORT = 10201
-LIVE_SIM_PORT = 10301
+LIVE_APP_PORT = 9601
+LIVE_BRIDGE_PORT = 10601
+LIVE_SIM_PORT = 10701
 
-LIVE_BRIDGE_SUBDIR = "bridge_live"
-LIVE_BRIDGE_SIM_SUBDIR = "bridge_sim_live"
-LIVE_INSTANCE_ID = "LIVECL2"
+LIVE_BRIDGE_SUBDIR = f"bridge_{CLONE_TAG.lower()}"
+LIVE_BRIDGE_SIM_SUBDIR = f"bridge_sim_{CLONE_TAG.lower()}"
+LIVE_INSTANCE_ID = f"LIVE{CLONE_TAG}"
+LIVE_EA_STEM = f"ForgeBridgeLive{CLONE_TAG}"
+LIVE_EA_SIM_STEM = f"ForgeBridgeLiveSim{CLONE_TAG}"
+LIVE_EA_FOLDER = f"EdgeMiner{CLONE_TAG}"

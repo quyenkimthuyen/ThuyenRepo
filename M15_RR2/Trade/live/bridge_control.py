@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from books import bridge_dir, bridge_subdir, group_models_by_book
+from books import bridge_dir, bridge_subdir, group_models_by_book, is_bridge_dir_name
 from chart_validate import validate_chart_vs_roster
 from live_config import BRIDGE_DIR, LIVE_ROOT, RESULTS_DIR
 from materialize_models import materialize_enabled
@@ -536,9 +536,9 @@ def start_bridge(
       continue
     sym, tf = g["symbol"], g["timeframe"]
     bdir = Path(g["bridge_dir"])
-    if sim and not bdir.name.startswith("bridge_sim_live"):
+    if sim and not is_bridge_dir_name(bdir.name, sim=True):
       raise RuntimeError(f"EA Simulate refused live bridge dir: {bdir.name}")
-    if (not sim) and bdir.name.startswith("bridge_sim_live"):
+    if (not sim) and is_bridge_dir_name(bdir.name, sim=True):
       raise RuntimeError(f"Live refused sim bridge dir: {bdir.name}")
     bdir.mkdir(parents=True, exist_ok=True)
     (bdir / "decisions").mkdir(exist_ok=True)
@@ -790,7 +790,7 @@ def stop_bridge(
     bdir = Path(w.get("bridge_dir") or "")
     if bdir:
       _write(bdir / "status.json", {"updated_at": _now(), "state": "stopped", "sim": bool(sim)})
-      if sim and bdir.name.startswith("bridge_sim_live"):
+      if sim and is_bridge_dir_name(bdir.name, sim=True):
         try:
           ctrl = _read(bdir / "sim_control.json") or {}
           if isinstance(ctrl, dict):

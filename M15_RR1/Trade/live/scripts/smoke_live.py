@@ -216,7 +216,8 @@ def main() -> int:
   _ok("journal_summary")
 
   # 10) EA PeriodTag present
-  ea = SPLIT / "mt5" / "Experts" / "ForgeBridgeLive.mq5"
+  from shared.constants import LIVE_EA_STEM
+  ea = SPLIT / "mt5" / "Experts" / f"{LIVE_EA_STEM}.mq5"
   ea_txt = ea.read_text(encoding="utf-8")
   assert "PeriodTag()" in ea_txt
   assert '"period\":\"M15\"' not in ea_txt.replace("PeriodTag()", "")
@@ -225,7 +226,7 @@ def main() -> int:
   # 11) Deploy script identity
   dep = LIVE / "scripts" / "deploy_live_ea.ps1"
   dep_txt = dep.read_text(encoding="utf-8")
-  for needle in ("ForgeBridgeLive", "bridge_live", "20283001", "EdgeMinerLive", "bridge_control", "FromRoster"):
+  for needle in ("ForgeBridgeLive", "FromRoster", "SkipBridgeService", "EdgeMiner", "bridge_control"):
     assert needle in dep_txt, needle
   _ok("deploy_live_ea.ps1")
 

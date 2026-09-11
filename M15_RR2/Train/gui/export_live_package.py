@@ -32,7 +32,7 @@ def trade_models_import_url() -> str:
     from shared.constants import LIVE_APP_PORT
     port = int(LIVE_APP_PORT)
   except Exception:
-    port = 9201
+    port = 9601
   return f"http://127.0.0.1:{port}/?nav=Models"
 
 

@@ -121,11 +121,11 @@ def _iter_bridge_dirs(*, sim: bool) -> list[Path]:
   except Exception:
     pass
   # Also scan on-disk bridge folders (workers may exist beyond roster parse)
-  prefix = "bridge_sim_live_" if sim else "bridge_live_"
   try:
+    from books import is_bridge_dir_name
     if MT5_ROOT.is_dir():
       for p in MT5_ROOT.iterdir():
-        if p.is_dir() and p.name.startswith(prefix) and str(p) not in seen:
+        if p.is_dir() and is_bridge_dir_name(p.name, sim=sim) and str(p) not in seen:
           dirs.append(p)
           seen.add(str(p))
   except OSError:

@@ -212,9 +212,10 @@ def _risk_bridge_dirs() -> list[Path]:
   except Exception:
     pass
   if not dirs:
+    from books import is_bridge_dir_name
     from live_config import MT5_ROOT
-    for path in sorted(MT5_ROOT.glob("bridge_live_*")):
-      if path.is_dir():
+    for path in sorted(MT5_ROOT.iterdir()):
+      if path.is_dir() and is_bridge_dir_name(path.name, sim=False):
         _add(path)
   return dirs
 

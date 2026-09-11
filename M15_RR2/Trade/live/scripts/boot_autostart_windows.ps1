@@ -40,7 +40,7 @@ function Get-Prefs {
     start_app = $true
     start_bridge = $false
     delay_sec = 45
-    port = 8801
+    port = 9601
   }
   if (-not (Test-Path $PrefsPath)) { return $defaults }
   try {

@@ -77,25 +77,30 @@ def check_windows() -> str:
 
 def check_constants() -> str:
   from shared.constants import (
+    CLONE_TAG,
     LIVE_APP_PORT,
     LIVE_BRIDGE_PORT,
+    LIVE_EA_STEM,
     LIVE_INSTANCE_ID,
     LIVE_MAGIC_BASE,
     LIVE_SIM_MAGIC_BASE,
   )
-  assert LIVE_APP_PORT == 9401, LIVE_APP_PORT
+  assert CLONE_TAG == "RR1", CLONE_TAG
+  assert LIVE_APP_PORT == 9501, LIVE_APP_PORT
   assert LIVE_BRIDGE_PORT == 10401, LIVE_BRIDGE_PORT
-  assert LIVE_MAGIC_BASE == 20283301, LIVE_MAGIC_BASE
-  assert LIVE_SIM_MAGIC_BASE == 20284301, LIVE_SIM_MAGIC_BASE
-  assert LIVE_INSTANCE_ID == "LIVECL3"
+  assert LIVE_MAGIC_BASE == 20285101, LIVE_MAGIC_BASE
+  assert LIVE_SIM_MAGIC_BASE == 20286101, LIVE_SIM_MAGIC_BASE
+  assert LIVE_INSTANCE_ID == "LIVERR1"
+  assert LIVE_EA_STEM == "ForgeBridgeLiveRR1"
   return f"port={LIVE_APP_PORT} magic={LIVE_MAGIC_BASE}"
 
 
 def check_paths() -> str:
   from live_config import BRIDGE_DIR, LIVE_ROOT, MT5_ROOT, RESULTS_DIR, ROSTER_PATH
+  from shared.constants import LIVE_EA_STEM
   assert LIVE_ROOT == LIVE, LIVE_ROOT
   assert MT5_ROOT.is_dir(), MT5_ROOT
-  assert (MT5_ROOT / "Experts" / "ForgeBridgeLive.mq5").is_file()
+  assert (MT5_ROOT / "Experts" / f"{LIVE_EA_STEM}.mq5").is_file()
   assert (LIVE / "gui" / "app.py").is_file()
   assert (LIVE / "gui" / "theme.py").is_file()
   assert (LIVE / "scripts" / "deploy_live_ea.ps1").is_file()
@@ -204,7 +209,7 @@ def check_deploy_ps1_parse() -> str:
     raise AssertionError(out or r.stderr or f"exit={r.returncode}")
   # Spot-check identity needles
   txt = script.read_text(encoding="utf-8-sig")
-  for needle in ("ForgeBridgeLive", "FromRoster", "20283001", "SkipBridgeService"):
+  for needle in ("ForgeBridgeLive", "FromRoster", "SkipBridgeService"):
     assert needle in txt, needle
   return "PARSE_OK"
 
@@ -223,9 +228,10 @@ def check_roster_and_books() -> str:
   if not enabled:
     raise AssertionError("no enabled roster models — turn On in Models UI")
   assert books, "enabled_books() empty despite enabled models"
+  from shared.constants import LIVE_BRIDGE_SUBDIR
   for b in books:
     assert b.get("symbol") and b.get("timeframe"), b
-    assert b.get("bridge_subdir", "").startswith("bridge_live_"), b
+    assert b.get("bridge_subdir", "").startswith(f"{LIVE_BRIDGE_SUBDIR}_"), b
   return f"installed={len(installed)} enabled={len(enabled)} books={len(books)}"
 
 
@@ -286,7 +292,8 @@ def check_replay_modes() -> str:
   finally:
     import shutil
     shutil.rmtree(idle_dir, ignore_errors=True)
-  mq5 = (SPLIT / "mt5" / "Experts" / "ForgeBridgeLive.mq5").read_text(encoding="utf-8")
+  from shared.constants import LIVE_EA_STEM
+  mq5 = (SPLIT / "mt5" / "Experts" / f"{LIVE_EA_STEM}.mq5").read_text(encoding="utf-8")
   assert '#property version   "1.25"' in mq5
   assert "WaitHistoryDecisionsForBar" in mq5
   assert "g_sim_delay_ms + 6000" not in mq5

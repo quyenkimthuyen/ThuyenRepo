@@ -13,7 +13,7 @@ param(
   [ValidateSet("Install", "Uninstall", "Status", "Ensure")]
   [string]$Action = "Status",
   [int]$DelaySec = 45,
-  [int]$Port = 8801,
+  [int]$Port = 9601,
   [string]$TaskName = ""
 )
 

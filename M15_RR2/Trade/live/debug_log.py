@@ -40,7 +40,8 @@ def book_key(symbol: str | None = None, timeframe: str | None = None, bridge_dir
     return f"{str(symbol).lower()}_{str(timeframe).lower()}"
   if bridge_dir:
     name = Path(bridge_dir).name.lower()
-    for prefix in ("bridge_live_", "bridge_sim_live_", "bridge_"):
+    from live_config import LIVE_BRIDGE_SIM_SUBDIR, LIVE_BRIDGE_SUBDIR
+    for prefix in (f"{LIVE_BRIDGE_SUBDIR}_", f"{LIVE_BRIDGE_SIM_SUBDIR}_", "bridge_live_", "bridge_sim_live_", "bridge_"):
       if name.startswith(prefix):
         return name[len(prefix):] or name
     return name or "unknown"

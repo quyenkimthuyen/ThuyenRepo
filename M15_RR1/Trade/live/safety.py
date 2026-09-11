@@ -78,10 +78,11 @@ def write_flatten_command(
     except Exception:
       pass
     try:
+      from books import is_bridge_dir_name
       from live_config import MT5_ROOT
       if MT5_ROOT.is_dir():
         for p in MT5_ROOT.iterdir():
-          if p.is_dir() and p.name.startswith("bridge_live_") and p not in dirs:
+          if p.is_dir() and is_bridge_dir_name(p.name, sim=False) and p not in dirs:
             dirs.append(p)
     except Exception:
       pass

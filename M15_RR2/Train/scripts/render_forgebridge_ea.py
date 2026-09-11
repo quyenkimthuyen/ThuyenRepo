@@ -18,17 +18,17 @@ TEMPLATE = ROOT / "mt5" / "template" / "ForgeBridgeDesk.mq5.template"
 DESKS: list[dict] = [
   {
     "desk": "e21",
-    "instance_id": "LC2E21",
-    "bridge_subdir": "bridge_lc2_e21",
-    "magic": 20281021,
+    "instance_id": "RR2E21",
+    "bridge_subdir": "bridge_rr2_e21",
+    "magic": 20285221,
     "chart_bars": 1344,
     "desk_line": "EURUSD M15",
   },
   {
     "desk": "g23",
-    "instance_id": "LC2G23",
-    "bridge_subdir": "bridge_lc2_g23",
-    "magic": 20281041,
+    "instance_id": "RR2G23",
+    "bridge_subdir": "bridge_rr2_g23",
+    "magic": 20285241,
     "chart_bars": 1344,
     "desk_line": "GBPUSD M15",
   },

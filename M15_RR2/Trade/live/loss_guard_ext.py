@@ -135,10 +135,11 @@ def _live_bridge_dirs() -> list[Path]:
     pass
   if not dirs:
     try:
+      from books import is_bridge_dir_name
       from live_config import MT5_ROOT
       if MT5_ROOT.is_dir():
-        for path in sorted(MT5_ROOT.glob("bridge_live_*")):
-          if path.is_dir():
+        for path in sorted(MT5_ROOT.iterdir()):
+          if path.is_dir() and is_bridge_dir_name(path.name, sim=False):
             _add(path)
     except Exception:
       pass

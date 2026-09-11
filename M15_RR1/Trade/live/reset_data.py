@@ -103,8 +103,9 @@ def list_bridge_dirs() -> list[Path]:
   for p in sorted(MT5_ROOT.iterdir()):
     if not p.is_dir():
       continue
+    from books import is_bridge_dir_name
     name = p.name
-    if name.startswith("bridge_live") or name.startswith("bridge_sim_live"):
+    if is_bridge_dir_name(name):
       out.append(p)
   # ensure canonical dirs counted even if empty/missing
   for p in (BRIDGE_DIR, BRIDGE_SIM_DIR):

@@ -296,7 +296,8 @@ def reset_replay_history(
 
   if clear_sim_journals and MT5_ROOT.exists():
     for bdir in MT5_ROOT.iterdir():
-      if not bdir.is_dir() or not bdir.name.startswith("bridge_sim_live"):
+      from books import is_bridge_dir_name
+      if not bdir.is_dir() or not is_bridge_dir_name(bdir.name, sim=True):
         continue
       for name in (
         "fills.jsonl", "ea_fills.jsonl", "trades.json", "sim_control.json",

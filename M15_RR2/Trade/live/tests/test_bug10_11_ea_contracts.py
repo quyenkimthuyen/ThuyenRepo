@@ -2,10 +2,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 
 TRADE = Path(__file__).resolve().parents[2]
-LIVE_EA = TRADE / "mt5" / "Experts" / "ForgeBridgeLive.mq5"
-SIM_EA = TRADE / "mt5" / "Experts" / "ForgeBridgeLiveSim.mq5"
+sys.path.insert(0, str(TRADE))
+from shared.constants import LIVE_EA_SIM_STEM, LIVE_EA_STEM
+
+LIVE_EA = TRADE / "mt5" / "Experts" / f"{LIVE_EA_STEM}.mq5"
+SIM_EA = TRADE / "mt5" / "Experts" / f"{LIVE_EA_SIM_STEM}.mq5"
 
 
 def _magic_is_ours_body(src: str) -> str:

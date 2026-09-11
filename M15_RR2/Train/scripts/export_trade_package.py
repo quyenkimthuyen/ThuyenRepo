@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Export a TrainApp Trade Model to a Trade `.tmpkg` (packages_inbox).
 
-Writes the same v1 package Live imports at the clone Trade Models URL (port 9201).
+Writes the same v1 package Live imports at the clone Trade Models URL (port 9601).
 
   python scripts/export_trade_package.py --desk e21 --list
   python scripts/export_trade_package.py --desk e21 --model-id tm_...

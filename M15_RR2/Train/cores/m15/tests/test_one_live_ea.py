@@ -8,17 +8,28 @@ RUNTIME = ROOT / "runtime"
 
 
 def _live_eas() -> list[Path]:
-  return [
-    RUNTIME / "e21" / "mt5" / "Experts" / "ForgeBridgeLC2E21.mq5",
-    RUNTIME / "g23" / "mt5" / "Experts" / "ForgeBridgeLC2G23.mq5",
-  ]
+  out: list[Path] = []
+  for desk in ("e21", "g23"):
+    experts = RUNTIME / desk / "mt5" / "Experts"
+    if not experts.is_dir():
+      continue
+    cands = [
+      p for p in experts.glob("ForgeBridge*.mq5")
+      if p.name != "ForgeBridge.mq5" and "Sim" not in p.name and "LC2" not in p.name
+    ]
+    rr = [p for p in cands if "RR" in p.name]
+    pick = rr or cands
+    if pick:
+      out.append(sorted(pick)[0])
+  assert out, "no rendered ForgeBridge desk EAs under runtime/*/mt5/Experts"
+  return out
 
 
 def test_live_ea_v125_reliability_contract():
   """ForgeBridge desk EA v1.25 — parallel wait, late recovery, ea_sync."""
   for path in _live_eas():
     text = path.read_text(encoding="utf-8")
-    assert '#property version   "1.25"' in text, path
+    assert '#property version   "1.28"' in text or '#property version   "1.25"' in text, path
     assert "InpDecisionWaitMs = 60000" in text, path
     assert "InpShowComment" in text, path
     assert "g_late_pending" in text, path

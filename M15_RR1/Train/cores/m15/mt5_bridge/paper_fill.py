@@ -47,7 +47,12 @@ def _desk_symbol() -> str:
   try:
     from mt5_bridge.protocol import INSTANCE_ID, ROOT
     name = ROOT.name.upper()
-    if "GBP" in name or str(INSTANCE_ID).upper().startswith(("M15G", "M5G", "LC2G", "G")):
+    id_u = str(INSTANCE_ID).upper()
+    if (
+      "GBP" in name
+      or id_u.endswith(("G23", "G33"))
+      or id_u.startswith(("M15G", "M5G", "LC2G", "CL2G", "CL3G", "RR1G", "RR2G", "G"))
+    ):
       return "GBPUSD"
   except Exception:
     pass

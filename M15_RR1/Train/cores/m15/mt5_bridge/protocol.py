@@ -59,7 +59,7 @@ DEFAULT_MODEL_ID = ""
 DEFAULT_MAGIC = int(_CFG.get("magic") or 20281021)
 DEFAULT_SIM_MAGIC = int(_CFG.get("sim_magic") or 20282021)
 DEFAULT_TIMEFRAME = str(_CFG.get("tf") or "M15")
-INSTANCE_ID = str(_CFG.get("instance_id") or "LC2E21")
+INSTANCE_ID = str(_CFG.get("instance_id") or "RR1E21")
 MAX_BRIDGE_MODELS = 5
 
 

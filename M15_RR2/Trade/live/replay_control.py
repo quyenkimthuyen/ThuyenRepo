@@ -350,11 +350,12 @@ def stop_replay() -> dict[str, Any]:
 
 
 def _assert_live_feed_bridge(bdir: Path) -> Path:
+  from books import is_bridge_dir_name
   p = Path(bdir)
   name = p.name
-  if name.startswith("bridge_sim_live"):
+  if is_bridge_dir_name(name, sim=True):
     raise RuntimeError(f"OOS HistoryFeed uses Live bridge, not {name}")
-  if not name.startswith("bridge_live"):
+  if not is_bridge_dir_name(name, sim=False):
     raise RuntimeError(f"OOS HistoryFeed refused non-live bridge: {name}")
   return p
 
