@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-10T08:31:16+05:30",
+  "updated_at": "2026-09-11T13:21:59+05:30",
   "state": "decided",
   "last_bar": "2026.09.09 17:30",
   "last_action": "FLAT",
@@ -13,8 +13,8 @@
   ],
   "per_model": {
     "tm_wr54r68_a7915c8a": {
-      "action": "FLAT",
-      "reason": "no_signal",
+      "action": "HOLD",
+      "reason": "position_open",
       "signal_id": "529ac4cfa6321c0f",
       "magic": 20281241,
       "strategy_name": "Forge RR2 partial 2L5S session+rsi #4873|chase:fixed_and_rsi<70+vwap<2.5",
@@ -26,14 +26,15 @@
           "side": "BUY",
           "ready": false,
           "passed": 5,
-          "total": 11,
-          "waiting_n": 6,
+          "total": 12,
+          "waiting_n": 7,
           "waiting": [
             "sweep_low_fade",
             "pullback_long",
             "Rules matched (≥1)",
             "Combined score",
             "Leads opposite side",
+            "No open position",
             "Day slots left"
           ],
           "gates": [
@@ -118,6 +119,14 @@
               "side": "BUY"
             },
             {
+              "id": "position",
+              "label": "No open position",
+              "ok": false,
+              "current": "OPEN",
+              "expect": "FLAT",
+              "side": "BUY"
+            },
+            {
               "id": "slots",
               "label": "Day slots left",
               "ok": false,
@@ -131,13 +140,14 @@
           "side": "SELL",
           "ready": false,
           "passed": 9,
-          "total": 14,
-          "waiting_n": 5,
+          "total": 15,
+          "waiting_n": 6,
           "waiting": [
             "squeeze_break_dn",
             "session_vwap_dist",
             "adx",
             "price_vs_ema50",
+            "No open position",
             "Day slots left"
           ],
           "gates": [
@@ -246,6 +256,14 @@
               "side": "SELL"
             },
             {
+              "id": "position",
+              "label": "No open position",
+              "ok": false,
+              "current": "OPEN",
+              "expect": "FLAT",
+              "side": "SELL"
+            },
+            {
               "id": "slots",
               "label": "Day slots left",
               "ok": false,
@@ -261,8 +279,8 @@
       "remine_each_week": true
     },
     "tm_wr51r62_d22aae09": {
-      "action": "FLAT",
-      "reason": "no_signal",
+      "action": "HOLD",
+      "reason": "position_open",
       "signal_id": "4d2ca5d3eb447db5",
       "magic": 20281242,
       "strategy_name": "Forge RR2 full 2L4S price+rsi #89D4|chase:fixed_and_rsi<70+vwap<2.5",
@@ -274,13 +292,14 @@
           "side": "BUY",
           "ready": false,
           "passed": 6,
-          "total": 11,
-          "waiting_n": 5,
+          "total": 12,
+          "waiting_n": 6,
           "waiting": [
             "sweep_low_fade",
             "pullback_long",
             "Rules matched (≥1)",
             "Combined score",
+            "No open position",
             "Day slots left"
           ],
           "gates": [
@@ -365,6 +384,14 @@
               "side": "BUY"
             },
             {
+              "id": "position",
+              "label": "No open position",
+              "ok": false,
+              "current": "OPEN",
+              "expect": "FLAT",
+              "side": "BUY"
+            },
+            {
               "id": "slots",
               "label": "Day slots left",
               "ok": false,
@@ -378,8 +405,8 @@
           "side": "SELL",
           "ready": false,
           "passed": 5,
-          "total": 13,
-          "waiting_n": 8,
+          "total": 14,
+          "waiting_n": 9,
           "waiting": [
             "sweep_high_fade",
             "adx",
@@ -388,6 +415,7 @@
             "Rules matched (≥1)",
             "Combined score",
             "Leads opposite side",
+            "No open position",
             "Day slots left"
           ],
           "gates": [
@@ -485,6 +513,14 @@
               "ok": true,
               "current": 55.4075,
               "expect": "RSI < 70",
+              "side": "SELL"
+            },
+            {
+              "id": "position",
+              "label": "No open position",
+              "ok": false,
+              "current": "OPEN",
+              "expect": "FLAT",
               "side": "SELL"
             },
             {
