@@ -208,8 +208,23 @@ function Invoke-HealAfterMove {
   }
 }
 
+function Invoke-EnsureAutostart {
+  # Rebind Scheduled Task to this copy after a folder clone/move.
+  Push-Location $RepoRoot
+  try {
+    $split = (Resolve-Path (Join-Path $RepoRoot "..")).Path
+    $env:PYTHONPATH = "$RepoRoot;$split"
+    & python -c "from windows_autostart import ensure_autostart_after_move; ensure_autostart_after_move()"
+  } catch {
+    Write-Host "Autostart ensure skipped: $($_.Exception.Message)" -ForegroundColor DarkYellow
+  } finally {
+    Pop-Location
+  }
+}
+
 function Start-App {
   Invoke-HealAfterMove
+  Invoke-EnsureAutostart
   $running = @(Get-AppProcesses)
   if ($running.Count -gt 0 -and (Test-AppHealth)) {
     Write-Host "App is already running: $AppUrl (PID $($running[0].ProcessId))"

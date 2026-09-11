@@ -110,7 +110,9 @@ function Start-LiveApp([int]$AppPort) {
 
 function Resolve-LivePython {
   $candidates = @(
-    "C:\Work\ThuyenRepo\EdgeMinerM15B5\.venv\Scripts\python.exe",
+    (Join-Path $LiveRoot ".venv\Scripts\python.exe"),
+    (Join-Path $LiveRoot "..\.venv\Scripts\python.exe"),
+    (Join-Path $LiveRoot "..\..\.venv\Scripts\python.exe"),
     (Join-Path $LiveRoot "..\..\..\EdgeMinerM15B5\.venv\Scripts\python.exe"),
     "C:\Python314\python.exe",
     "C:\Python313\python.exe",
