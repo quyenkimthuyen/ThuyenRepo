@@ -1,0 +1,54 @@
+---
+description: Tiêu chí chọn Trade Model cho live / Bridge khi lớp chạy nhiều desk và nhiều model
+globs: "**/trade_model*.py,**/trade_models*.py,**/mt5_bridge/**,**/pipeline_*.py,**/runtime/**/trade_models.json,**/runtime/**/active_trade_model.json,**/mt5_bridge_config.json"
+alwaysApply: false
+---
+
+# Chọn Trade Model cho Live (multi-desk / multi-model)
+
+Khi promote active, gợi ý roster Bridge, hoặc trả lời “model nào nên live”, áp dụng các bar dưới. Tham chiếu UI: badge **Live-ok** = OOS walk-forward + Max DD ≤ 6.5R (`OVERVIEW_HIGH_DD_R` trong `gui/trade_model.py`).
+
+## Bar bắt buộc (mỗi model trước khi bật Bridge)
+
+| Tiêu chí | Ngưỡng | Ghi chú |
+|----------|--------|---------|
+| Nguồn số | **● OOS** (walk-forward), không chỉ ○ Grid | Grid-only = chưa đủ tin cậy live |
+| Max drawdown | **< 6–9R** (ưu tiên); tránh **> 12R** | Nhiều model → DD portfolio cộng dồn |
+| Profit factor | **≥ 1.5** (quality **≥ 2.0** tốt hơn) | |
+| n (lệnh OOS) | **≥ 40** (M15); **≥ 60–80** nếu TF nhanh / ít lệnh | WR cao + n nhỏ = noise |
+| Schedule | Có `{model_id}_schedule.json` khi có thể | Parity live/sim theo tuần |
+
+## Bar theo timeframe (desk primary)
+
+| TF | WR% | Total R (OOS) | RR | Ghi chú |
+|----|-----|---------------|-----|---------|
+| **M15** quality | **≥ 50–55%** (elite **≥ 60%**) | **> 50R**; desk chính **> 100R** | ≥ 2.2 | Backbone live |
+| **M15** high-R | ≥ 45% | > 70–100R | ≥ 2.1 | Chỉ nếu DD < 12R và risk thấp |
+| **M5** | ≥ 42–45% | **> 25–30R** | ≥ 2.0 | R thấp hơn M15 là bình thường |
+
+**Mục tiêu tune elite** (không bắt buộc mọi model roster): **WR > 60%** và **Total R > 100** — áp dụng khi densify/promote quality book M15 (vd. e21).
+
+## Hai “sách” — không trộn vai
+
+- **Quality book** (`elite_60_3`, `elite_60_3_vwap`, `elite_or_quality`): WR↑ DD↓ — **ưu tiên live primary**.
+- **High-R book** (`edge_gentle`, `anti_chase_and_*`, `nova` WR thấp): R↑ DD↑ — không làm primary khi chạy nhiều model; chỉ thêm với **risk % thấp**.
+
+## Roster lớp học (4 desk: e21, g23, e31, g33)
+
+1. **Một primary mỗi desk** (symbol + TF) — không stack 2 model cùng pair + cùng logic.
+2. **Risk % chia** cho tổng số model Bridge (vd. 4 desk × 0.5–1% ≈ 2–4% tổng; không 1% × N model).
+3. **Đa dạng**: EUR M15 + GBP M15 + M5 EUR/GBP — tránh cùng một edge lặp 4 lần.
+4. Promote / set active: quality hit trước; high-R chỉ khi không có quality đạt bar.
+
+## Checklist trước Bridge
+
+- Badge **Live-ok**; không **High-DD** / **Stale** / **Grid-only** cho model primary.
+- **So mining space** (UI): Active vs Baseline không stale.
+- `kb_profile` + `train_weeks` khớp desk (vd. e21 thường `era_2025_full`; g23 có thể h2).
+- Paper/sim vài tuần trước live; magic/roster không trùng model cũ.
+
+## Khi agent promote từ pipeline
+
+- Filter promote quality phải **khớp bar desk** (M15 vs M5); không promote model chỉ đạt R nếu DD/WR fail bar live primary.
+- `target60` mode: chỉ promote khi **WR > 60, R > 100, RR > 2.2, DD < 12**; không soft-fallback.
+- Chỉ đổi active nếu model mới **tốt hơn** active hiện tại (R hoặc WR, theo mode refine/target60).

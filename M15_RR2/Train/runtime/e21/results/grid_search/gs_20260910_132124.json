@@ -1,0 +1,3451 @@
+{
+  "run_id": "gs_20260910_132124",
+  "updated_at": "2026-09-10T13:21:24+05:30",
+  "objective": "quality",
+  "config": {
+    "train_weeks": [
+      8
+    ],
+    "kb_profiles": [
+      "era_2025_h1"
+    ],
+    "include_kb_off": false,
+    "epoch_mode": "selected",
+    "selected_epochs": {
+      "era_2025_h1": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    "oos_from": "2026-01-01",
+    "oos_to": "2026-06-30",
+    "oos_by_profile": null,
+    "oos_windows": [
+      [
+        "2026-01-01",
+        "2026-06-30"
+      ]
+    ],
+    "kb_learn_by_profile": {
+      "era_2025_h1": [
+        "2025-01-01",
+        "2025-06-30"
+      ]
+    },
+    "skip_kb_oos_overlap": true,
+    "spread_pips": 1.9,
+    "slippage_pips": 0.0,
+    "max_runs": 200,
+    "mining_presets": [
+      "eur_fill_wk5_mid",
+      "eur_fill_wk5",
+      "eur_fill_wk5_bank"
+    ],
+    "settings_signature": "8|2025-h1=2025-01-01:2025-06-30:era_2025_h1::|10|2026-h1=2026-01-01:2026-06-30|2026-01-01|2026-06-30|msp:eur_fill_wk5,eur_fill_wk5_bank,eur_fill_wk5_mid",
+    "learning_era_keys": [
+      "2025-h1"
+    ],
+    "oos_window_keys": [
+      "2026-h1"
+    ],
+    "learning_loops": 10,
+    "source": "std_recipe",
+    "timeframe": "M15",
+    "filter_target": {
+      "wr_gt": 50.0,
+      "total_r_gt": 15.0,
+      "n_ge": 15,
+      "max_dd_lt": 14.0
+    }
+  },
+  "n_runs": 30,
+  "best": {
+    "key": "d27bc2b91acb",
+    "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 6 · Kiểm chứng 2026 · preset eur_fill_wk5",
+    "train_weeks": 8,
+    "use_kb": true,
+    "kb_profile": "era_2025_h1",
+    "kb_snapshot": 6,
+    "oos_from": "2026-01-01",
+    "oos_to": "2026-06-30",
+    "mining_preset": "eur_fill_wk5",
+    "mining_search_space": {
+      "rr_ratios": [
+        2.2,
+        2.6,
+        3.0
+      ],
+      "atr_multipliers": [
+        1.05,
+        1.25
+      ],
+      "max_hold_bars": [
+        64
+      ],
+      "min_bars_between": [
+        3
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.4,
+        0.8,
+        1.2
+      ],
+      "min_rules_matches": [
+        1
+      ],
+      "ml_probability_thresholds": [
+        0.32,
+        0.36,
+        0.4
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": true,
+      "target_trades_per_week": 7.0,
+      "drawdown_penalty": 0.6,
+      "loss_streak_penalty": 1.2,
+      "selection_mode": "flow_frontier",
+      "edge_surgery": false,
+      "edge_surgery_min_hour_trades": 3,
+      "edge_surgery_max_hour_wr": 0.42,
+      "edge_surgery_dominant_side_ratio": 0.7,
+      "edge_surgery_hours": true,
+      "anti_chase": true,
+      "anti_chase_mode": "fixed",
+      "anti_chase_fixed_rsi": 65.0,
+      "anti_chase_fixed_vwap": 2.2,
+      "anti_chase_rsi_caps": [
+        60.0,
+        62.0,
+        65.0,
+        68.0,
+        100.0
+      ],
+      "anti_chase_min_tpw": 5.0,
+      "anti_chase_use_vwap": true,
+      "anti_chase_vwap_caps": [
+        1.5,
+        2.0,
+        2.5,
+        99.0
+      ],
+      "anti_chase_logic": "and",
+      "exit_modes_full_only": true,
+      "exit_mode_lock": "",
+      "trail_activate_r": 1.8,
+      "trail_distance_r": 0.6,
+      "oos_exit_mode": "hybrid",
+      "oos_trail_activate_r": 2.4,
+      "oos_trail_distance_r": 0.4,
+      "partial_pct": 0.35,
+      "partial_at_r": 1.5,
+      "tp_ignores_spread_buffer": true,
+      "min_atr_spread_ratio": 0.0,
+      "label_rr": 1.0,
+      "confirm_r": 0.08,
+      "confirm_wait_bars": 6,
+      "confirm_cancel_r": 0.8,
+      "max_trades_per_day": 2,
+      "force_side": "both"
+    },
+    "n_trades": 75,
+    "win_rate_pct": 41.33,
+    "avg_rr": 2.347,
+    "total_r": 28.134,
+    "max_drawdown_r": 7.06,
+    "profit_factor": 1.791,
+    "trades_per_week": 2.88,
+    "error": null,
+    "risk_adjusted": -1000000000000.0
+  },
+  "rows": [
+    {
+      "key": "d27bc2b91acb",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 6 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 6,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 75,
+      "win_rate_pct": 41.33,
+      "avg_rr": 2.347,
+      "total_r": 28.134,
+      "max_drawdown_r": 7.06,
+      "profit_factor": 1.791,
+      "trades_per_week": 2.88,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "6b87f1f650b5",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 4 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 93,
+      "win_rate_pct": 38.71,
+      "avg_rr": 2.349,
+      "total_r": 27.568,
+      "max_drawdown_r": 6.66,
+      "profit_factor": 1.539,
+      "trades_per_week": 3.58,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "bcc415c8fb0b",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 7 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 7,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 72,
+      "win_rate_pct": 40.28,
+      "avg_rr": 2.353,
+      "total_r": 24.591,
+      "max_drawdown_r": 10.78,
+      "profit_factor": 1.497,
+      "trades_per_week": 2.77,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "0ca79b159c30",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 5 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 5,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 75,
+      "win_rate_pct": 34.67,
+      "avg_rr": 2.433,
+      "total_r": 13.764,
+      "max_drawdown_r": 18.49,
+      "profit_factor": 1.372,
+      "trades_per_week": 2.88,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "4a30e4e4ea9b",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 6 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 6,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 82,
+      "win_rate_pct": 37.8,
+      "avg_rr": 1.993,
+      "total_r": 10.784,
+      "max_drawdown_r": 14.76,
+      "profit_factor": 1.252,
+      "trades_per_week": 3.15,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "1795b24c4323",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 4 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 90,
+      "win_rate_pct": 35.56,
+      "avg_rr": 1.888,
+      "total_r": 2.415,
+      "max_drawdown_r": 10.77,
+      "profit_factor": 1.11,
+      "trades_per_week": 3.46,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "f9887723b530",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 1 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 73,
+      "win_rate_pct": 35.62,
+      "avg_rr": 1.666,
+      "total_r": -3.685,
+      "max_drawdown_r": 16.44,
+      "profit_factor": 0.892,
+      "trades_per_week": 2.81,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "ebd7c46600e6",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 2 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 95,
+      "win_rate_pct": 41.05,
+      "avg_rr": 1.753,
+      "total_r": 12.363,
+      "max_drawdown_r": 8.46,
+      "profit_factor": 1.111,
+      "trades_per_week": 3.65,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "ea78f25ad516",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 3 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 81,
+      "win_rate_pct": 32.1,
+      "avg_rr": 1.734,
+      "total_r": -9.908,
+      "max_drawdown_r": 17.32,
+      "profit_factor": 0.829,
+      "trades_per_week": 3.12,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "865734b9830f",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 5 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 5,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 78,
+      "win_rate_pct": 33.33,
+      "avg_rr": 1.931,
+      "total_r": -1.792,
+      "max_drawdown_r": 10.57,
+      "profit_factor": 0.993,
+      "trades_per_week": 3.0,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "3c53c8eb08a1",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 7 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 7,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 69,
+      "win_rate_pct": 39.13,
+      "avg_rr": 1.795,
+      "total_r": 6.394,
+      "max_drawdown_r": 13.24,
+      "profit_factor": 1.17,
+      "trades_per_week": 2.65,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "cb892dd245af",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 8 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 8,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 75,
+      "win_rate_pct": 33.33,
+      "avg_rr": 1.958,
+      "total_r": -1.03,
+      "max_drawdown_r": 16.36,
+      "profit_factor": 0.98,
+      "trades_per_week": 2.88,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "d6d2e5e11113",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 9 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 9,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 75,
+      "win_rate_pct": 36.0,
+      "avg_rr": 1.949,
+      "total_r": 4.578,
+      "max_drawdown_r": 17.33,
+      "profit_factor": 1.101,
+      "trades_per_week": 2.88,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "566c6f6202c9",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 10 · Kiểm chứng 2026 · preset eur_fill_wk5_mid",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 10,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_mid",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 4,
+        "edge_surgery_max_hour_wr": 0.4,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.8,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.04,
+        "confirm_wait_bars": 5,
+        "confirm_cancel_r": 0.85,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 75,
+      "win_rate_pct": 33.33,
+      "avg_rr": 1.758,
+      "total_r": -6.04,
+      "max_drawdown_r": 18.25,
+      "profit_factor": 0.906,
+      "trades_per_week": 2.88,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "e694bc9f4db7",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 1 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 76,
+      "win_rate_pct": 35.53,
+      "avg_rr": 2.026,
+      "total_r": 5.62,
+      "max_drawdown_r": 8.91,
+      "profit_factor": 1.155,
+      "trades_per_week": 2.92,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "ed5fca7113f5",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 2 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 104,
+      "win_rate_pct": 35.58,
+      "avg_rr": 2.097,
+      "total_r": 10.481,
+      "max_drawdown_r": 11.61,
+      "profit_factor": 1.079,
+      "trades_per_week": 4.0,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "8d74d4f1475d",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 3 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 91,
+      "win_rate_pct": 30.77,
+      "avg_rr": 2.103,
+      "total_r": -4.075,
+      "max_drawdown_r": 18.33,
+      "profit_factor": 0.852,
+      "trades_per_week": 3.5,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "f3175d35b308",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 9 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 9,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 75,
+      "win_rate_pct": 34.67,
+      "avg_rr": 2.286,
+      "total_r": 10.2,
+      "max_drawdown_r": 11.98,
+      "profit_factor": 1.192,
+      "trades_per_week": 2.88,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "2df22374bb0c",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 8 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 8,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 74,
+      "win_rate_pct": 33.78,
+      "avg_rr": 2.396,
+      "total_r": 10.651,
+      "max_drawdown_r": 15.78,
+      "profit_factor": 1.182,
+      "trades_per_week": 2.85,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "c3a45de65df5",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 10 · Kiểm chứng 2026 · preset eur_fill_wk5",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 10,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2,
+          2.6,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          3
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.4,
+          0.8,
+          1.2
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.32,
+          0.36,
+          0.4
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 2.4,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.08,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 75,
+      "win_rate_pct": 32.0,
+      "avg_rr": 2.402,
+      "total_r": 6.516,
+      "max_drawdown_r": 14.83,
+      "profit_factor": 1.195,
+      "trades_per_week": 2.88,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "32dd74646492",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 1 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 132,
+      "win_rate_pct": 31.82,
+      "avg_rr": 1.597,
+      "total_r": -22.679,
+      "max_drawdown_r": 30.69,
+      "profit_factor": 0.726,
+      "trades_per_week": 5.08,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "0cc4ece7279e",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 4 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 139,
+      "win_rate_pct": 27.34,
+      "avg_rr": 1.641,
+      "total_r": -38.643,
+      "max_drawdown_r": 40.14,
+      "profit_factor": 0.657,
+      "trades_per_week": 5.35,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "02f7ea14acfc",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 2 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 121,
+      "win_rate_pct": 30.58,
+      "avg_rr": 1.623,
+      "total_r": -23.74,
+      "max_drawdown_r": 24.83,
+      "profit_factor": 0.676,
+      "trades_per_week": 4.65,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "41810be90374",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 5 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 5,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 134,
+      "win_rate_pct": 32.09,
+      "avg_rr": 1.575,
+      "total_r": -23.279,
+      "max_drawdown_r": 31.89,
+      "profit_factor": 0.714,
+      "trades_per_week": 5.15,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "001d3c792235",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 3 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 3,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 130,
+      "win_rate_pct": 33.08,
+      "avg_rr": 1.589,
+      "total_r": -18.685,
+      "max_drawdown_r": 17.68,
+      "profit_factor": 0.795,
+      "trades_per_week": 5.0,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "ed60580e7521",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 6 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 6,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 144,
+      "win_rate_pct": 28.47,
+      "avg_rr": 1.659,
+      "total_r": -34.981,
+      "max_drawdown_r": 36.77,
+      "profit_factor": 0.674,
+      "trades_per_week": 5.54,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "ab4579579c86",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 7 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 7,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 150,
+      "win_rate_pct": 25.33,
+      "avg_rr": 1.53,
+      "total_r": -53.709,
+      "max_drawdown_r": 55.5,
+      "profit_factor": 0.48,
+      "trades_per_week": 5.77,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "32f5c284f244",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 9 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 9,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 142,
+      "win_rate_pct": 28.17,
+      "avg_rr": 1.539,
+      "total_r": -40.454,
+      "max_drawdown_r": 49.32,
+      "profit_factor": 0.538,
+      "trades_per_week": 5.46,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "80781219d765",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 8 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 8,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 136,
+      "win_rate_pct": 34.56,
+      "avg_rr": 1.595,
+      "total_r": -13.895,
+      "max_drawdown_r": 22.76,
+      "profit_factor": 0.813,
+      "trades_per_week": 5.23,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "9f1aa3360716",
+      "label": "Học 8 tuần · Học 2025 (6 tháng đầu) · vòng 10 · Kiểm chứng 2026 · preset eur_fill_wk5_bank",
+      "train_weeks": 8,
+      "use_kb": true,
+      "kb_profile": "era_2025_h1",
+      "kb_snapshot": 10,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-06-30",
+      "mining_preset": "eur_fill_wk5_bank",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.0,
+          2.2,
+          2.6
+        ],
+        "atr_multipliers": [
+          1.05,
+          1.25
+        ],
+        "max_hold_bars": [
+          48
+        ],
+        "min_bars_between": [
+          2
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.3,
+          0.6,
+          1.0
+        ],
+        "min_rules_matches": [
+          1
+        ],
+        "ml_probability_thresholds": [
+          0.28,
+          0.32,
+          0.36
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.6,
+        "loss_streak_penalty": 1.2,
+        "selection_mode": "flow_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 2.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": true,
+        "exit_mode_lock": "",
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "oos_exit_mode": "hybrid",
+        "oos_trail_activate_r": 1.6,
+        "oos_trail_distance_r": 0.4,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "label_rr": 1.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "max_trades_per_day": 2,
+        "force_side": "both"
+      },
+      "n_trades": 135,
+      "win_rate_pct": 31.11,
+      "avg_rr": 1.598,
+      "total_r": -25.785,
+      "max_drawdown_r": 27.58,
+      "profit_factor": 0.732,
+      "trades_per_week": 5.19,
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    }
+  ]
+}

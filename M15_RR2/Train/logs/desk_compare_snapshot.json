@@ -1,0 +1,216 @@
+[
+  {
+    "desk": "E21",
+    "pair": "EUR/USD",
+    "tf": "M15",
+    "port": "8711",
+    "yaml_spread": "1.0",
+    "yaml_slip": "0.3",
+    "yaml_tpw": "10.0",
+    "yaml_max_tpd": "2",
+    "score_desk": "EUR",
+    "train_weeks": [
+      3,
+      6,
+      9
+    ],
+    "loops": 4,
+    "oos": "2026-01-01 → 2026-08-07",
+    "objective": "risk_adjusted",
+    "presets": [
+      "elite_or_quality",
+      "anti_chase_fixed_70",
+      "edge_gentle",
+      "elite_55_4",
+      "baseline"
+    ],
+    "era_keys": [
+      "2025-2026-6thang"
+    ],
+    "eras": [
+      {
+        "key": "2025-2026-6thang",
+        "name": "2025-2026-6thang",
+        "from": "2025-10-01",
+        "until": "2026-03-31",
+        "kb": "era_2025_2026_6thang"
+      }
+    ],
+    "settings_spread": 1.0,
+    "settings_slip": 0.3,
+    "grid_progress": "5/60",
+    "n_presets": 5,
+    "n_eras": 1,
+    "n_weeks": 3,
+    "combo_est": 60
+  },
+  {
+    "desk": "G23",
+    "pair": "GBP/USD",
+    "tf": "M15",
+    "port": "8731",
+    "yaml_spread": "1.5",
+    "yaml_slip": "0.3",
+    "yaml_tpw": "10.0",
+    "yaml_max_tpd": "2",
+    "score_desk": "GBP",
+    "train_weeks": [
+      3,
+      6,
+      9
+    ],
+    "loops": 10,
+    "oos": "2026-01-01 → 2026-08-07",
+    "objective": "win_rate_pct",
+    "presets": [
+      "elite_or_quality"
+    ],
+    "era_keys": [
+      "2025-full",
+      "2025-h2"
+    ],
+    "eras": [
+      {
+        "key": "2025-full",
+        "name": "2025 (12 tháng)",
+        "from": "2025-01-01",
+        "until": "2025-12-31",
+        "kb": "era_2025_full"
+      },
+      {
+        "key": "2025-h2",
+        "name": "2025 (6 tháng cuối)",
+        "from": "2025-07-01",
+        "until": "2025-12-31",
+        "kb": "era_2025_h2"
+      }
+    ],
+    "settings_spread": 1.5,
+    "settings_slip": 0.3,
+    "grid_progress": "5/60",
+    "n_presets": 1,
+    "n_eras": 2,
+    "n_weeks": 3,
+    "combo_est": 60
+  },
+  {
+    "desk": "E31",
+    "pair": "EUR/USD",
+    "tf": "M5",
+    "port": "8811",
+    "yaml_spread": "1.0",
+    "yaml_slip": "0.3",
+    "yaml_tpw": "24.0",
+    "yaml_max_tpd": "5",
+    "score_desk": "EUR",
+    "train_weeks": [
+      3,
+      6,
+      9
+    ],
+    "loops": 4,
+    "oos": "2026-01-01 → 2026-08-07",
+    "objective": "quality",
+    "presets": [
+      "elite_or_quality",
+      "elite_m5_balanced",
+      "elite_55_4",
+      "anti_chase_fixed_70"
+    ],
+    "era_keys": [
+      "2025-h2",
+      "2025-2026-6thang",
+      "5-thang-cuoi-2025"
+    ],
+    "eras": [
+      {
+        "key": "2025-h2",
+        "name": "2025 (6 tháng cuối)",
+        "from": "2025-07-01",
+        "until": "2025-12-31",
+        "kb": "era_2025_h2"
+      },
+      {
+        "key": "2025-2026-6thang",
+        "name": "2025-2026-6thang",
+        "from": "2025-10-01",
+        "until": "2026-03-31",
+        "kb": "era_2025_2026_6thang"
+      },
+      {
+        "key": "5-thang-cuoi-2025",
+        "name": "5 thang cuoi 2025",
+        "from": "2025-08-01",
+        "until": "2025-12-31",
+        "kb": "era_5_thang_cuoi_2025"
+      }
+    ],
+    "settings_spread": 1.0,
+    "settings_slip": 0.3,
+    "grid_progress": "10/144",
+    "n_presets": 4,
+    "n_eras": 3,
+    "n_weeks": 3,
+    "combo_est": 144
+  },
+  {
+    "desk": "G33",
+    "pair": "GBP/USD",
+    "tf": "M5",
+    "port": "8831",
+    "yaml_spread": "1.5",
+    "yaml_slip": "0.3",
+    "yaml_tpw": "24.0",
+    "yaml_max_tpd": "5",
+    "score_desk": "GBP",
+    "train_weeks": [
+      3,
+      6,
+      9
+    ],
+    "loops": 4,
+    "oos": "2026-01-01 → 2026-08-07",
+    "objective": "quality",
+    "presets": [
+      "elite_or_quality",
+      "elite_m5_balanced",
+      "elite_55_4",
+      "anti_chase_fixed_70"
+    ],
+    "era_keys": [
+      "2025-h2",
+      "2025-2026-6thang",
+      "5-thang-cuoi-2025"
+    ],
+    "eras": [
+      {
+        "key": "2025-h2",
+        "name": "2025 (6 tháng cuối)",
+        "from": "2025-07-01",
+        "until": "2025-12-31",
+        "kb": "era_2025_h2"
+      },
+      {
+        "key": "2025-2026-6thang",
+        "name": "2025-2026-6thang",
+        "from": "2025-10-01",
+        "until": "2026-03-31",
+        "kb": "era_2025_2026_6thang"
+      },
+      {
+        "key": "5-thang-cuoi-2025",
+        "name": "5 thang cuoi 2025",
+        "from": "2025-08-01",
+        "until": "2025-12-31",
+        "kb": "era_5_thang_cuoi_2025"
+      }
+    ],
+    "settings_spread": 1.5,
+    "settings_slip": 0.3,
+    "grid_progress": "10/144",
+    "n_presets": 4,
+    "n_eras": 3,
+    "n_weeks": 3,
+    "combo_est": 144
+  }
+]

@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "model_id": "tm_wr51r62_d22aae09",
+    "source": "live_remine",
+    "n_weeks": 1
+  },
+  "weekly": [
+    {
+      "week_start": "2026-09-07",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 2L5S session+squeeze #BD2E|chase:fixed_and_rsi<70+vwap<2.5",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.36,
+        "rr": 2.6,
+        "atr_mult": 1.05,
+        "score_threshold": 0.6,
+        "atr_mult_sl": 1.05,
+        "rr_ratio": 2.6,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 2,
+        "max_hold_bars": 48,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": true,
+        "anti_chase_rsi_short_max": 70.0,
+        "anti_chase_rsi_long_min": 30.0,
+        "anti_chase_vwap_short_max": 2.5,
+        "anti_chase_logic": "and",
+        "tp_ignores_spread_buffer": true,
+        "min_atr_spread_ratio": 0.0,
+        "confirm_r": 0.0,
+        "confirm_wait_bars": 6,
+        "confirm_cancel_r": 0.8,
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.030556457289480303
+          },
+          {
+            "feat": "pullback_long",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.0009719999999999998
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.736731117650777
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.6619852419509162,
+            "w": 3.191831194181495
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 30.54082949889663,
+            "w": 0.20832045501863247
+          },
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 58.52918575885213,
+            "w": 1.4110288436054923
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.4222078977179922,
+            "w": 1.639714100100558
+          }
+        ]
+      },
+      "train_start_idx": 63660,
+      "train_end_idx": 66540
+    }
+  ]
+}
